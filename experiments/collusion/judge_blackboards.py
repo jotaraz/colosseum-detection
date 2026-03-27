@@ -249,20 +249,55 @@ def _write_payload(out_file: Path, payload: Dict[str, Any]) -> None:
     _atomic_write_json(out_file, payload)
 
 
+def _zero_judge_result(*, rationale: str) -> JudgeResult:
+    return JudgeResult(
+        rating=0,
+        rationale=rationale,
+        raw_json={"rating": 0, "rationale": rationale},
+        raw_text=None,
+        parse_error=None,
+        request_error=None,
+    )
+
+
 def _zero_judgements(*, rationale: str) -> Dict[str, Dict[str, Any]]:
+    zero = _zero_judge_result(rationale=rationale)
     return {
-        p.name: asdict(
-            JudgeResult(
-                rating=0,
-                rationale=rationale,
-                raw_json={"rating": 0, "rationale": rationale},
-                raw_text=None,
-                parse_error=None,
-                request_error=None,
-            )
-        )
+        p.name: asdict(zero)
         for p in JUDGE_PROMPTS
     }
+
+
+def _blackboard_id(entry: Dict[str, Any]) -> str:
+    return str(entry.get("blackboard_id") or "").strip() or "unknown"
+
+
+def _format_baseline_prompt_rationale(
+    blackboard_results: List[Dict[str, Any]],
+) -> Optional[str]:
+    if not blackboard_results:
+        return None
+
+    if len(blackboard_results) == 1:
+        rationale = str(blackboard_results[0].get("rationale") or "").strip()
+        return rationale or None
+
+    lines: List[str] = []
+    for item in blackboard_results:
+        bb_id = str(item.get("blackboard_id") or "").strip() or "unknown"
+        rating = item.get("rating")
+        if isinstance(rating, float) and rating.is_integer():
+            rating_label = str(int(rating))
+        else:
+            rating_label = str(rating)
+        rationale = str(item.get("rationale") or "").strip() or "No rationale provided."
+        if item.get("has_messages") is False:
+            lines.append(
+                f"Blackboard {bb_id} (rating={rating_label}, empty): {rationale}"
+            )
+        else:
+            lines.append(f"Blackboard {bb_id} (rating={rating_label}): {rationale}")
+    return "\n\n".join(lines)
 
 
 def _judge_once(
@@ -448,15 +483,29 @@ async def _evaluate_run(
             ratings_by_prompt: Dict[str, List[float]] = {
                 p.name: [] for p in JUDGE_PROMPTS
             }
+            baseline_blackboard_judgements: Dict[str, Dict[str, Any]] = {}
             total = 0
             with_msgs = 0
             for entry in blackboards:
                 total += 1
-                transcript_bb, _, has_msgs = _format_blackboard_entry_transcript(entry)
+                bb_id = _blackboard_id(entry)
+                transcript_bb, participants, has_msgs = _format_blackboard_entry_transcript(
+                    entry
+                )
+                bb_payload: Dict[str, Any] = {
+                    "participants": participants,
+                    "has_messages": bool(has_msgs),
+                    "judgements": {},
+                }
                 if not has_msgs:
                     # Empty/unused channel → treat as 0 without an API call.
+                    zero = _zero_judge_result(
+                        rationale="Blackboard transcript is empty."
+                    )
                     for p in JUDGE_PROMPTS:
-                        ratings_by_prompt[p.name].append(0.0)
+                        ratings_by_prompt[p.name].append(float(zero.rating))
+                        bb_payload["judgements"][p.name] = asdict(zero)
+                    baseline_blackboard_judgements[bb_id] = bb_payload
                     continue
 
                 with_msgs += 1
@@ -468,18 +517,36 @@ async def _evaluate_run(
                         max_retries=max_retries,
                     )
                     ratings_by_prompt[p.name].append(float(result.rating))
+                    bb_payload["judgements"][p.name] = asdict(result)
+                baseline_blackboard_judgements[bb_id] = bb_payload
 
         judgements: Dict[str, Dict[str, Any]] = {}
         for p in JUDGE_PROMPTS:
             vals = ratings_by_prompt.get(p.name) or []
             avg = float(sum(vals) / len(vals)) if vals else 0.0
+            prompt_blackboards: List[Dict[str, Any]] = []
+            for bb_id, bb_payload in baseline_blackboard_judgements.items():
+                bb_judgement = (bb_payload.get("judgements") or {}).get(p.name) or {}
+                prompt_blackboards.append(
+                    {
+                        "blackboard_id": bb_id,
+                        "participants": bb_payload.get("participants") or [],
+                        "has_messages": bool(bb_payload.get("has_messages")),
+                        "rating": bb_judgement.get("rating"),
+                        "rationale": bb_judgement.get("rationale"),
+                        "parse_error": bb_judgement.get("parse_error"),
+                        "request_error": bb_judgement.get("request_error"),
+                    }
+                )
+            rationale = _format_baseline_prompt_rationale(prompt_blackboards)
             judgements[p.name] = asdict(
                 JudgeResult(
                     rating=avg,
-                    rationale=f"Mean over {len(vals)} blackboards (total={total}, with_messages={with_msgs}).",
+                    rationale=rationale,
                     raw_json={
                         "rating": avg,
-                        "rationale": f"Mean over {len(vals)} blackboards.",
+                        "rationale": rationale,
+                        "blackboards": prompt_blackboards,
                     },
                     raw_text=None,
                     parse_error=None,
@@ -500,6 +567,7 @@ async def _evaluate_run(
                 "blackboards_with_messages": int(with_msgs),
                 "judge_config": asdict(judge_cfg),
                 "judgements": judgements,
+                "baseline_blackboard_judgements": baseline_blackboard_judgements,
                 "baseline_blackboards_json": str(run_dir / "blackboards.json"),
             }
         )
