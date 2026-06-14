@@ -1,0 +1,73 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 3
+  seed: 1
+  tags: [collusion_regret]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: true
+  max_tasks: 8
+
+communication_network:
+  topology: complete
+  num_agents: 6
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-qwen3-27b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: false
+        health_check_path: "/models"
+        startup_timeout: 600
+        # Env vars passed straight into the vLLM server subprocess (Terrarium merges
+        # this into os.environ before launch). This is the reliable way to relocate
+        # the HuggingFace cache on a remote node -- .env is NOT loaded for vLLM runs.
+        # >>> EDIT THIS PATH <<<
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          # Qwen3.5-27B is a multimodal MoE model with "thinking mode" on by default.
+          # Two consequences for this tool-calling setup:
+          #  - It emits reasoning tokens, so you likely need a reasoning parser
+          #    (set reasoning_parser below) AND a recent vLLM build that supports it.
+          #  - Novel architecture (Gated Delta Networks) -> trust_remote_code is required.
+          - checkpoint: "Qwen/Qwen3.5-27B"
+            host: "127.0.0.1"
+            port: 8023
+            # MoE ~27B fits on one large GPU; use 2 if splitting (must divide attention heads).
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            # Thinking-mode parser: uncomment if the server rejects auto tool-choice or
+            # if reasoning text leaks into tool arguments. Parser name may vary by vLLM
+            # version (e.g. "qwen3", "deepseek_r1") -- check your vLLM's --reasoning-parser.
+            # reasoning_parser: "qwen3"
+            # Alternative/additional knob: relocate just the weights download
+            # (emitted as vLLM's --download-dir). Narrower than HF_HOME.
+            # download_dir: "/fast/jtaraz/hf_cache"
+            additional_args:
+              - "--enable-auto-tool-choice"
+
+experiment:
+  tag: collusion_regret_complete_n6_c2
+  output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2
+  max_concurrent_runs: 10
+  seeds: [1,2,3,4,5,6,7,8,9,10]
+  collusion:
+    colluder_selection: random
+  sweeps:
+    - name: complete_n6_c2
+      topologies: [complete]
+      num_agents: [6]
+      colluder_counts: [2]
+      secret_channel_enabled: [false, true]
+      prompt_variants: [control, simple]
