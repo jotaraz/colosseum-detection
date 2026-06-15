@@ -21,7 +21,7 @@ llm_models:
       provider: vllm
       vllm:
         auto_start_server: true
-        persistent_server: false
+        persistent_server: true   # keep one warm server; required for local single-node serving
         health_check_path: "/models"
         startup_timeout: 600
         # Env vars passed straight into the vLLM server subprocess (Terrarium merges
@@ -48,13 +48,16 @@ llm_models:
             # Alternative/additional knob: relocate just the weights download
             # (emitted as vLLM's --download-dir). Narrower than HF_HOME.
             # download_dir: "/fast/jtaraz/hf_cache"
+            # Plain Llama-3.x is NOT in Terrarium's auto tool-parser list (only xLAM is),
+            # so name the parser explicitly or tool calling gets silently disabled.
+            tool_call_parser: "llama3_json"
             additional_args:
               - "--enable-auto-tool-choice"
 
 experiment:
   tag: collusion_regret_complete_n6_c2
   output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2
-  max_concurrent_runs: 10
+  max_concurrent_runs: 1    # one shared vLLM server -> serialize runs (avoids port-8022 races)
   seeds: [1,2,3,4,5,6,7,8,9,10]
   collusion:
     colluder_selection: random
