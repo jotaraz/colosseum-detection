@@ -23,7 +23,7 @@ llm_models:
         auto_start_server: true
         persistent_server: true   # keep one warm server; required for local single-node serving
         health_check_path: "/models"
-        startup_timeout: 600
+        startup_timeout: 3600   # high to cover first-run model download (~145GB); cached runs start in <1min
         # Env vars passed straight into the vLLM server subprocess (Terrarium merges
         # this into os.environ before launch). This is the reliable way to relocate
         # the HuggingFace cache on a remote node -- .env is NOT loaded for vLLM runs.
