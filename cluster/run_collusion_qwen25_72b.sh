@@ -18,8 +18,19 @@ mkdir -p "$HF_HOME"
 
 cd "$PROJECT"
 
+# ---- Sanity checks: fail loudly with a clear reason ----
+if [ ! -f "$PROJECT/pyproject.toml" ]; then
+    echo "ERROR: no pyproject.toml in $PROJECT — is this the colosseum repo?" >&2
+    exit 1
+fi
+if ! command -v uv >/dev/null 2>&1; then
+    echo "ERROR: 'uv' not found on PATH for this (compute) node. PATH=$PATH" >&2
+    exit 1
+fi
+echo "using uv: $(command -v uv) ($(uv --version))"
+
 # ---- Setup: (re)build the venv if missing or incomplete ----
-if ! "$VENV/bin/python" -c "import vllm" 2>/dev/null; then
+if [ ! -x "$VENV/bin/python" ] || ! "$VENV/bin/python" -c "import vllm" 2>/dev/null; then
     echo "venv missing or incomplete — (re)building with uv"
     rm -rf "$VENV"
     export UV_CACHE_DIR="${_CONDOR_SCRATCH_DIR:?scratch dir not set}/uv-cache"
@@ -27,12 +38,18 @@ if ! "$VENV/bin/python" -c "import vllm" 2>/dev/null; then
     # Pull CoLLAB submodule if present (only needed by some envs; harmless for JiraTicket).
     git submodule update --init --recursive || echo "no submodules / skipping"
     uv venv --python 3.11 "$VENV"
-    uv sync --no-install-project --extra vllm
+    VIRTUAL_ENV="$VENV" uv sync --no-install-project --extra vllm
 fi
 
-echo "venv exists, activating"
+# ---- Verify the venv is actually usable BEFORE sourcing it ----
+if [ ! -f "$VENV/bin/activate" ]; then
+    echo "ERROR: build did not produce $VENV/bin/activate — see the uv output above." >&2
+    exit 1
+fi
+
+echo "activating venv: $VENV"
 source "$VENV/bin/activate"
-echo "venv activated"
+python -c "import vllm; print('OK: vllm', vllm.__version__)"
 
 # ---- vLLM runtime env (match your other jobs) ----
 export VLLM_USE_FLASHINFER_SAMPLER=0
