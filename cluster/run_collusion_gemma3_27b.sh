@@ -5,7 +5,7 @@ export PYTHONUNBUFFERED=1
 export PATH="$HOME/.local/bin:$PATH"
 
 # ---- Job-specific: which model config to run ----
-PROJECT=/fast/jtaraz/LIARS/colosseum
+PROJECT=/fast/jtaraz/LIARS/colosseum-detection
 VENV="$PROJECT/.venv"
 CONFIG="experiments/collusion/configs/collusion_jira_complete_n6_c2_regret_gemma3_27b_local.yaml"
 MODEL_LABEL="gemma-3-27b-it"
