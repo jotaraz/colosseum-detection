@@ -55,10 +55,12 @@ llm_models:
             # chat_template: "<path-to-gemma-tool-chat-template.jinja>"
             additional_args:
               - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "pythonic"
 
 experiment:
   tag: collusion_regret_complete_n6_c2
-  output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2
+  output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2_gemma3_27b
   max_concurrent_runs: 1    # one shared vLLM server -> serialize runs (avoids port-8022 races)
   seeds: [1,2,3,4,5,6,7,8,9,10]
   collusion:
