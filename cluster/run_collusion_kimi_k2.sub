@@ -1,0 +1,25 @@
+# HTCondor submit file: Kimi-K2-Instruct (full native FP8, ~1 TB) collusion sweep.
+# Fits ONLY on an 8x B200 node (~1.46 TB) on this cluster (hosts i301-i407).
+# Submit with:  condor_submit cluster/run_collusion_kimi_k2.sub
+# (Optional) export HF_TOKEN first to raise HF download rate limits; the model is public.
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_collusion_kimi_k2.sh
+
+# Pass HF creds through (optional for this public model, harmless if unset).
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = kimi_k2_$(Cluster).err
+output = kimi_k2_$(Cluster).out
+log    = kimi_k2_$(Cluster).log
+
+# Whole 8x B200 node. tensor_parallel_size: 8 in the YAML must match request_gpus.
+request_gpus   = 8
+requirements   = TARGET.CUDADeviceName == "NVIDIA B200"
+# Host RAM for loading ~1 TB of shards across 8 GPUs; CPUs ~2 per GPU for TP load.
+request_memory = 262144
+request_cpus   = 16
+# Scratch for the uv cache / venv build (weights go to HF_HOME on shared /fast, not here).
+request_disk   = 500G
++BypassLXCfs   = "true"
+queue

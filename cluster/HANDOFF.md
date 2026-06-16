@@ -20,6 +20,8 @@ runs are separated by model `label`.
 | `..._regret_llama33_70b_local.yaml` | `meta-llama/Llama-3.3-70B-Instruct` | 4 | 8021 | **gated** (needs HF_TOKEN) |
 | `..._regret_gemma3_27b_local.yaml` | `google/gemma-3-27b-it` | 2 | 8022 | **gated**; tool-calling finicky |
 | `..._regret_qwen3_27b_local.yaml` | `Qwen/Qwen3.5-27B` | 2 | 8023 | multimodal MoE "thinking" model; needs recent vLLM |
+| `..._regret_kimi_k2_local.yaml` | `moonshotai/Kimi-K2-Instruct` | 8 | 8024 | public; ~1 TB native FP8 MoE — fits ONLY on an 8x **B200** node (i301-i407, ~1.46 TB); `tool_call_parser: kimi_k2` |
+| `..._regret_kimi_k2_awq_local.yaml` | `QuixiAI/Kimi-K2-Instruct-AWQ` | 8 | 8025 | public 4-bit AWQ (~560-630 GB) for 8x **80GB** nodes (A100/H100-80GB); INT4/Marlin (A100 has no FP8); card reports a vLLM load bug — verify first |
 
 - All set `HF_HOME: /fast/jtaraz/hf_cache` in the YAML `llm.vllm.env` block.
 - gemma/qwen3 configs carry commented knobs for tool-call/reasoning parsers if startup rejects auto tool-choice.
@@ -75,6 +77,19 @@ gemma config also: `tool_call_parser: "pythonic"` so tool-calling stays enabled.
 - **Llama-3.3-70B**: NO generic llama rule -> would be silently disabled like gemma.
   FIXED: set `tool_call_parser: "llama3_json"` in its config.
 - **gemma-3-27b**: not supported -> set `tool_call_parser: "pythonic"` (done).
+- **Kimi-K2-Instruct**: not in the auto list, but vLLM ships a dedicated parser ->
+  set `tool_call_parser: "kimi_k2"` (done). Needs vLLM >= ~0.10 (0.12.0 is fine).
+
+## Kimi-K2 hardware reality (from `condor_status`, 2026-06-16)
+Biggest nodes on this cluster are **8 GPUs** each. Relevant single-node fits:
+- **8x B200** (i301-i407, ~183 GB ea = ~1.46 TB): the only node that fits **full native
+  FP8** Kimi-K2 (~1 TB). Use `..._kimi_k2_local.yaml`. Risk: Blackwell needs vLLM built
+  for CUDA 12.8+ — verify the pinned vllm==0.12.0 serves on B200.
+- **8x A100-80GB / 8x H100-80GB** (640 GB): too small for FP8; run the **4-bit AWQ**
+  build (`..._kimi_k2_awq_local.yaml`). A100 has no FP8, so AWQ/Marlin is mandatory there.
+- 8x H100-80GB across **2 nodes** (16 GPUs) could hold full FP8, but Terrarium's
+  `auto_start_server` is single-node only (no Ray orchestration) — avoid unless you stand
+  up Ray by hand and point the config at it with `auto_start_server: false`.
 
 ### Next actions after device switch
 0. RECOMMENDED START: submit **qwen2.5-72b** first — cleanest (tool-calling auto,

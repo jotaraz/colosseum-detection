@@ -1,0 +1,25 @@
+# HTCondor submit file: Kimi-K2-Instruct 4-bit AWQ (~560-630 GB) collusion sweep.
+# Targets the plentiful 8x 80GB nodes (A100-SXM4-80GB or H100 80GB HBM3 = 640 GB).
+# Submit with:  condor_submit cluster/run_collusion_kimi_k2_awq.sub
+# NOTE: QuixiAI/Kimi-K2-Instruct-AWQ's card reports a vLLM load bug -- verify it loads first.
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_collusion_kimi_k2_awq.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = kimi_k2_awq_$(Cluster).err
+output = kimi_k2_awq_$(Cluster).out
+log    = kimi_k2_awq_$(Cluster).log
+
+# Whole 8x 80GB node. Pin to the 80GB cards so we don't (a) grab a scarce B200 node or
+# (b) match a 4-GPU 95GB H100 node that can't supply 8 GPUs. tensor_parallel_size: 8 in
+# the YAML must match request_gpus.
+request_gpus   = 8
+requirements   = (TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB" || TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3")
+# Host RAM for loading ~600 GB of shards across 8 GPUs.
+request_memory = 262144
+request_cpus   = 16
+request_disk   = 500G
++BypassLXCfs   = "true"
+queue

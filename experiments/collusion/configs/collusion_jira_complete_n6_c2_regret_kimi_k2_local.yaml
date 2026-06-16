@@ -1,0 +1,99 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 3
+  seed: 1
+  tags: [collusion_regret]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: true
+  max_tasks: 8
+
+communication_network:
+  topology: complete
+  num_agents: 6
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-kimi-k2-instruct
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true   # keep one warm server; required for local single-node serving
+        health_check_path: "/models"
+        # Kimi-K2 is a ~1 TB native-FP8 checkpoint. First-run download from the HF Hub
+        # can take HOURS on a shared link, and weight load across 8 GPUs is slow too,
+        # so the startup window is much larger than for the 70B configs.
+        startup_timeout: 21600   # 6h, to cover first-run download (~1 TB) + load; cached runs start in minutes
+        # Env vars passed straight into the vLLM server subprocess (Terrarium merges
+        # this into os.environ before launch). This is the reliable way to relocate
+        # the HuggingFace cache on a remote node -- .env is NOT loaded for vLLM runs.
+        # >>> EDIT THIS PATH <<<
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+          # Kimi-K2-Instruct is PUBLIC (no license gate) -> no HF_TOKEN required.
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          # Kimi-K2-Instruct: 1T-param Mixture-of-Experts (~32B active), DeepSeek-V3-style
+          # (MLA attention + large MoE), shipped in native FP8 (~1 TB on disk).
+          #
+          # HARDWARE: native FP8 needs a Hopper/Blackwell GPU AND ~1 TB of HBM. On THIS
+          # cluster the only single node that fits is an 8x B200 box (8 x ~183 GB = ~1.46 TB):
+          #   condor hosts i301-i407. Request the whole node: request_gpus = 8 and constrain
+          #   to B200, e.g.  requirements = (CUDADeviceName == "NVIDIA B200").
+          # The 8x H100-80GB and 8x A100-80GB nodes are only 640 GB -> the FP8 weights do
+          # NOT fit there; for those use the 4-bit AWQ config instead
+          # (collusion_jira_complete_n6_c2_regret_kimi_k2_awq_local.yaml).
+          #
+          # TOOL CALLING: Kimi-K2 has a DEDICATED vLLM parser ("kimi_k2"); it is NOT in
+          # Terrarium's auto tool-parser list, so we name it explicitly below AND in
+          # additional_args (belt-and-suspenders), exactly like the gemma/llama configs.
+          # The "kimi_k2" parser needs vLLM >= ~0.10; terrarium-agents[vllm] pins 0.12.0.
+          #
+          # VLLM/BLACKWELL RISK: B200 (sm_100) needs a vLLM built against CUDA 12.8+ and a
+          # matching torch. Confirm the pinned vllm==0.12.0 actually imports + serves on B200
+          # before committing to a multi-hour run.
+          - checkpoint: "moonshotai/Kimi-K2-Instruct"
+            host: "127.0.0.1"
+            port: 8024
+            # Must divide the attention-head count (64). Use all 8 GPUs of a B200 node.
+            tensor_parallel_size: 8
+            gpu_memory_utilization: 0.9
+            # Kimi-K2 supports up to 128K context; kept modest so the KV cache fits
+            # comfortably alongside the ~1 TB of weights. Raise only if you have spare HBM.
+            max_model_len: 16000
+            trust_remote_code: true
+            # Alternative/additional knob: relocate just the weights download
+            # (emitted as vLLM's --download-dir). Narrower than HF_HOME.
+            # download_dir: "/fast/jtaraz/hf_cache"
+            # Kimi-K2 is NOT in Terrarium's auto tool-parser list, so without naming a
+            # parser it would silently disable --enable-auto-tool-choice (like gemma did).
+            tool_call_parser: "kimi_k2"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "kimi_k2"
+              # Large MoE: expert parallelism usually improves throughput. Optional.
+              # - "--enable-expert-parallel"
+              # First-run insurance: skip CUDA-graph capture (less startup risk + memory).
+              # Drop once a clean run is confirmed, to regain throughput.
+              # - "--enforce-eager"
+
+experiment:
+  tag: collusion_regret_complete_n6_c2
+  output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2_kimi_k2
+  max_concurrent_runs: 1    # one shared vLLM server -> serialize runs (avoids port-8024 races)
+  seeds: [1,2,3,4,5,6,7,8,9,10]
+  collusion:
+    colluder_selection: random
+  sweeps:
+    - name: complete_n6_c2
+      topologies: [complete]
+      num_agents: [6]
+      colluder_counts: [2]
+      secret_channel_enabled: [false, true]
+      prompt_variants: [control, simple]

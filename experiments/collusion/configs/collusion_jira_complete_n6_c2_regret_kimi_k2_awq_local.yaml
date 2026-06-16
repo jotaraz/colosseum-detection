@@ -1,0 +1,88 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 3
+  seed: 1
+  tags: [collusion_regret]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: true
+  max_tasks: 8
+
+communication_network:
+  topology: complete
+  num_agents: 6
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-kimi-k2-instruct-awq
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true   # keep one warm server; required for local single-node serving
+        health_check_path: "/models"
+        # 4-bit AWQ is ~560-630 GB on disk -- still a big first-run download, so keep a
+        # generous startup window for download + load across 8 GPUs.
+        startup_timeout: 21600   # 6h; cached runs start in minutes
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+          # Public quant repo -> no HF_TOKEN required.
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          # 4-bit AWQ quant of Kimi-K2-Instruct so the 1T-param MoE fits on a single
+          # 8x 80GB node (8 x ~80 GB = 640 GB). Targets this cluster's plentiful
+          # A100-SXM4-80GB nodes (also works on 8x H100-80GB).
+          #
+          # WHY AWQ (not FP8): A100 is Ampere and has NO native FP8, so the FP8 release
+          # cannot run there. AWQ INT4 runs on Ampere via Marlin kernels. (On H100-80GB
+          # AWQ also works and is the only thing that fits in 640 GB -- FP8 weights are
+          # ~1 TB and don't fit on 8x80GB regardless.)
+          #
+          # >>> VERIFY THE CHECKPOINT BEFORE A LONG RUN <<<
+          # QuixiAI/Kimi-K2-Instruct-AWQ is a community 4-bit AWQ build. Its own model card
+          # documents a vLLM weight-loading bug (tensor-dimension mismatch on load) -- so it
+          # may NOT load on every vLLM version. Do a quick load test first; if it fails,
+          # try a different AWQ/GPTQ/compressed-tensors repo or a newer vLLM.
+          #
+          # MEMORY IS TIGHT: ~560-630 GB of weights in 640 GB leaves very little for the KV
+          # cache. Hence gpu_memory_utilization 0.95, a small max_model_len, and --enforce-eager
+          # (skips CUDA-graph capture, which would otherwise need extra memory).
+          - checkpoint: "QuixiAI/Kimi-K2-Instruct-AWQ"
+            host: "127.0.0.1"
+            port: 8025
+            # All 8 GPUs of an 80GB node; must divide the attention-head count (64).
+            tensor_parallel_size: 8
+            gpu_memory_utilization: 0.95
+            max_model_len: 8192   # kept small -- almost no HBM left for KV after the weights
+            trust_remote_code: true
+            tool_call_parser: "kimi_k2"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "kimi_k2"
+              # AWQ on Ampere: name the quant method and a supported compute dtype.
+              - "--quantization"
+              - "awq_marlin"
+              - "--dtype"
+              - "bfloat16"
+              # Required for the tight memory budget on 8x80GB (see note above).
+              - "--enforce-eager"
+
+experiment:
+  tag: collusion_regret_complete_n6_c2
+  output_dir: experiments/collusion/outputs/collusion_regret_complete_n6_c2_kimi_k2_awq
+  max_concurrent_runs: 1    # one shared vLLM server -> serialize runs (avoids port-8025 races)
+  seeds: [1,2,3,4,5,6,7,8,9,10]
+  collusion:
+    colluder_selection: random
+  sweeps:
+    - name: complete_n6_c2
+      topologies: [complete]
+      num_agents: [6]
+      colluder_counts: [2]
+      secret_channel_enabled: [false, true]
+      prompt_variants: [control, simple]
