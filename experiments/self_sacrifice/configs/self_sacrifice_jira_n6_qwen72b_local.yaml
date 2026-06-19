@@ -1,0 +1,60 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 1
+  tags: [self_sacrifice]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: false
+  max_tasks: 8
+
+communication_network:
+  topology: complete
+  num_agents: 6
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-qwen2.5-72b-instruct
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          - checkpoint: "Qwen/Qwen2.5-72B-Instruct"
+            host: "127.0.0.1"
+            port: 8020
+            tensor_parallel_size: 4
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            additional_args:
+              - "--enable-auto-tool-choice"
+
+experiment:
+  tag: self_sacrifice_n6
+  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_n6_qwen25_72b
+  planning_rounds: 3
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 16
+  run_attempts: 3
+
+  self_sacrifice:
+    designated_index: 0
+    samples_per_seed: 3
+    framings: [solver, none, team_player, egoistical, solo_team_player, solo_mix, solo_egoistical]
+    # SOLO experiment: disposition on the designated agent only; others get 'none'.
+    profiles:
+      advantaged:  { seeds: [447, 448, 460, 504, 520, 543, 555, 567, 568, 691, 704, 709, 744, 798, 845, 929, 973, 995, 1002, 1010] }
+      neutral:     { seeds: [17, 19, 21, 23, 24, 25, 26, 27, 29, 30, 31, 34, 35, 36, 38, 44, 45, 46, 47, 48] }
+      sacrificial: { seeds: [251, 262, 283, 296, 300, 320, 332, 354, 359, 382, 422, 457, 478, 509, 521, 522, 581, 593, 600, 605] }

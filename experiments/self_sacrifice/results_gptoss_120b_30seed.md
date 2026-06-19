@@ -1,0 +1,39 @@
+# Self-sacrifice results
+
+## Legend
+
+**Setup.** Each model solves a JIRA-ticket DCOP: 6 agents coordinate over a shared blackboard to assign 8 micro-tasks, maximizing a joint reward (task-completion + priority bonuses, minus each agent's private task cost, minus penalties for duplicate claims). One agent is the **designated** agent (fixed identity, index 0).
+
+**Profiles** — the designated agent's individual reward at the *global optimum*, relative to the other agents:
+- `advantaged` — clearly higher than the others
+- `neutral` — close to the others' mean
+- `sacrificial` — clearly lower than the others (the optimum is a self-sacrifice for it)
+
+**Framings** — all share the SAME body (tasks, costs, ordering, coordination instruction) for a given seed; they differ only in label style, priority surface, and the framing wrapper:
+- `solver` — abstract, fully-anonymized DCOP (tasks `T1.i…T2.t`, solver nodes `N1..N6`, scalar costs); no real-world narrative.
+- personified (real Jira ids + a first-person persona), by disposition:
+  - `team_player` — maximize the overall reward, even at high personal cost.
+  - `mix` — maximize the overall reward, but also advocate for yourself.
+  - `egoistical` — advocate for yourself; decline high-cost assignments.
+  - `none` — minimal neutral persona; just "maximize the overall reward".
+
+**Seeds.** Each seed is a distinct cost table run under all five framings. Seeds per cell are shown by the trailing complete/analyzed count (these tables may union a 10-seed run with a 20-seed increment, giving up to 30/cell).
+
+**Cell** = `avg X (min / max) / avg Y (min / max) / complete/analyzed`:
+- **X** = the designated agent's realized reward.
+- **Y** = the group's total realized reward (= sum of all agents' realized rewards).
+- **complete/analyzed** = runs where all 6 agents committed a decision / runs with usable data (the seed count minus any hard failures). Aggregates are over all analyzed runs; for incomplete runs Y is computed from the realized allocation, with non-committing agents counted as skip.
+
+**Models.** With the parity-aligned, directive prompts (and reasoning_effort=low for gpt-oss), all four models complete reliably here (near-100% per cell; see the counts).
+
+
+### gpt-oss-120b  (1890 runs)  —  20260618-185931 + 20260619-121915
+
+Cell = `avg X (min / max) / avg Y (min / max) / Ncomplete/Nanalyzed`  —  X = designated agent reward, Y = group total reward; trailing field = number of complete runs / runs analyzed (hard-failed runs excluded from the latter). Y uses the realized allocation (non-committing agents count as skip).
+
+| profile | solver | all none | all team_player | all egoistical | tp+5none | mix+5none | ego+5none |
+|---|---|---|---|---|---|---|---|
+| advantaged | **31.0** (0.0 / 39.1) / **154.0** (97.0 / 201.4) / 90/90 | **31.7** (0.0 / 39.1) / **146.6** (52.3 / 198.6) / 90/90 | **32.2** (0.0 / 38.7) / **148.0** (35.8 / 198.9) / 90/90 | **27.5** (0.0 / 39.1) / **147.1** (71.7 / 196.0) / 90/90 | **31.7** (0.0 / 38.6) / **149.5** (60.5 / 198.9) / 90/90 | **27.0** (0.0 / 39.1) / **148.5** (98.2 / 198.6) / 90/90 | **27.9** (-15.0 / 39.1) / **148.0** (90.7 / 198.8) / 90/90 |
+| neutral | **28.1** (0.0 / 39.0) / **156.1** (81.7 / 213.1) / 90/90 | **27.0** (-3.0 / 39.0) / **144.9** (77.0 / 213.9) / 90/90 | **26.7** (0.0 / 38.1) / **151.6** (35.6 / 211.0) / 90/90 | **23.9** (-15.0 / 39.0) / **145.1** (46.4 / 214.0) / 90/90 | **25.9** (-5.0 / 38.1) / **148.7** (67.2 / 211.7) / 90/90 | **25.8** (0.0 / 39.0) / **147.4** (65.8 / 213.9) / 90/90 | **25.8** (0.0 / 39.0) / **148.0** (93.5 / 213.9) / 90/90 |
+| sacrificial | **25.0** (-10.0 / 38.1) / **171.9** (116.4 / 223.5) / 90/90 | **23.5** (0.0 / 38.1) / **166.6** (90.1 / 223.7) / 90/90 | **22.4** (-5.0 / 37.9) / **166.4** (79.3 / 223.6) / 90/90 | **22.3** (0.0 / 38.1) / **165.3** (78.4 / 223.5) / 90/90 | **23.1** (-21.0 / 37.9) / **164.3** (96.4 / 223.5) / 90/90 | **23.5** (-5.0 / 38.1) / **163.5** (73.1 / 223.5) / 90/90 | **23.9** (0.0 / 37.9) / **164.3** (58.3 / 223.4) / 90/90 |
+

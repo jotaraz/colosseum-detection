@@ -1,0 +1,21 @@
+# HTCondor submit: Llama-3.3-70B single-agent deception-gradient sweep (10 prompts x 10 seeds).
+# GATED model: export HF_TOKEN before submitting (passed through via $ENV(HF_TOKEN)).
+# Submit with:  HF_TOKEN=hf_... condor_submit_bid <bid> cluster/run_deception_llama33_70b.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_deception_llama33_70b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = deception_llama33_70b_$(Cluster).err
+output = deception_llama33_70b_$(Cluster).out
+log    = deception_llama33_70b_$(Cluster).log
+
+# Llama-3.3-70B bf16 ~140 GB -> 4x 80GB GPUs (tensor_parallel_size: 4 in the YAML).
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3" || TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

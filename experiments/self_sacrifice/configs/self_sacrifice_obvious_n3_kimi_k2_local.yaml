@@ -1,0 +1,71 @@
+# self-sacrifice-OBVIOUS variant: 3 agents x 3 tasks, uniform priority, hand-crafted cost
+# matrices (NOT seed-curated). See experiments/self_sacrifice/instances_obvious.py and the
+# offline check `python -m experiments.self_sacrifice.validate_obvious`.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 3
+  seed: 1
+  tags: [self_sacrifice_obvious]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: false
+  # 3 micro-tasks (the env yields ISSUE-0001::implement/review/test -> T1/T2/T3). The
+  # explicit instance overrides their priority (uniform) and the full cost matrix.
+  max_tasks: 3
+  # Joint-reward weights (base per task = tasks_done_bonus + priority_bonus*1.0 = 40).
+  # Defaults (20/20/20) are assumed by instances_obvious / validate_obvious; keep them.
+
+communication_network:
+  topology: complete
+  num_agents: 3
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-kimi-k2-instruct
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 21600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          - checkpoint: "moonshotai/Kimi-K2-Instruct"
+            host: "127.0.0.1"
+            port: 8024
+            request_timeout: 600
+            tensor_parallel_size: 8
+            gpu_memory_utilization: 0.9
+            max_model_len: 32000
+            trust_remote_code: true
+            tool_call_parser: "kimi_k2"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "kimi_k2"
+
+experiment:
+  tag: self_sacrifice_obvious_n3
+  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_obvious_n3_kimi_k2
+  planning_rounds: 3
+  max_conversation_steps: 3
+  log_prompts: true
+  # Seeds vary only the surface (agent names / ticket narrative); the cost matrix is FIXED
+  # per profile. More seeds = a more robust rate estimate, not different DCOPs.
+  seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+  self_sacrifice:
+    instance_source: explicit          # hand-crafted matrices from instances_obvious.py
+    priority: critical                 # uniform priority on every task (weight 1.0)
+    designated_index: 0
+    samples_per_seed: 3
+    framings: [solver, none, team_player, egoistical, solo_team_player, solo_mix, solo_egoistical]
+    # Profiles come from COST_MATRICES (sacrificial, neutral); advantaged dropped. No
+    # profiles/seeds block needed — both profiles run over the experiment.seeds above.

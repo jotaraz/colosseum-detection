@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-sacrifice transcript viewer</title>
+<style>
+  :root {
+    --bg: #0f1216; --panel: #171b21; --panel2: #1e242c; --line: #2a323c;
+    --text: #e6e9ee; --muted: #8b96a5; --accent: #4f9cf9;
+    --me: #234a36; --them: #232a33; --action: #3a2f17;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); overflow: hidden;
+    display: flex; flex-direction: column;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    flex: 0 0 auto; z-index: 10; background: var(--panel);
+    border-bottom: 1px solid var(--line); padding: 10px 14px;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .ctl { display: flex; flex-direction: column; gap: 3px; }
+  .ctl label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  select {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; min-width: 110px; font-size: 13px;
+  }
+  .framings { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .framings .grp-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; width: 100%; }
+  .fbtn {
+    border: 1px solid var(--line); background: var(--panel2); color: var(--text);
+    border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; user-select: none;
+  }
+  .fbtn.on { background: var(--accent); border-color: var(--accent); color: #08121f; font-weight: 600; }
+  .fbtn:disabled { opacity: .35; cursor: not-allowed; }
+  #status { color: var(--muted); font-size: 12px; margin-top: 6px; min-height: 16px; }
+
+  /* table-like layout: each turn is ONE row across all columns, so every
+     cell in a row shares the row height -> the same agent's Nth message
+     lines up at the same vertical position in every column. */
+  #cols { flex: 1 1 auto; padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 0; }
+  .gridrow { display: flex; gap: 12px; align-items: stretch; }
+  /* compact per-column heading, always pinned while the chat scrolls */
+  .gridrow.titlebar { position: sticky; top: 0; z-index: 6; }
+  .cell {
+    flex: 1 1 0; min-width: 340px; max-width: 560px; background: var(--panel);
+    border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+    padding: 2px 8px;
+  }
+  .cell.title {
+    border-top: 1px solid var(--line); border-radius: 10px 10px 0 0; padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .cell.head { padding: 8px 12px 10px; }
+  .gridrow.last .cell { border-bottom: 1px solid var(--line); border-radius: 0 0 10px 10px; padding-bottom: 8px; }
+  .col-type { font-weight: 800; font-size: 16px; letter-spacing: .01em; }
+  .col-sub { font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+  .prio { margin-top: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
+  .prio h4 { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .prio table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .prio td { padding: 1px 0; }
+  .prio td.p { text-align: right; }
+  .pill { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .p-critical { background: #5b1f1f; color: #ffb4b4; }
+  .p-high     { background: #5b3a1f; color: #ffd9a8; }
+  .p-medium   { background: #4a4a1f; color: #ecec9a; }
+  .p-low      { background: #234a36; color: #a8e6c4; }
+
+  .msg {
+    background: var(--them); border: 1px solid var(--line); border-radius: 10px;
+    padding: 7px 10px; margin: 4px 0; max-width: 100%;
+  }
+  .msg.action { background: var(--action); }
+  .msg .who { font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+  .msg .meta { font-size: 10px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .msg .body { white-space: pre-wrap; word-wrap: break-word; }
+  .costs { margin: 4px 0 6px; background: var(--panel2); border: 1px dashed var(--line); border-radius: 8px; padding: 5px 8px; font-size: 11px; }
+  .costs b { color: var(--muted); font-weight: 600; }
+  .costs .ci { display: inline-block; margin-right: 10px; white-space: nowrap; }
+  .empty { color: var(--line); font-size: 11px; padding: 4px; }
+  .action-stats { display: flex; gap: 22px; margin-top: 8px; }
+  .stat { text-align: center; line-height: 1.05; }
+  .stat-val { font-size: 24px; font-weight: 800; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 2px; }
+  .stat.cost .stat-val { color: #ffd9a8; }
+  .stat.reward .stat-val { color: #a8e6c4; }
+  .taskhl { border-radius: 4px; padding: 0 3px; font-weight: 600; white-space: nowrap; }
+  .msg[data-persona], .msg[data-reasoning] { cursor: help; }
+  #tip {
+    position: fixed; display: none; z-index: 1000; max-width: 420px; max-height: 70vh; overflow: hidden;
+    pointer-events: none;
+    background: #0b0e12; border: 1px solid var(--accent); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; line-height: 1.4; color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  #tip .tip-who { font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+  #tip .tip-sec {
+    margin: 7px 0 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); border-top: 1px solid var(--line); padding-top: 5px;
+  }
+  #tip .tip-reason { white-space: pre-wrap; color: #d7dde6; }
+  .colerr { padding: 16px; color: #ffb4b4; }
+  .hint { padding: 40px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="controls">
+    <div class="ctl"><label>LLM</label><select id="sel-model"></select></div>
+    <div class="ctl"><label>Timestamp</label><select id="sel-ts"></select></div>
+    <div class="ctl"><label>Type</label><select id="sel-type"></select></div>
+    <div class="ctl"><label>Seed</label><select id="sel-seed"></select></div>
+    <div class="ctl"><label>Sampling</label><select id="sel-sampling"></select></div>
+    <div class="framings" id="framings"><span class="grp-label">Framings (pick any)</span></div>
+  </div>
+  <div id="status"></div>
+</header>
+<div id="cols"><div class="hint">Pick selectors above, then tick one or more framing buttons.</div></div>
+<div id="tip"></div>
+
+<script>
+const ALL_FRAMINGS = ["solver","none","egoistical","team_player","solo_mix","solo_egoistical","solo_team_player"];
+// type order to match results_gptoss_both_30seed.md (advantaged -> neutral -> sacrificial)
+const TYPE_ORDER = ["advantaged","neutral","sacrificial"];
+const byTypeOrder = (a,b) => {
+  const ia = TYPE_ORDER.indexOf(a), ib = TYPE_ORDER.indexOf(b);
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+};
+let INDEX = null;
+const selected = new Set();
+const $ = id => document.getElementById(id);
+
+// ---- per-task colors: same task gets one fixed color in both notations ----
+// (ISSUE-0001::review  ==  T1.r).  Color family is chosen by priority.
+const WORK_LETTER = { implement:"i", review:"r", test:"t", docs:"d", triage:"g" };
+const PRIO_RANK = { critical:0, high:1, medium:2, low:3 };
+// warm = important, cool = medium, gray = low
+const PRIO_PALETTE = {
+  critical: ["#b71c1c","#d32f2f","#e53935","#c62828","#ad1457","#8e0000","#ef5350","#ff5252"],
+  high:     ["#e65100","#ef6c00","#f57f17","#f9a825","#fbc02d","#ff8f00","#ffa726","#fdd835"],
+  medium:   ["#1565c0","#00897b","#2e7d32","#1e88e5","#0288d1","#43a047","#00acc1","#3949ab"],
+  low:      ["#616161","#757575","#9e9e9e","#546e7a","#78909c","#455a64","#bdbdbd","#90a4ae"],
+};
+
+// "ISSUE-0001::review" / "0001::review" / "T1.r" -> canonical "1.r"
+function canonToken(ticket, work) {
+  const t = parseInt(ticket, 10);
+  let letter = work.length === 1 ? work.toLowerCase()
+                                 : (WORK_LETTER[work.toLowerCase()] || work.toLowerCase());
+  return `${t}.${letter}`;
+}
+
+function fgFor(hex) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  const L = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return L > 0.6 ? "#10141a" : "#ffffff";
+}
+
+// build canonical -> {color, fg} from the priority tables of all loaded columns
+function buildTaskColors(data) {
+  const prio = {};                       // canon -> priority label
+  for (const d of data) if (d.ok) for (const p of (d.priorities || [])) {
+    const m = p.task.match(/(?:ISSUE[-‑])?0*(\d+)::([A-Za-z]+)/) ||
+              p.task.match(/T(\d+)\.([A-Za-z])/);
+    if (m) prio[canonToken(m[1], m[2])] = p.priority;
+  }
+  // deterministic order: by priority rank, then canonical id -> stable colors
+  const canons = Object.keys(prio).sort((a, b) => {
+    const ra = PRIO_RANK[prio[a]] ?? 9, rb = PRIO_RANK[prio[b]] ?? 9;
+    return ra - rb || a.localeCompare(b, undefined, {numeric:true});
+  });
+  const cmap = {}, used = {};
+  for (const c of canons) {
+    const pal = PRIO_PALETTE[prio[c]] || PRIO_PALETTE.low;
+    const i = (used[prio[c]] = (used[prio[c]] || 0)); used[prio[c]]++;
+    const color = pal[i % pal.length];
+    cmap[c] = { color, fg: fgFor(color) };
+  }
+  return cmap;
+}
+
+// highlight every task mention in already-escaped text
+const TASK_RE = /(?:ISSUE[-‑])?0*(\d+)::([A-Za-z]+)|(?<![A-Za-z0-9])T(\d+)\.([irtdg])(?![A-Za-z0-9])/g;
+function highlightTasks(escaped, cmap) {
+  return escaped.replace(TASK_RE, (full, t1, w1, t2, w2) => {
+    const canon = t1 !== undefined ? canonToken(t1, w1) : canonToken(t2, w2);
+    const c = cmap[canon];
+    return c ? `<span class="taskhl" style="background:${c.color};color:${c.fg}">${full}</span>` : full;
+  });
+}
+
+function opts(sel, values, keep) {
+  const prev = keep ? sel.value : null;
+  sel.innerHTML = "";
+  for (const v of values) {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = v; sel.appendChild(o);
+  }
+  if (prev !== null && values.map(String).includes(prev)) sel.value = prev;
+}
+
+async function init() {
+  const r = await fetch("/api/index");
+  INDEX = await r.json();
+  const models = Object.keys(INDEX.models || {});
+  if (!models.length) { $("status").textContent = "No runs found under outputs/."; return; }
+  opts($("sel-model"), models);
+  buildFramingButtons();
+  $("sel-model").onchange = onModel;
+  $("sel-ts").onchange = onTs;
+  $("sel-type").onchange = onType;
+  $("sel-seed").onchange = onSeed;
+  $("sel-sampling").onchange = onSampling;
+  onModel();
+}
+
+function buildFramingButtons() {
+  const box = $("framings");
+  for (const f of ALL_FRAMINGS) {
+    const b = document.createElement("button");
+    b.className = "fbtn"; b.textContent = f; b.dataset.f = f;
+    b.onclick = () => { if (b.disabled) return;
+      b.classList.toggle("on"); selected.has(f) ? selected.delete(f) : selected.add(f); render(); };
+    box.appendChild(b);
+  }
+}
+
+function currentRuns() {
+  const m = INDEX.models[$("sel-model").value];
+  const ts = m && m.timestamps[$("sel-ts").value];
+  return ts ? ts.runs : [];
+}
+
+function onModel() {
+  const m = INDEX.models[$("sel-model").value];
+  opts($("sel-ts"), Object.keys(m.timestamps).sort());
+  onTs();
+}
+
+// cascade: timestamp -> type -> seed -> sampling -> framings, each step
+// narrowing the next dropdown to values that actually exist on disk.
+function onTs() {
+  const types = [...new Set(currentRuns().map(r => r.type))].sort(byTypeOrder);
+  opts($("sel-type"), types, true);
+  onType();
+}
+
+function onType() {
+  const type = $("sel-type").value;
+  const seeds = [...new Set(currentRuns().filter(r => r.type === type).map(r => r.seed))]
+    .sort((a,b) => a-b);
+  opts($("sel-seed"), seeds, true);
+  onSeed();
+}
+
+function onSeed() {
+  const type = $("sel-type").value, seed = +$("sel-seed").value;
+  const samplings = [...new Set(currentRuns()
+    .filter(r => r.type === type && r.seed === seed).map(r => r.sampling))].sort((a,b) => a-b);
+  opts($("sel-sampling"), samplings, true);
+  onSampling();
+}
+
+function onSampling() {
+  refreshFramingAvailability();
+  render();
+}
+
+// grey out framings that don't exist for the exact current selection
+function refreshFramingAvailability() {
+  const type = $("sel-type").value, seed = +$("sel-seed").value, samp = +$("sel-sampling").value;
+  const avail = new Set(currentRuns()
+    .filter(r => r.type === type && r.seed === seed && r.sampling === samp)
+    .map(r => r.framing));
+  for (const b of document.querySelectorAll(".fbtn")) {
+    const ok = avail.has(b.dataset.f);
+    b.disabled = !ok;
+    if (!ok && b.classList.contains("on")) { b.classList.remove("on"); selected.delete(b.dataset.f); }
+  }
+}
+
+const PRIOS = ["critical","high","medium","low"];
+function prioPill(p) { return `<span class="pill p-${p}">${p}</span>`; }
+
+async function render() {
+  const cols = $("cols");
+  if (!selected.size) { cols.innerHTML = `<div class="hint">Tick one or more framing buttons to show conversations.</div>`; $("status").textContent=""; return; }
+  const base = {
+    model: $("sel-model").value, timestamp: $("sel-ts").value,
+    type: $("sel-type").value, seed: $("sel-seed").value, sampling: $("sel-sampling").value,
+  };
+  $("status").textContent = `Loading ${selected.size} framing(s) for seed ${base.seed}, s${base.sampling}, ${base.type}…`;
+
+  const framings = ALL_FRAMINGS.filter(f => selected.has(f));
+  const data = await Promise.all(framings.map(async f => {
+    const q = new URLSearchParams({...base, framing: f});
+    const r = await fetch("/api/chat?" + q.toString());
+    return r.json();
+  }));
+
+  // union of alignment keys (phase_rank, round, pos) across all columns
+  const keyOf = m => `${m.phase_rank}|${m.round}|${m.pos}`;
+  const order = new Map(); // key -> sortable tuple
+  for (const d of data) if (d.ok) for (const m of d.messages)
+    order.set(keyOf(m), [m.phase_rank, m.round, m.pos]);
+  const rowKeys = [...order.entries()].sort((a,b) =>
+    a[1][0]-b[1][0] || a[1][1]-b[1][1] || a[1][2]-b[1][2]).map(e => e[0]);
+
+  // bucket each column's messages by key (a key can hold >1 msg, e.g. msg+action)
+  const buckets = data.map(d => {
+    const map = {};
+    if (d.ok) for (const m of d.messages) (map[keyOf(m)] ||= []).push(m);
+    return map;
+  });
+
+  cols.innerHTML = "";
+
+  // fixed color per task (consistent across both notations), keyed by priority
+  const cmap = buildTaskColors(data);
+
+  // sticky compact title bar (framing/type) — always shown while scrolling
+  const titlebar = document.createElement("div"); titlebar.className = "gridrow titlebar";
+  framings.forEach(fr => {
+    const c = document.createElement("div"); c.className = "cell title";
+    c.innerHTML = `<div class="col-type">${fr}</div>`;
+    titlebar.appendChild(c);
+  });
+  cols.appendChild(titlebar);
+
+  // priority/legend row — align-items:stretch equalizes height
+  const header = document.createElement("div"); header.className = "gridrow header";
+  data.forEach((d, ci) => header.appendChild(headCell(d, cmap)));
+  cols.appendChild(header);
+
+  // one row per turn slot, spanning every column => shared row height
+  rowKeys.forEach((k, ri) => {
+    const row = document.createElement("div");
+    row.className = "gridrow" + (ri === rowKeys.length - 1 ? " last" : "");
+    data.forEach((d, ci) => {
+      const cell = document.createElement("div"); cell.className = "cell";
+      if (!d.ok) {
+        if (ri === 0) cell.innerHTML = `<div class="colerr">⚠ ${d.error || "failed to load"}</div>`;
+      } else {
+        const msgs = buckets[ci][k] || [];
+        for (const m of msgs) cell.appendChild(bubble(m, d, cmap));
+      }
+      row.appendChild(cell);
+    });
+    cols.appendChild(row);
+  });
+  $("status").textContent = `Showing ${framings.length} framing(s): ${framings.join(", ")}`;
+}
+
+function headCell(d, cmap) {
+  const h = document.createElement("div"); h.className = "cell head";
+  let prio = "";
+  if (d.ok && d.priorities && d.priorities.length) {
+    const rows = d.priorities.map(p =>
+      `<tr><td>${highlightTasks(escapeHtml(p.task), cmap)}</td><td class="p">${prioPill(p.priority)}</td></tr>`).join("");
+    prio = `<div class="prio"><h4>Task priorities (shared)</h4><table>${rows}</table></div>`;
+  }
+  const sub = d.ok ? (d.turn_order || []).join(" → ") : (d.error || "");
+  h.innerHTML = `<div class="col-sub">${sub}</div>${prio}`;
+  return h;
+}
+
+function bubble(m, d, cmap) {
+  const el = document.createElement("div");
+  el.className = "msg" + (m.kind === "action" ? " action" : "");
+  // persona ("who you are") + this turn's reasoning, shown on hover
+  const persona = (d.persona_by_agent || {})[m.agent];
+  if (persona) el.dataset.persona = persona;
+  if (m.reasoning) el.dataset.reasoning = m.reasoning;
+  if (persona || m.reasoning) el.dataset.agent = m.agent;
+  // cost table on every message from this agent
+  let costHtml = "";
+  const costs = (d.costs_by_agent || {})[m.agent];
+  if (costs && Object.keys(costs).length) {
+    const items = Object.entries(costs)
+      .map(([t,c]) => `<span class="ci">${highlightTasks(escapeHtml(t.replace(/^ISSUE[-‑]/,"")), cmap)}: <b>${c}</b></span>`).join("");
+    costHtml = `<div class="costs"><b>costs →</b> ${items}</div>`;
+  }
+  // big, easy-to-read cost + reward on the final assign_task bubble
+  let statsHtml = "";
+  if (m.kind === "action") {
+    const fmt = (v, dp) => (v === null || v === undefined) ? "—" : Number(v).toFixed(dp);
+    statsHtml = `<div class="action-stats">` +
+      `<div class="stat cost"><div class="stat-val">${fmt(m.cost, 2)}</div><div class="stat-label">task cost</div></div>` +
+      `<div class="stat reward"><div class="stat-val">${fmt(m.reward, 1)}</div><div class="stat-label">reward</div></div>` +
+      `</div>`;
+  }
+  const meta = `<span class="meta">${m.phase} · r${m.round+1}</span>`;
+  el.innerHTML = `${costHtml}<div class="who">${m.agent}${meta}</div>` +
+                 `<div class="body">${highlightTasks(escapeHtml(m.text), cmap)}</div>${statsHtml}`;
+  return el;
+}
+
+function escapeHtml(s) {
+  return (s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+
+// persona tooltip on message hover
+(function setupTip() {
+  const tip = $("tip"), cols = $("cols");
+  function place(e) {
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > innerWidth - 8)  x = e.clientX - pad - w;
+    if (y + h > innerHeight - 8) y = e.clientY - pad - h;
+    tip.style.left = Math.max(8, x) + "px";
+    tip.style.top  = Math.max(8, y) + "px";
+  }
+  const hoverable = el => el.closest(".msg[data-persona], .msg[data-reasoning]");
+  cols.addEventListener("mouseover", e => {
+    const b = hoverable(e.target);
+    if (!b) return;
+    let html = `<div class="tip-who">${escapeHtml(b.dataset.agent || "")}</div>`;
+    if (b.dataset.persona) html += escapeHtml(b.dataset.persona);
+    if (b.dataset.reasoning) {
+      html += `<div class="tip-sec">Reasoning trace (this turn)</div>` +
+              `<div class="tip-reason">${escapeHtml(b.dataset.reasoning)}</div>`;
+    }
+    tip.innerHTML = html;
+    tip.style.display = "block";
+    place(e);
+  });
+  cols.addEventListener("mousemove", e => { if (tip.style.display === "block") place(e); });
+  cols.addEventListener("mouseout", e => {
+    const b = hoverable(e.target);
+    if (b && !b.contains(e.relatedTarget)) tip.style.display = "none";
+  });
+})();
+
+init();
+</script>
+</body>
+</html>

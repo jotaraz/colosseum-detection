@@ -4,6 +4,15 @@ set -euo pipefail
 export PYTHONUNBUFFERED=1
 export PATH="$HOME/.local/bin:$PATH"
 
+# ---- Bypass the cluster HTTP proxy for localhost ----
+# Compute nodes auto-set http_proxy/https_proxy. Without this, the vLLM readiness check
+# (GET http://127.0.0.1:<port>/v1/models) gets routed through the proxy, never reaches the
+# local server, and the run dies with TimeoutError after the full startup_timeout EVEN THOUGH
+# vLLM logged "Application startup complete" (telltale: 0 incoming GET /v1/models in the vLLM
+# log). This is exactly what killed both Kimi jobs on 2026-06-16.
+export no_proxy="127.0.0.1,localhost,0.0.0.0,::1"
+export NO_PROXY="127.0.0.1,localhost,0.0.0.0,::1"
+
 # ---- Job-specific: which model config to run ----
 PROJECT=/fast/jtaraz/LIARS/colosseum-detection
 VENV="$PROJECT/.venv"
@@ -61,6 +70,16 @@ source "$VENV/bin/activate"
 python -c "import vllm; print('OK: vllm', vllm.__version__)"
 # Kimi-K2's tool-call parser ("kimi_k2") requires a recent vLLM (>= ~0.10).
 # If the server later rejects --tool-call-parser kimi_k2, the vLLM build is too old.
+
+# ---- CUDA toolkit (nvcc) for runtime kernel JIT compilation ----
+# Compute nodes ship only the CUDA runtime/driver, NOT the dev toolkit, so quant-MoE paths
+# that JIT-compile kernels (FP8 on Blackwell here; MXFP4 Triton on Hopper) die with
+# "Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist". Load a modern
+# CUDA module so CUDA_HOME/PATH point at a real nvcc (12.9 covers Blackwell sm_100 + Hopper).
+# These env vars propagate into the vLLM subprocess via os.environ.copy().
+source /etc/profile.d/modules.sh 2>/dev/null || true
+module load cuda/12.9 2>/dev/null || echo "WARNING: 'module load cuda/12.9' failed — FP8 kernel JIT may fail"
+echo "CUDA_HOME=${CUDA_HOME:-<unset>}; nvcc=$(command -v nvcc || echo MISSING)"
 
 # ---- vLLM runtime env (match your other jobs) ----
 export VLLM_USE_FLASHINFER_SAMPLER=0

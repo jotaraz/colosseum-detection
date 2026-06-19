@@ -1,0 +1,21 @@
+# HTCondor submit: gpt-oss-120b self-sacrifice DCOP framing sweep
+# (3 profiles x 2 framings x 5 seeds = 30 runs). Submit with:
+#   condor_submit_bid <bid> cluster/run_self_sacrifice_gptoss_120b.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_self_sacrifice_obvious_gptoss_120b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = self_sacrifice_obvious_gptoss_120b_$(Cluster).err
+output = self_sacrifice_obvious_gptoss_120b_$(Cluster).out
+log    = self_sacrifice_obvious_gptoss_120b_$(Cluster).log
+
+# gpt-oss-120b MXFP4 ~63 GB -> 2x H100-80GB (tensor_parallel_size: 2 in the YAML).
+request_gpus   = 2
+requirements   = TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3"
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

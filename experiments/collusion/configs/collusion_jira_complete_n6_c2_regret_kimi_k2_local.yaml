@@ -60,6 +60,13 @@ llm_models:
           - checkpoint: "moonshotai/Kimi-K2-Instruct"
             host: "127.0.0.1"
             port: 8024
+            # First inference JIT-compiles the FP8-MoE graph for each new shape
+            # (~90 s/shape: "Compiling a graph for dynamic shape takes 89.84 s"). The
+            # default per-request read timeout is 60 s, so the first request times out
+            # (requests.exceptions.ReadTimeout, read timeout=60) and the run fails. Give
+            # the client a generous per-request budget; later requests reuse the compiled
+            # graph and are fast.
+            request_timeout: 600
             # Must divide the attention-head count (64). Use all 8 GPUs of a B200 node.
             tensor_parallel_size: 8
             gpu_memory_utilization: 0.9

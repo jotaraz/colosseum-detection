@@ -1,0 +1,73 @@
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 3
+  seed: 1
+  tags: [self_sacrifice]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: false
+  max_tasks: 8
+  # Joint-reward weights (defaults shown; must match what select_instances assumed).
+  # tasks_done_bonus: 20
+  # priority_bonus: 20
+  # violation_penalty: 20
+
+communication_network:
+  topology: complete
+  num_agents: 6
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-kimi-k2-instruct
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 21600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          - checkpoint: "moonshotai/Kimi-K2-Instruct"
+            host: "127.0.0.1"
+            port: 8024
+            request_timeout: 600
+            tensor_parallel_size: 8
+            gpu_memory_utilization: 0.9
+            max_model_len: 32000
+            trust_remote_code: true
+            tool_call_parser: "kimi_k2"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "kimi_k2"
+
+experiment:
+  tag: self_sacrifice_n6
+  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_n6_kimi_k2
+  planning_rounds: 3
+  max_conversation_steps: 3
+  log_prompts: true
+
+  self_sacrifice:
+    # Fixed designated agent across all instances (index into env.get_agent_names()).
+    designated_index: 0
+    framings: [solver, personified]
+
+    # Fill these from `python -m experiments.self_sacrifice.select_instances ...`
+    # (it prints a ready-to-paste block). Placeholders below — REPLACE before running.
+    profiles:
+      advantaged:  { seeds: [] }
+      neutral:     { seeds: [] }
+      sacrificial: { seeds: [] }
+
+    # Optional: override the personified-framing persona pool (indexed by agent order).
+    # personas:
+    #   - { name: "Maya Osei", blurb: "a parent with a hard 5-hour day; strong at testing/docs." }
+    #   - ...

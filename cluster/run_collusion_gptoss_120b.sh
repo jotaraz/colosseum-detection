@@ -16,21 +16,20 @@ export NO_PROXY="127.0.0.1,localhost,0.0.0.0,::1"
 # ---- Job-specific: which model config to run ----
 PROJECT=/fast/jtaraz/LIARS/colosseum-detection
 VENV="$PROJECT/.venv"
-CONFIG="experiments/collusion/configs/collusion_jira_complete_n6_c2_regret_kimi_k2_awq_local.yaml"
-MODEL_LABEL="kimi-k2-instruct-awq"
+CONFIG="experiments/collusion/configs/collusion_jira_complete_n6_c2_regret_gptoss_120b_local.yaml"
+MODEL_LABEL="gpt-oss-120b"
 
 # ---- HuggingFace cache (persistent fast disk; matches the YAML configs) ----
 export HF_HOME=/fast/jtaraz/hf_cache
 mkdir -p "$HF_HOME"
-# Public quant repo -> HF_TOKEN optional. ~560-630 GB download; ensure HF_HOME has room.
+# openai/gpt-oss-120b is PUBLIC (Apache-2.0), so HF_TOKEN is optional here.
+# The checkpoint is ~63 GB native MXFP4 -- first run downloads it into HF_HOME (a few
+# minutes on the shared link), cached runs skip straight to load.
 #
-# NODE REQUIREMENT (HTCondor .submit, not set here): the 4-bit AWQ weights fit on a single
-# 8x 80GB node (640 GB). On this cluster that's the plentiful A100-SXM4-80GB nodes (or 8x
-# H100-80GB). In the .submit file request the whole node, e.g.:
-#     request_gpus = 8
-#     requirements = (CUDAGlobalMemoryMb >= 80000)
-# (A100 has no native FP8, but AWQ INT4 runs there via Marlin -- that's why this is the
-# A100-friendly variant; the FP8 release needs an 8x B200 node, see run_collusion_kimi_k2.sh.)
+# NODE REQUIREMENT (HTCondor .submit): MXFP4 ~63 GB fits on 2x H100-80GB at TP=2. In the
+# .submit file request the two GPUs and pin the card type:
+#     request_gpus = 2
+#     requirements = (CUDADeviceName == "NVIDIA H100 80GB HBM3")
 
 cd "$PROJECT"
 
@@ -66,19 +65,25 @@ fi
 echo "activating venv: $VENV"
 source "$VENV/bin/activate"
 python -c "import vllm; print('OK: vllm', vllm.__version__)"
-# Two things to watch on first run:
-#  - QuixiAI/Kimi-K2-Instruct-AWQ's model card reports a vLLM weight-loading bug; if the
-#    server dies with a tensor-dimension mismatch during load, try another quant repo / newer vLLM.
-#  - Kimi-K2's tool-call parser ("kimi_k2") needs vLLM >= ~0.10.
+# gpt-oss tool/reasoning parsers ("openai" / "openai_gptoss") need a recent vLLM (>= 0.10).
+# If the server rejects --tool-call-parser openai / --reasoning-parser openai_gptoss, the
+# vLLM build is too old for gpt-oss.
+
+# ---- CUDA toolkit (nvcc) for runtime kernel JIT compilation ----
+# Compute nodes ship only the CUDA runtime/driver, NOT the dev toolkit, so the MXFP4 MoE
+# Triton kernels gpt-oss compiles at load time hang/fail without nvcc ("Could not find nvcc
+# and default cuda_home='/usr/local/cuda' doesn't exist"). Load a modern CUDA module so
+# CUDA_HOME/PATH point at a real nvcc. These propagate into the vLLM subprocess.
+source /etc/profile.d/modules.sh 2>/dev/null || true
+module load cuda/12.9 2>/dev/null || echo "WARNING: 'module load cuda/12.9' failed — MXFP4 kernel JIT may fail"
+echo "CUDA_HOME=${CUDA_HOME:-<unset>}; nvcc=$(command -v nvcc || echo MISSING)"
 
 # ---- vLLM runtime env (match your other jobs) ----
 export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_USE_DEEP_GEMM=0
 
 # ---- Run the full sweep for this model ----
-# NOTE: 4-bit Kimi-K2 on 8x80GB is memory-tight (weights ~560-630 GB in 640 GB). The YAML
-# uses gpu_memory_utilization 0.95 + small max_model_len + --enforce-eager. If it OOMs at
-# load, lower max_model_len further before anything else.
+# NOTE: gpt-oss-120b MXFP4 (~63 GB) runs on 2x H100-80GB (tensor_parallel_size: 2 in the YAML).
 echo "running collusion sweep for $MODEL_LABEL with config $CONFIG"
 python -m experiments.collusion.run --config "$CONFIG"
 echo "done: $MODEL_LABEL"

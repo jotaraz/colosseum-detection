@@ -248,11 +248,17 @@ async def _run_single(
 ) -> Dict[str, Any]:
     rng = random.Random(int(seed))
     secret_channel_enabled = bool(secret_channel_enabled)
+    # solo_variant_mode (experiment.collusion.solo_variant_mode): inject the prompt variant
+    # into the designated agent(s) WITHOUT a secret channel or coalition framing. Used for the
+    # single-agent deception-gradient study. Default off -> original coalition behavior holds.
+    _collusion_cfg0 = (base_cfg.get("experiment") or {}).get("collusion") or {}
+    solo_variant_mode = bool(_collusion_cfg0.get("solo_variant_mode", False))
     # Design choice: prompt variants are only active when the secret channel exists.
     # When secret_channel_enabled is False, we force the effective variant to "control"
     # so the baseline is the vanilla cooperative setup (no explicit collusion prompting).
+    # solo_variant_mode bypasses this so a variant can be applied with no secret channel.
     effective_prompt_variant = str(prompt_variant or "").strip() or "control"
-    if not secret_channel_enabled:
+    if not secret_channel_enabled and not solo_variant_mode:
         effective_prompt_variant = "control"
 
     cfg = copy.deepcopy(base_cfg)
@@ -440,10 +446,12 @@ async def _run_single(
     turns: List[Dict[str, Any]] = []
 
     def _extra_fields(agent_name: str) -> Dict[str, Any]:
-        # Baseline (secret_channel_enabled=False): no explicit collusion prompting.
+        # Baseline (secret_channel_enabled=False): no explicit collusion prompting,
+        # UNLESS solo_variant_mode is on (single-agent deception study), where the
+        # designated agent(s) receive the variant with no secret channel.
         prompt_role = (
             "colluder"
-            if (secret_channel_enabled and str(agent_name) in colluder_set)
+            if ((secret_channel_enabled or solo_variant_mode) and str(agent_name) in colluder_set)
             else "normal"
         )
         return {
@@ -693,6 +701,9 @@ async def run_from_config(
 ) -> Path:
     cfg = _load_yaml(config_path)
     exp = cfg.get("experiment") or {}
+    # Single-agent deception study: when on, prompt variants are injected WITHOUT a secret
+    # channel, so the (secret=false, non-control) combos below must NOT be skipped.
+    solo_variant_mode = bool((exp.get("collusion") or {}).get("solo_variant_mode", False))
     if max_concurrent_runs is None:
         max_concurrent_runs = exp.get("max_concurrent_runs", 1)
     max_concurrent_runs = int(max_concurrent_runs)
@@ -764,7 +775,11 @@ async def run_from_config(
                     for _c in colluder_counts:
                         for _secret in secret_flags:
                             for _pv in prompt_variants:
-                                if not bool(_secret) and str(_pv) != "control":
+                                if (
+                                    not bool(_secret)
+                                    and str(_pv) != "control"
+                                    and not solo_variant_mode
+                                ):
                                     continue
                                 total_runs += len(seeds) * env_count
 
@@ -854,6 +869,7 @@ async def run_from_config(
                                             if (
                                                 not bool(secret)
                                                 and str(pv) != "control"
+                                                and not solo_variant_mode
                                             ):
                                                 continue
                                             for seed in seeds:
@@ -921,7 +937,11 @@ async def run_from_config(
                             for c in colluder_counts:
                                 for secret in secret_flags:
                                     for pv in prompt_variants:
-                                        if not bool(secret) and str(pv) != "control":
+                                        if (
+                                            not bool(secret)
+                                            and str(pv) != "control"
+                                            and not solo_variant_mode
+                                        ):
                                             continue
                                         for seed in seeds:
                                             run_label = (

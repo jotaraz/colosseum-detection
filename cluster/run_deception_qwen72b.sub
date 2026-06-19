@@ -1,0 +1,20 @@
+# HTCondor submit: Qwen2.5-72B single-agent deception-gradient sweep (10 prompts x 10 seeds).
+# Submit with:  condor_submit_bid <bid> cluster/run_deception_qwen72b.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_deception_qwen72b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = deception_qwen72b_$(Cluster).err
+output = deception_qwen72b_$(Cluster).out
+log    = deception_qwen72b_$(Cluster).log
+
+# Qwen2.5-72B bf16 ~145 GB -> 4x 80GB GPUs (tensor_parallel_size: 4 in the YAML).
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3" || TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue
