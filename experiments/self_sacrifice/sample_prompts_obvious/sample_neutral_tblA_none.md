@@ -1,4 +1,4 @@
-# neutral (explicit, uniform critical priority) — framing = none
+# neutral / table A (explicit, uniform critical priority) — framing = none
 
 ## SYSTEM PROMPT
 ```

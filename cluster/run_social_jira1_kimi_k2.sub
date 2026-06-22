@@ -1,0 +1,21 @@
+# HTCondor submit: Kimi-K2-Instruct FP8 social-jira1 DCOP framing sweep.
+# Fits ONLY on an 8x B200 node (~1.46 TB). Submit with:
+#   condor_submit_bid <bid> cluster/run_social_jira1_kimi_k2.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira1_kimi_k2.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira1_kimi_k2_$(Cluster).err
+output = social_jira1_kimi_k2_$(Cluster).out
+log    = social_jira1_kimi_k2_$(Cluster).log
+
+# Whole 8x B200 node. tensor_parallel_size: 8 in the YAML must match request_gpus.
+request_gpus   = 8
+requirements   = TARGET.CUDADeviceName == "NVIDIA B200"
+request_memory = 262144
+request_cpus   = 16
+request_disk   = 500G
++BypassLXCfs   = "true"
+queue

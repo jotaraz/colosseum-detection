@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social-jira1 viewer</title>
+<style>
+  :root {
+    --bg:#0f1216; --panel:#171b21; --panel2:#1e242c; --line:#2a323c;
+    --text:#e6e9ee; --muted:#8b96a5; --accent:#4f9cf9;
+    --pos:#2f7d4f; --neg:#9e3b3b; --neu:#3a424d; --commit:#3a2f17;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); overflow:hidden;
+    display:flex; flex-direction:column;
+    font:13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line); padding:9px 12px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  select { background:var(--panel2); color:var(--text); border:1px solid var(--line);
+    border-radius:6px; padding:5px 7px; min-width:90px; font-size:13px; }
+  .framings { display:flex; gap:6px; align-items:center; }
+  .fbtn { border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:999px; padding:4px 11px; cursor:pointer; font-size:13px; user-select:none; }
+  .fbtn.on { background:var(--accent); border-color:var(--accent); color:#08121f; font-weight:600; }
+  .toggle { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; font-size:12px; color:var(--muted); }
+  #status { color:var(--muted); font-size:12px; margin-top:5px; min-height:15px; }
+
+  #main { flex:1 1 auto; display:flex; min-height:0; }
+  #scenario { flex:0 0 460px; overflow:auto; padding:12px; border-right:1px solid var(--line); background:var(--panel); }
+  #cols { flex:1 1 auto; overflow:auto; padding:12px; display:flex; gap:12px; align-items:flex-start; }
+
+  h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  h3:first-child { margin-top:0; }
+  table { border-collapse:collapse; font-size:12px; }
+  th,td { border:1px solid var(--line); padding:3px 6px; text-align:center; white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; background:var(--panel2); }
+  td.lbl, th.lbl { text-align:left; color:var(--text); background:var(--panel2); position:sticky; left:0; }
+  td.opt { outline:2px solid #d6b53c; outline-offset:-2px; }
+  .cell-num { font-variant-numeric:tabular-nums; }
+  .diag { background:#0c0f13; color:#3a424d; }
+  .pill { display:inline-block; padding:1px 7px; border-radius:999px; font-size:11px; }
+  .matchline { margin:3px 0; font-size:12px; }
+  .matchline .tag { color:var(--muted); }
+  .good { color:#7fd6a3; } .bad { color:#e79a9a; } .mut { color:var(--muted); }
+
+  .col { flex:0 0 460px; max-width:460px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; display:flex; flex-direction:column; max-height:100%; }
+  .col h2 { margin:0; padding:8px 10px; font-size:13px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); border-radius:8px 8px 0 0; }
+  .col .chat { padding:8px 10px; overflow:auto; }
+  .ctxt { color:var(--muted); font-size:11px; font-style:italic; border-left:2px solid var(--line); padding:2px 8px; margin-bottom:8px; white-space:pre-wrap; }
+  .bubble { margin:7px 0; }
+  .bhead { font-size:11px; color:var(--muted); margin-bottom:2px; }
+  .bname { font-weight:600; }
+  .btag { color:var(--muted); }
+  .btext { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 9px; white-space:pre-wrap; }
+  .bubble.action .btext { background:var(--commit); border-color:#5b4a22; }
+  .delib { margin-top:3px; border-left:2px solid #43506a; background:#141b27; color:#aab8d4;
+    padding:5px 8px; border-radius:4px; white-space:pre-wrap; font-size:12px; }
+  .delib .dh { color:#6f86b8; font-size:10px; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:2px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="controls">
+    <div class="ctl"><label>Model</label><select id="model"></select></div>
+    <div class="ctl"><label>Timestamp</label><select id="ts"></select></div>
+    <div class="ctl"><label>Scenario type</label><select id="type"></select></div>
+    <div class="ctl"><label>Seed</label><select id="seed"></select></div>
+    <div class="ctl"><label>Sample</label><select id="sampling"></select></div>
+    <div class="ctl"><label>Framings (columns)</label><div class="framings" id="framings"></div></div>
+    <label class="toggle"><input type="checkbox" id="delibToggle"> show deliberation</label>
+  </div>
+  <div id="status"></div>
+</header>
+
+<div id="main">
+  <div id="scenario"></div>
+  <div id="cols"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let INDEX = null, SELFRAMINGS = new Set();
+
+function colorById(name){ // stable pastel per employee
+  let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360;
+  return `hsl(${h} 55% 70%)`;
+}
+function goodnessColor(v){ // 0..1 -> red..green
+  const g = Math.round(120*v), r = Math.round(150*(1-v));
+  return `rgb(${60+r},${50+g},60)`;
+}
+function feelColor(v){ return v>0 ? 'var(--pos)' : v<0 ? 'var(--neg)' : 'var(--neu)'; }
+
+async function loadIndex(){
+  INDEX = await (await fetch('/api/index')).json();
+  const models = Object.keys(INDEX.models||{}).sort();
+  fill('#model', models);
+  if(models.length){ onModelChange(); }
+  else $('#status').textContent = INDEX.error || 'no runs found under outputs/';
+}
+function fill(sel, vals, cur){
+  const el=$(sel); el.innerHTML='';
+  for(const v of vals){ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); }
+  if(cur!=null && vals.includes(cur)) el.value=cur;
+}
+function runsForModel(){ return (INDEX.models[$('#model').value]||{}).runs||[]; }
+function uniq(a){ return [...new Set(a)]; }
+
+function onModelChange(){
+  const runs = runsForModel();
+  fill('#ts', uniq(runs.map(r=>r.ts)).sort().reverse());
+  refreshDims();
+}
+function refreshDims(){
+  const runs = runsForModel().filter(r=>r.ts===$('#ts').value);
+  fill('#type', uniq(runs.map(r=>r.type)).sort(), $('#type').value);
+  const tRuns = runs.filter(r=>r.type===$('#type').value);
+  fill('#seed', uniq(tRuns.map(r=>r.seed)).sort((a,b)=>a-b), +$('#seed').value);
+  fill('#sampling', uniq(tRuns.map(r=>r.sampling)).sort((a,b)=>a-b), +$('#sampling').value);
+  // framing buttons
+  const frs = uniq(runs.map(r=>r.framing)).sort();
+  if(!SELFRAMINGS.size) frs.forEach(f=>SELFRAMINGS.add(f));
+  const box=$('#framings'); box.innerHTML='';
+  frs.forEach(f=>{
+    const b=document.createElement('span'); b.className='fbtn'+(SELFRAMINGS.has(f)?' on':''); b.textContent=f;
+    b.onclick=()=>{ SELFRAMINGS.has(f)?SELFRAMINGS.delete(f):SELFRAMINGS.add(f); b.classList.toggle('on'); render(); };
+    box.appendChild(b);
+  });
+  render();
+}
+
+async function render(){
+  const model=$('#model').value, ts=$('#ts').value, type=$('#type').value;
+  const seed=$('#seed').value, sampling=$('#sampling').value;
+  const framings=[...SELFRAMINGS].join(',');
+  if(!model||!ts||!type||seed===''||sampling===''){ return; }
+  $('#status').textContent='loading…';
+  const q=new URLSearchParams({model,timestamp:ts,type,seed,sampling,framings});
+  const data=await (await fetch('/api/cell?'+q)).json();
+  $('#status').textContent=`${model} · ${ts} · ${type} · seed ${seed} · sample ${sampling}`;
+  renderScenario(data);
+  renderColumns(data);
+}
+
+function matchStr(m){ // {T1:[a,b]} or {T1:"a & b"}
+  if(!m) return '—';
+  return Object.keys(m).sort().map(t=>{
+    const p=m[t]; const s=Array.isArray(p)?p.join(' & '):p;
+    return `${t}: ${s||'—'}`;
+  }).join('   ');
+}
+
+function renderScenario(data){
+  const sc=data.scenario, el=$('#scenario');
+  if(!sc){ el.innerHTML='<p class="mut">no scenario.json for this cell.</p>'; return; }
+  const emps=sc.employees, tasks=sc.tasks;
+  const pairs=Object.keys(sc.goodness[tasks[0]]);
+  const optPairByTask={}; for(const t in sc.optimal_matching) optPairByTask[t]=sc.optimal_matching[t];
+
+  // realized pair sets per framing for cell highlighting
+  const realizedByFr={};
+  (data.columns||[]).forEach(c=>{ if(c.ok) realizedByFr[c.framing]=c.realized_matching||{}; });
+
+  let h = `<h3>Scenario — ${sc.scenario_type} (seed ${sc.seed})</h3>`;
+  h += `<div class="matchline"><span class="tag">optimal</span> ${matchStr(sc.optimal_matching)} <span class="mut">(g=${sc.optimal_goodness})</span></div>`;
+  h += `<div class="matchline"><span class="tag">comfortable</span> ${matchStr(sc.comfortable_matching)} <span class="mut">(g=${sc.comfortable_goodness ?? '—'})</span></div>`;
+  (data.columns||[]).forEach(c=>{
+    if(!c.ok){ return; }
+    const m=c.metrics||{};
+    const opt=m.chose_optimal_matching, comf=m.chose_comfortable_matching;
+    h += `<div class="matchline"><span class="tag">realized·${c.framing}</span> ${matchStr(c.realized_matching)} `
+      + `<span class="${opt?'good':'mut'}">opt:${opt?'yes':'no'}</span> `
+      + `<span class="${comf?'good':'mut'}">comf:${comf?'yes':'no'}</span> `
+      + `<span class="mut">ratio=${m.goodness_ratio ?? '—'} · malformed=${m.num_malformed_tasks ?? '—'}</span></div>`;
+  });
+
+  // Goodness table: pairs x tasks
+  h += `<h3>Task-pair goodness (public)</h3><table><tr><th class="lbl">pair \\ task</th>`;
+  tasks.forEach(t=>h+=`<th>${t}</th>`); h+=`</tr>`;
+  pairs.forEach(p=>{
+    h+=`<tr><td class="lbl">${p}</td>`;
+    tasks.forEach(t=>{
+      const cell=sc.goodness[t][p]; const v=cell.value;
+      const isOpt = (sc.optimal_matching[t]===p);
+      h+=`<td class="cell-num ${isOpt?'opt':''}" style="background:${goodnessColor(v)}" title="${cell.prose} for ${t}">${v.toFixed(2)}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">★ outlined = pair in the optimal matching for that task.</div>`;
+
+  // Feelings matrix: from (row) x toward (col)
+  h += `<h3>Who-likes-who (private, directional) — row feels about column</h3><table><tr><th class="lbl">from \\ toward</th>`;
+  emps.forEach(e=>h+=`<th>${e}</th>`); h+=`</tr>`;
+  emps.forEach(a=>{
+    h+=`<tr><td class="lbl">${a}</td>`;
+    emps.forEach(b=>{
+      if(a===b){ h+=`<td class="diag">·</td>`; return; }
+      const cell=sc.feelings[a][b]; const v=cell.value;
+      h+=`<td class="cell-num" style="background:${feelColor(v)}" title="${a} ${cell.prose} ${b}">${v>0?'+1':v}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">green +1 likes · grey 0 neutral · red −1 friction. Each agent sees only its own row.</div>`;
+
+  el.innerHTML=h;
+}
+
+function renderColumns(data){
+  const showDelib=$('#delibToggle').checked;
+  const wrap=$('#cols'); wrap.innerHTML='';
+  (data.columns||[]).forEach(c=>{
+    const col=document.createElement('div'); col.className='col';
+    if(!c.ok){ col.innerHTML=`<h2>${c.framing}</h2><div class="chat mut">${c.error||'no data'}</div>`; wrap.appendChild(col); return; }
+    let h=`<h2>${c.framing} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
+    if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
+    let lastPhase='';
+    c.messages.forEach(m=>{
+      if(m.phase!==lastPhase){ h+=`<h3>${m.phase}</h3>`; lastPhase=m.phase; }
+      const color=colorById(m.agent||'?');
+      h+=`<div class="bubble ${m.kind}">`
+        + `<div class="bhead"><span class="bname" style="color:${color}">${m.agent}</span> `
+        + `<span class="btag">· ${m.phase}${m.round!=null?(' r'+(m.round+1)):''}${m.kind==='action'?' · commit':''}</span></div>`
+        + `<div class="btext">${esc(m.text)}</div>`;
+      if(showDelib && m.deliberation) h+=`<div class="delib"><span class="dh">deliberation (raw turn output)</span>${esc(m.deliberation)}</div>`;
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+    col.innerHTML=h; wrap.appendChild(col);
+  });
+  if(!(data.columns||[]).length) wrap.innerHTML='<p class="mut" style="padding:12px">tick at least one framing.</p>';
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+$('#model').onchange=onModelChange;
+$('#ts').onchange=refreshDims;
+$('#type').onchange=render;
+$('#seed').onchange=render;
+$('#sampling').onchange=render;
+$('#delibToggle').onchange=render;
+loadIndex();
+</script>
+</body>
+</html>

@@ -1,12 +1,24 @@
-# self-sacrifice-OBVIOUS variant: 3 agents x 3 tasks, uniform priority, hand-crafted cost
-# matrices (NOT seed-curated). See experiments/self_sacrifice/instances_obvious.py and the
-# offline check `python -m experiments.self_sacrifice.validate_obvious`.
+# self-sacrifice STEP1 comparison: 3 agents x 3 tasks, uniform priority, hand-crafted cost
+# matrices (NOT seed-curated). gpt-oss-120b only. NEW regime vs the earlier engaged/veryego/
+# secretive sets:
+#   - max_conversation_steps: 1  -> exactly ONE model call per agent turn (no intra-turn
+#     re-prompt padding), and
+#   - the model's chain-of-thought (reasoning_content) is saved per run to agent_reasoning.json
+#     (see experiments/self_sacrifice/run.py: _install_reasoning_capture / _drain_reasoning).
+# Five framings, all sharing the same instances so they're directly comparable:
+#   - engaged                              : whole team are active critical debaters
+#   - very_egoistical                      : whole team are overt egoists
+#   - very_egoistical_secretive            : whole team are concealed egoists
+#   - very_egoistical_in_engaged           : designated agent overt egoist, other two engaged
+#   - very_egoistical_secretive_in_engaged : designated agent concealed egoist, other two engaged
+# Output dir is single-token variant 'step1' so the viewer merges it under n3_gptoss_120b.
 simulation:
   max_iterations: 1
   max_planning_rounds: 3
-  max_conversation_steps: 5
+  # 1 = exactly one model call per agent turn (no intra-turn re-prompting / "waiting" padding).
+  max_conversation_steps: 1
   seed: 1
-  tags: [self_sacrifice_obvious]
+  tags: [self_sacrifice_step1]
 
 environment:
   name: JiraTicketEnvironment
@@ -55,10 +67,10 @@ llm_models:
               - "openai_gptoss"
 
 experiment:
-  tag: self_sacrifice_obvious_n3
-  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_obvious_n3_gptoss_120b
+  tag: self_sacrifice_step1_n3
+  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_step1_n3_gptoss_120b
   planning_rounds: 3
-  max_conversation_steps: 5
+  max_conversation_steps: 1
   log_prompts: true
   max_concurrent_runs: 30
   run_attempts: 3
@@ -69,4 +81,4 @@ experiment:
     priority: critical
     designated_index: 0
     samples_per_seed: 3
-    framings: [solver, none, team_player, egoistical, solo_team_player, solo_mix, solo_egoistical]
+    framings: [engaged, very_egoistical, very_egoistical_secretive, very_egoistical_in_engaged, very_egoistical_secretive_in_engaged]

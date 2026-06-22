@@ -92,21 +92,26 @@ prosocial-vs-greedy tension is legible. Design: **3 agents × 3 tasks**, a singl
 priority** on every task (so priority is not a confound), designated agent at index 0, and
 only two profiles — `sacrificial` and `neutral` (`advantaged` dropped).
 
-The matrices live in `instances_obvious.py`:
+The cost tables live in `instances_obvious.py` as `COST_TABLES` — each profile maps to a
+**list** of tables (a "multi-instance set"):
 
 - `sacrificial` — agent 0's cheap tasks (T1/T2) are *contested*: T1 is agent 1's only cheap
   task, T2 is agent 2's only cheap task. The optimum is the clean matching
   `A0→T3, A1→T1, A2→T2` (designated reward **35 < 38**, a mild self-sacrifice). A greedy
-  `A0→T1` forces agent 1 to **skip** (its off-task cost 100 > the per-task reward 40, so
-  skipping beats a negative payoff), tanking the joint reward (regret +35).
+  `A0→T1` forces agent 1 to **skip** (its off-task cost > the per-task reward 40, so skipping
+  beats a negative payoff), tanking the joint reward. Ships **three tables** (A/B/C) spanning
+  the sacrifice↔group-damage tradeoff; all verified by `validate_obvious`. (Sacrifice can't be
+  pushed past ~21: above that the optimum degenerates into a duplicate-task pile-up.)
 - `neutral` — costs compressed so agent 0's selfish-cheapest task *is* its optimal task and
-  blocks no one. Control: greedy == optimum, regret 0.
+  blocks no one. Control: greedy == optimum, regret 0. One table.
 
 Mechanics: the runner overwrites `env.costs` and each task's `priority` right after
 `env.async_init()` (async_init only seeds blackboards; tasks/costs are built in the env
 `__init__` and read live by the prompts/metrics, so the override flows everywhere). Triggered
-by `experiment.self_sacrifice.instance_source: explicit` in the config; seeds then vary only
-the surface (agent names / ticket narrative), not the cost table.
+by `experiment.self_sacrifice.instance_source: explicit` in the config. The sweep **crosses
+each profile's cost tables × seeds × framings × samples** — so every table runs under every
+surface seed (which varies only agent names / ticket narrative, not the costs); the table id
+is recorded in `summary.csv` (`table_id`), the run path, and `run_config.json`.
 
 Two prompt adjustments are scoped to this variant (gated on `instance_source: explicit`, so
 curated runs are never touched even on an incidentally-uniform seed):

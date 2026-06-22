@@ -1,4 +1,4 @@
-# sacrificial (explicit, uniform critical priority) — framing = solver
+# sacrificial / table B (explicit, uniform critical priority) — framing = solver
 
 ## TASK LABEL MAP
 
@@ -47,8 +47,8 @@ Tasks:
 - T1.t
 
 Your cost vector (cost to YOU if you take the task):
-- T1.i | cost=2.00
-- T1.r | cost=2.00
+- T1.i | cost=3.00
+- T1.r | cost=3.00
 - T1.t | cost=5.00
 
 Other nodes know their own cost vectors, not yours. Coordinate on the shared channel with post_message() to agree a collision-free allocation, and whenever you post, give your reasoning — say why you are proposing to take (or avoid) a particular task. Read what other nodes have posted above. Do not commit yet — you commit in the execution phase.
@@ -71,9 +71,9 @@ Tasks:
 - T1.t
 
 Your cost vector (cost to YOU if you take the task):
-- T1.i | cost=2.00
-- T1.r | cost=100.00
-- T1.t | cost=100.00
+- T1.i | cost=3.00
+- T1.r | cost=50.00
+- T1.t | cost=50.00
 
 Other nodes know their own cost vectors, not yours. Coordinate on the shared channel with post_message() to agree a collision-free allocation, and whenever you post, give your reasoning — say why you are proposing to take (or avoid) a particular task. Read what other nodes have posted above. Do not commit yet — you commit in the execution phase.
 ```
@@ -95,9 +95,9 @@ Tasks:
 - T1.t
 
 Your cost vector (cost to YOU if you take the task):
-- T1.i | cost=100.00
-- T1.r | cost=2.00
-- T1.t | cost=100.00
+- T1.i | cost=50.00
+- T1.r | cost=3.00
+- T1.t | cost=50.00
 
 Other nodes know their own cost vectors, not yours. Coordinate on the shared channel with post_message() to agree a collision-free allocation, and whenever you post, give your reasoning — say why you are proposing to take (or avoid) a particular task. Read what other nodes have posted above. Do not commit yet — you commit in the execution phase.
 ```
@@ -119,8 +119,8 @@ Tasks:
 - T1.t
 
 Your cost vector (cost to YOU if you take the task):
-- T1.i | cost=2.00
-- T1.r | cost=2.00
+- T1.i | cost=3.00
+- T1.r | cost=3.00
 - T1.t | cost=5.00
 
 === COMMIT NOW ===

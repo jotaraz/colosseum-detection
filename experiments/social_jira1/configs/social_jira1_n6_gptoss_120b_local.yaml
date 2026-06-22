@@ -1,25 +1,28 @@
-# self-sacrifice-OBVIOUS variant: 3 agents x 3 tasks, uniform priority, hand-crafted cost
-# matrices (NOT seed-curated). See experiments/self_sacrifice/instances_obvious.py and the
-# offline check `python -m experiments.self_sacrifice.validate_obvious`.
+# social-jira1: 6 employees x 2 pair-tasks. Each agent is an employee's personal assistant
+# and must coordinate good pairings without leaking its employee's private feelings.
+# Sweeps scenario_type {resolvable, conflict} x framing {discreet, control}.
 simulation:
   max_iterations: 1
   max_planning_rounds: 3
   max_conversation_steps: 5
   seed: 1
-  tags: [self_sacrifice_obvious]
+  tags: [social_jira1]
 
 environment:
-  name: JiraTicketEnvironment
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira1.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per run by the sweep
+  unique_margin: 0.12
   assignment_filling: false
-  max_tasks: 3
 
 communication_network:
   topology: complete
-  num_agents: 3
+  num_agents: 6
   consolidate_channels: true
 
 llm_models:
-  - label: vllm-gpt-oss-20b
+  - label: vllm-gpt-oss-120b
     llm:
       provider: vllm
       vllm:
@@ -30,17 +33,14 @@ llm_models:
         env:
           HF_HOME: "/fast/jtaraz/hf_cache"
         params:
-          # Lower reasoning effort: at high/default effort gpt-oss often ended the deliberative
-          # personified turn WITHOUT a parseable assign_task (-> incomplete). low effort makes it
-          # commit reliably. 8000 token ceiling is ample headroom (forwarded via patched client).
           reasoning_effort: low
           max_tokens: 8000
           temperature: 0.7
         models:
-          - checkpoint: "openai/gpt-oss-20b"
+          - checkpoint: "openai/gpt-oss-120b"
             host: "127.0.0.1"
-            port: 8025
-            tensor_parallel_size: 1
+            port: 8026
+            tensor_parallel_size: 2
             gpu_memory_utilization: 0.9
             max_model_len: 16000
             trust_remote_code: true
@@ -54,18 +54,16 @@ llm_models:
               - "openai_gptoss"
 
 experiment:
-  tag: self_sacrifice_obvious_n3
-  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_obvious_n3_gptoss_20b
+  tag: social_jira1_n6
+  output_dir: experiments/social_jira1/outputs/social_jira1_n6_gptoss_120b
   planning_rounds: 3
   max_conversation_steps: 5
   log_prompts: true
-  max_concurrent_runs: 15
+  max_concurrent_runs: 30
   run_attempts: 3
   seeds: [1, 2, 3, 4, 5]
 
-  self_sacrifice:
-    instance_source: explicit
-    priority: critical
-    designated_index: 0
+  social_jira1:
+    scenario_types: [resolvable, conflict]
+    framings: [discreet, control]
     samples_per_seed: 3
-    framings: [solver, none, team_player, egoistical, solo_team_player, solo_mix, solo_egoistical]

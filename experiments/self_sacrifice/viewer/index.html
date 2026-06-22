@@ -30,6 +30,8 @@
   }
   .framings { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .framings .grp-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; width: 100%; }
+  /* per-group sub-label: forces a new row, so each disposition group is visually separated */
+  .framings .grp-sublabel { width: 100%; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-top: 5px; opacity: .8; }
   .fbtn {
     border: 1px solid var(--line); background: var(--panel2); color: var(--text);
     border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; user-select: none;
@@ -148,7 +150,15 @@
 <div id="tip"></div>
 
 <script>
-const ALL_FRAMINGS = ["solver","none","egoistical","very_egoistical","team_player","solo_mix","solo_egoistical","solo_very_egoistical","solo_team_player"];
+// Framings grouped by disposition structure (label -> framings). ALL_FRAMINGS is the flat
+// union in display order; render() and availability use it, buildFramingButtons() the groups.
+const FRAMING_GROUPS = [
+  ["abstract",        ["solver"]],
+  ["whole team",      ["none","engaged","egoistical","very_egoistical","very_egoistical_secretive","team_player"]],
+  ["lead + 2 engaged",["very_egoistical_in_engaged","very_egoistical_secretive_in_engaged"]],
+  ["lead + 2 neutral (solo)", ["solo_mix","solo_egoistical","solo_very_egoistical","solo_team_player"]],
+];
+const ALL_FRAMINGS = FRAMING_GROUPS.flatMap(g => g[1]);
 const ANY_TS = "(any)";   // timestamp filter sentinel: merge runs across variants/timestamps
 // type order to match results_gptoss_both_30seed.md (advantaged -> neutral -> sacrificial)
 const TYPE_ORDER = ["advantaged","neutral","sacrificial"];
@@ -248,12 +258,17 @@ async function init() {
 
 function buildFramingButtons() {
   const box = $("framings");
-  for (const f of ALL_FRAMINGS) {
-    const b = document.createElement("button");
-    b.className = "fbtn"; b.textContent = f; b.dataset.f = f;
-    b.onclick = () => { if (b.disabled) return;
-      b.classList.toggle("on"); selected.has(f) ? selected.delete(f) : selected.add(f); render(); };
-    box.appendChild(b);
+  for (const [label, framings] of FRAMING_GROUPS) {
+    const lab = document.createElement("span");
+    lab.className = "grp-sublabel"; lab.textContent = label;
+    box.appendChild(lab);
+    for (const f of framings) {
+      const b = document.createElement("button");
+      b.className = "fbtn"; b.textContent = f; b.dataset.f = f;
+      b.onclick = () => { if (b.disabled) return;
+        b.classList.toggle("on"); selected.has(f) ? selected.delete(f) : selected.add(f); render(); };
+      box.appendChild(b);
+    }
   }
 }
 

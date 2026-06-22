@@ -59,7 +59,7 @@ experiment:
   log_prompts: true
   # Seeds vary only the surface (agent names / ticket narrative); the cost matrix is FIXED
   # per profile. More seeds = a more robust rate estimate, not different DCOPs.
-  seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  seeds: [1, 2, 3, 4, 5]
 
   self_sacrifice:
     instance_source: explicit          # hand-crafted matrices from instances_obvious.py
