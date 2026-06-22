@@ -58,6 +58,7 @@
   .gridrow.last .cell { border-bottom: 1px solid var(--line); border-radius: 0 0 10px 10px; padding-bottom: 8px; }
   .col-type { font-weight: 800; font-size: 16px; letter-spacing: .01em; }
   .col-sub { font-size: 11px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+  .col-prov { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: .02em; }
   .prio { margin-top: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; }
   .prio h4 { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
   .prio table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -87,6 +88,20 @@
   .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 2px; }
   .stat.cost .stat-val { color: #ffd9a8; }
   .stat.reward .stat-val { color: #a8e6c4; }
+  .stat.joint .stat-val { color: #9ec5ff; }
+  /* bottom aggregate summary, one block per column */
+  .summary-row { margin-top: 16px; align-items: stretch; }
+  .cell.summary { border: 1px solid var(--accent); border-radius: 10px; background: var(--panel); padding: 8px 12px 10px; }
+  .sum-head { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+  .sum-agent { display: flex; align-items: baseline; gap: 10px; padding: 3px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .sum-name { font-weight: 700; min-width: 70px; }
+  .sum-cost { color: var(--muted); }
+  .sum-cost b { color: #ffd9a8; font-weight: 700; }
+  .sum-reward { color: var(--muted); }
+  .sum-reward b { color: #a8e6c4; font-weight: 700; }
+  .sum-dist { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sum-joint { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--line); font-weight: 700; }
+  .sum-joint b { color: #9ec5ff; font-size: 16px; margin-left: 4px; }
   .taskhl { border-radius: 4px; padding: 0 3px; font-weight: 600; white-space: nowrap; }
   .msg[data-persona], .msg[data-reasoning] { cursor: help; }
   #tip {
@@ -102,6 +117,15 @@
     color: var(--muted); border-top: 1px solid var(--line); padding-top: 5px;
   }
   #tip .tip-reason { white-space: pre-wrap; color: #d7dde6; }
+  /* optimal-joint-reward badge pinned to the top-right of the output area */
+  #opt-badge {
+    position: fixed; right: 16px; z-index: 20; text-align: right;
+    background: var(--panel2); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 5px 11px; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  }
+  #opt-badge .l { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  #opt-badge .v { font-size: 20px; font-weight: 800; color: #9ec5ff; line-height: 1.05; }
+  #opt-badge .t { font-size: 10px; color: var(--muted); }
   .colerr { padding: 16px; color: #ffb4b4; }
   .hint { padding: 40px; color: var(--muted); text-align: center; }
 </style>
@@ -112,6 +136,7 @@
     <div class="ctl"><label>LLM</label><select id="sel-model"></select></div>
     <div class="ctl"><label>Timestamp</label><select id="sel-ts"></select></div>
     <div class="ctl"><label>Type</label><select id="sel-type"></select></div>
+    <div class="ctl" id="ctl-env"><label>Table</label><select id="sel-env"></select></div>
     <div class="ctl"><label>Seed</label><select id="sel-seed"></select></div>
     <div class="ctl"><label>Sampling</label><select id="sel-sampling"></select></div>
     <div class="framings" id="framings"><span class="grp-label">Framings (pick any)</span></div>
@@ -119,10 +144,12 @@
   <div id="status"></div>
 </header>
 <div id="cols"><div class="hint">Pick selectors above, then tick one or more framing buttons.</div></div>
+<div id="opt-badge" hidden></div>
 <div id="tip"></div>
 
 <script>
-const ALL_FRAMINGS = ["solver","none","egoistical","team_player","solo_mix","solo_egoistical","solo_team_player"];
+const ALL_FRAMINGS = ["solver","none","egoistical","very_egoistical","team_player","solo_mix","solo_egoistical","solo_very_egoistical","solo_team_player"];
+const ANY_TS = "(any)";   // timestamp filter sentinel: merge runs across variants/timestamps
 // type order to match results_gptoss_both_30seed.md (advantaged -> neutral -> sacrificial)
 const TYPE_ORDER = ["advantaged","neutral","sacrificial"];
 const byTypeOrder = (a,b) => {
@@ -213,6 +240,7 @@ async function init() {
   $("sel-model").onchange = onModel;
   $("sel-ts").onchange = onTs;
   $("sel-type").onchange = onType;
+  $("sel-env").onchange = onEnv;
   $("sel-seed").onchange = onSeed;
   $("sel-sampling").onchange = onSampling;
   onModel();
@@ -231,13 +259,17 @@ function buildFramingButtons() {
 
 function currentRuns() {
   const m = INDEX.models[$("sel-model").value];
-  const ts = m && m.timestamps[$("sel-ts").value];
-  return ts ? ts.runs : [];
+  if (!m) return [];
+  const ts = $("sel-ts").value;
+  return (!ts || ts === ANY_TS) ? m.runs : m.runs.filter(r => r.ts === ts);
 }
 
 function onModel() {
   const m = INDEX.models[$("sel-model").value];
-  opts($("sel-ts"), Object.keys(m.timestamps).sort());
+  // timestamp is an optional filter; default "(any)" merges every variant
+  // (e.g. obvious + veryego) so their framings can be shown side by side.
+  const tss = [...new Set(m.runs.map(r => r.ts))].sort();
+  opts($("sel-ts"), [ANY_TS, ...tss]);
   onTs();
 }
 
@@ -251,16 +283,28 @@ function onTs() {
 
 function onType() {
   const type = $("sel-type").value;
-  const seeds = [...new Set(currentRuns().filter(r => r.type === type).map(r => r.seed))]
-    .sort((a,b) => a-b);
+  // env/table sub-dimension (e.g. tblA/tblB/tblC). Variants without it report a
+  // single "" value, in which case the selector is hidden.
+  const envs = [...new Set(currentRuns().filter(r => r.type === type).map(r => r.env || ""))].sort();
+  const hasEnv = !(envs.length === 1 && envs[0] === "");
+  $("ctl-env").style.display = hasEnv ? "" : "none";
+  opts($("sel-env"), envs, true);
+  onEnv();
+}
+
+function onEnv() {
+  const type = $("sel-type").value, env = $("sel-env").value;
+  const seeds = [...new Set(currentRuns()
+    .filter(r => r.type === type && (r.env || "") === env).map(r => r.seed))].sort((a,b) => a-b);
   opts($("sel-seed"), seeds, true);
   onSeed();
 }
 
 function onSeed() {
-  const type = $("sel-type").value, seed = +$("sel-seed").value;
+  const type = $("sel-type").value, env = $("sel-env").value, seed = +$("sel-seed").value;
   const samplings = [...new Set(currentRuns()
-    .filter(r => r.type === type && r.seed === seed).map(r => r.sampling))].sort((a,b) => a-b);
+    .filter(r => r.type === type && (r.env || "") === env && r.seed === seed)
+    .map(r => r.sampling))].sort((a,b) => a-b);
   opts($("sel-sampling"), samplings, true);
   onSampling();
 }
@@ -272,9 +316,10 @@ function onSampling() {
 
 // grey out framings that don't exist for the exact current selection
 function refreshFramingAvailability() {
-  const type = $("sel-type").value, seed = +$("sel-seed").value, samp = +$("sel-sampling").value;
+  const type = $("sel-type").value, env = $("sel-env").value,
+        seed = +$("sel-seed").value, samp = +$("sel-sampling").value;
   const avail = new Set(currentRuns()
-    .filter(r => r.type === type && r.seed === seed && r.sampling === samp)
+    .filter(r => r.type === type && (r.env || "") === env && r.seed === seed && r.sampling === samp)
     .map(r => r.framing));
   for (const b of document.querySelectorAll(".fbtn")) {
     const ok = avail.has(b.dataset.f);
@@ -288,10 +333,12 @@ function prioPill(p) { return `<span class="pill p-${p}">${p}</span>`; }
 
 async function render() {
   const cols = $("cols");
-  if (!selected.size) { cols.innerHTML = `<div class="hint">Tick one or more framing buttons to show conversations.</div>`; $("status").textContent=""; return; }
+  if (!selected.size) { cols.innerHTML = `<div class="hint">Tick one or more framing buttons to show conversations.</div>`; $("status").textContent=""; $("opt-badge").hidden = true; return; }
+  const tsSel = $("sel-ts").value;
   const base = {
-    model: $("sel-model").value, timestamp: $("sel-ts").value,
-    type: $("sel-type").value, seed: $("sel-seed").value, sampling: $("sel-sampling").value,
+    model: $("sel-model").value, timestamp: tsSel === ANY_TS ? "" : tsSel,
+    type: $("sel-type").value, env: $("sel-env").value,
+    seed: $("sel-seed").value, sampling: $("sel-sampling").value,
   };
   $("status").textContent = `Loading ${selected.size} framing(s) for seed ${base.seed}, s${base.sampling}, ${base.type}…`;
 
@@ -352,8 +399,70 @@ async function render() {
     });
     cols.appendChild(row);
   });
+  // aggregate summary block under each column (per-agent avg cost + task
+  // distribution over all seeds×samples, then the group's avg joint reward)
+  if (data.some(d => d.ok && d.summary)) {
+    const sumRow = document.createElement("div");
+    sumRow.className = "gridrow summary-row";
+    data.forEach(d => sumRow.appendChild(summaryCell(d)));
+    cols.appendChild(sumRow);
+  }
+
   $("status").textContent = `Showing ${framings.length} framing(s): ${framings.join(", ")}`;
+  updateOptBadge(data);
 }
+
+// i=implement, r=review, t=test, d=docs, g=triage, -=skip
+const DIST_ORDER = ["i","r","t","d","g","-"];
+function fmtDist(dist) {
+  return Object.keys(dist).sort((a,b) => {
+    const ia = DIST_ORDER.indexOf(a), ib = DIST_ORDER.indexOf(b);
+    return (ia<0?99:ia) - (ib<0?99:ib) || a.localeCompare(b);
+  }).map(k => `${k}: ${dist[k]}`).join(", ");
+}
+
+function summaryCell(d) {
+  const c = document.createElement("div");
+  c.className = "cell summary";
+  if (!d.ok || !d.summary) return c;
+  const s = d.summary;
+  const agents = s.agents.map(a => {
+    const ac = a.avg_cost == null ? "—" : Number(a.avg_cost).toFixed(2);
+    const ar = a.avg_reward == null ? "—" : Number(a.avg_reward).toFixed(1);
+    return `<div class="sum-agent">` +
+             `<div class="sum-name">Agent ${a.pos+1}</div>` +
+             `<div class="sum-cost">avg cost <b>${ac}</b></div>` +
+             `<div class="sum-reward">avg reward <b>${ar}</b></div>` +
+             `<div class="sum-dist">${escapeHtml(fmtDist(a.dist))}</div>` +
+           `</div>`;
+  }).join("");
+  const joint = s.avg_joint == null ? "—" : Number(s.avg_joint).toFixed(1);
+  c.innerHTML = `<div class="sum-head">Aggregate · ${s.n_runs} runs (all seeds × samples)</div>` +
+                agents +
+                `<div class="sum-joint">Avg joint reward <b>${joint}</b></div>`;
+  return c;
+}
+
+// All columns in a view share one table (type+env), so they share one optimal
+// joint reward; show it pinned to the top-right of the output area.
+function updateOptBadge(data) {
+  const badge = $("opt-badge");
+  const okcol = data.find(d => d.ok && d.joint_reward_optimal != null);
+  if (!okcol) { badge.hidden = true; return; }
+  const table = `${$("sel-type").value}${$("sel-env").value ? " · " + $("sel-env").value : ""}`;
+  badge.innerHTML = `<div class="l">Optimal joint reward</div>` +
+                    `<div class="v">${Number(okcol.joint_reward_optimal).toFixed(1)}</div>` +
+                    `<div class="t">${escapeHtml(table)}</div>`;
+  badge.hidden = false;
+  placeOptBadge();
+}
+
+function placeOptBadge() {
+  const badge = $("opt-badge");
+  if (badge.hidden) return;
+  badge.style.top = (document.querySelector("header").getBoundingClientRect().bottom + 10) + "px";
+}
+addEventListener("resize", placeOptBadge);
 
 function headCell(d, cmap) {
   const h = document.createElement("div"); h.className = "cell head";
@@ -364,7 +473,12 @@ function headCell(d, cmap) {
     prio = `<div class="prio"><h4>Task priorities (shared)</h4><table>${rows}</table></div>`;
   }
   const sub = d.ok ? (d.turn_order || []).join(" → ") : (d.error || "");
-  h.innerHTML = `<div class="col-sub">${sub}</div>${prio}`;
+  let prov = "";
+  if (d.ok && (d.variant || d.ts)) {
+    const tag = [d.variant, d.ts].filter(Boolean).join(" · ");
+    prov = `<div class="col-prov">${escapeHtml(tag)}</div>`;
+  }
+  h.innerHTML = `${prov}<div class="col-sub">${sub}</div>${prio}`;
   return h;
 }
 
@@ -391,6 +505,7 @@ function bubble(m, d, cmap) {
     statsHtml = `<div class="action-stats">` +
       `<div class="stat cost"><div class="stat-val">${fmt(m.cost, 2)}</div><div class="stat-label">task cost</div></div>` +
       `<div class="stat reward"><div class="stat-val">${fmt(m.reward, 1)}</div><div class="stat-label">reward</div></div>` +
+      `<div class="stat joint"><div class="stat-val">${fmt(d.joint_reward, 1)}</div><div class="stat-label">joint reward</div></div>` +
       `</div>`;
   }
   const meta = `<span class="meta">${m.phase} · r${m.round+1}</span>`;

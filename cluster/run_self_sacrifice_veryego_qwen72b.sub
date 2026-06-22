@@ -1,0 +1,21 @@
+# HTCondor submit: Qwen2.5-72B-Instruct self-sacrifice VERY-EGOISTICAL DCOP framing sweep
+# (4 cost tables x 2 framings x 5 seeds x 3 samples = 120 runs, concurrent against one server).
+# Submit with:  condor_submit_bid <bid> cluster/run_self_sacrifice_veryego_qwen72b.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_self_sacrifice_veryego_qwen72b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = self_sacrifice_veryego_qwen72b_$(Cluster).err
+output = self_sacrifice_veryego_qwen72b_$(Cluster).out
+log    = self_sacrifice_veryego_qwen72b_$(Cluster).log
+
+# Qwen2.5-72B bf16 ~145 GB -> 4x 80GB GPUs (tensor_parallel_size: 4 in the YAML).
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3" || TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

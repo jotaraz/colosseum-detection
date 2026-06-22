@@ -29,13 +29,14 @@ from flask import Flask, jsonify, request, send_from_directory
 
 HERE = Path(__file__).resolve().parent
 OUTPUTS = (HERE / ".." / "outputs").resolve()
-OUTPUT_PREFIX = "self_sacrifice_n6_"
+# Matches every experiment variant: self_sacrifice_n6_*, self_sacrifice_obvious_n3_*, …
+OUTPUT_PREFIX = "self_sacrifice_"
 
-# run dir name: <model_label>__<framing>__<type>__<env>__n<N>__seed<seed>__s<sampling>
-RUNDIR_RE = re.compile(
-    r"^(?P<model_label>.+?)__(?P<framing>.+?)__(?P<type>.+?)__"
-    r"(?P<env>.+?)__n(?P<n>\d+)__seed(?P<seed>\d+)__s(?P<sampling>\d+)$"
-)
+# A run dir name always ends with '__n<N>__seed<seed>__s<sampling>'. The tokens
+# before that (model_label, framing, type, and — depending on the variant — an
+# env/table token and a scenario token such as 'complete') vary, so framing/type
+# and the optional env are read from the directory tree, not the name.
+RUNDIR_RE = re.compile(r"__n(?P<n>\d+)__seed(?P<seed>\d+)__s(?P<sampling>\d+)$")
 
 app = Flask(__name__)
 
@@ -44,17 +45,40 @@ app = Flask(__name__)
 # Index: scan the outputs tree so the dropdowns reflect what's actually there. #
 # --------------------------------------------------------------------------- #
 def short_model(set_dir_name: str) -> str:
-    """self_sacrifice_n6_gptoss_120b -> gptoss_120b"""
+    """self_sacrifice_n6_gptoss_120b -> n6_gptoss_120b;
+    self_sacrifice_obvious_n3_llama33_70b -> obvious_n3_llama33_70b"""
     return set_dir_name[len(OUTPUT_PREFIX):] if set_dir_name.startswith(OUTPUT_PREFIX) else set_dir_name
+
+
+# A set dir is self_sacrifice_<variant>_n<N>_<model> (e.g. ..._obvious_n3_llama33_70b,
+# ..._veryego_n3_llama33_70b). Variants that share the same n/model describe the
+# *same* scenarios (identical agents/costs per seed) and differ only in which
+# framings they ran, so we merge them into one model entry keyed by n<N>_<model>.
+VARIANT_RE = re.compile(r"^self_sacrifice_(?P<variant>[^_]+)_n(?P<n>\d+)_(?P<model>.+)$")
+
+
+def model_group(set_dir_name: str):
+    """(display_key, variant) for a set dir. Variants of the same n/model merge:
+        self_sacrifice_obvious_n3_llama33_70b -> ('n3_llama33_70b', 'obvious')
+        self_sacrifice_veryego_n3_llama33_70b -> ('n3_llama33_70b', 'veryego')
+    Anything that doesn't fit the variant pattern groups under its own short name."""
+    m = VARIANT_RE.match(set_dir_name)
+    if m:
+        return f"n{m.group('n')}_{m.group('model')}", m.group("variant")
+    return short_model(set_dir_name), ""
 
 
 def scan_index() -> dict:
     """
-    Build a nested index of everything on disk:
-        { models: { <short_model>: {
-            set_dir, timestamps: { <ts>: {
-                model_label, runs: [ {framing,type,seed,sampling}, ... ]
-            } } } } }
+    Build a flat index of everything on disk:
+        { models: { <display_key>: { runs: [ {
+            set_dir, ts, variant, model_label, framing, type, env, seed, sampling
+        }, ... ] } } }
+
+    A model entry merges every variant set dir that shares its n/model (see
+    model_group); each run carries its own provenance (set_dir/ts/variant) so a
+    column can be loaded no matter which variant it came from. 'env' is the extra
+    table/scenario sub-dir some variants use (framing/type/<table>/); "" otherwise.
     """
     models = {}
     if not OUTPUTS.is_dir():
@@ -63,8 +87,7 @@ def scan_index() -> dict:
     for set_dir in sorted(OUTPUTS.iterdir()):
         if not set_dir.is_dir() or not set_dir.name.startswith(OUTPUT_PREFIX):
             continue
-        sm = short_model(set_dir.name)
-        timestamps = {}
+        display, variant = model_group(set_dir.name)
         for ts_dir in sorted(set_dir.iterdir()):
             runs_root = ts_dir / "runs"
             if not runs_root.is_dir():
@@ -74,25 +97,30 @@ def scan_index() -> dict:
             if not label_dirs:
                 continue
             model_label = label_dirs[0].name
-            runs = []
-            # runs/<model_label>/<framing>/<type>/<rundir>
-            for rundir in glob.glob(str(label_dirs[0] / "*" / "*" / "*")):
+            label_root = label_dirs[0]
+            # rundirs live at runs/<model_label>/<framing>/<type>/<rundir> (n6) or
+            # runs/<model_label>/<framing>/<type>/<env>/<rundir> (obvious_*/veryego_*);
+            # glob both depths and let RUNDIR_RE pick out the actual run dirs.
+            candidates = (glob.glob(str(label_root / "*" / "*" / "*")) +
+                          glob.glob(str(label_root / "*" / "*" / "*" / "*")))
+            for rundir in candidates:
                 rp = Path(rundir)
-                if not rp.is_dir():
+                m = RUNDIR_RE.search(rp.name)
+                if not m or not rp.is_dir():
                     continue
-                m = RUNDIR_RE.match(rp.name)
-                if not m:
-                    continue
-                runs.append({
-                    "framing": m.group("framing"),
-                    "type": m.group("type"),
+                # path parts between <model_label> and the run dir => framing/type[/env]
+                rel = rp.relative_to(label_root).parts[:-1]
+                models.setdefault(display, {"runs": []})["runs"].append({
+                    "set_dir": set_dir.name,
+                    "ts": ts_dir.name,
+                    "variant": variant,
+                    "model_label": model_label,
+                    "framing": rel[0] if len(rel) >= 1 else "",
+                    "type": rel[1] if len(rel) >= 2 else "",
+                    "env": rel[2] if len(rel) >= 3 else "",
                     "seed": int(m.group("seed")),
                     "sampling": int(m.group("sampling")),
                 })
-            if runs:
-                timestamps[ts_dir.name] = {"model_label": model_label, "runs": runs}
-        if timestamps:
-            models[sm] = {"set_dir": set_dir.name, "timestamps": timestamps}
     return {"models": models}
 
 
@@ -232,21 +260,147 @@ def build_reasoning(run_dir: Path):
     return out
 
 
-def find_run_dir(short: str, ts: str, framing: str, rtype: str, seed: int, sampling: int):
-    idx = scan_index()["models"].get(short)
-    if not idx or ts not in idx["timestamps"]:
+def find_run_dir(model: str, framing: str, rtype: str, env: str, seed: int, sampling: int, ts: str = ""):
+    """Resolve a run dir from the merged index. The matching run carries its own
+    set_dir/ts/model_label provenance; if several timestamps match (same framing +
+    dims run more than once), the most recent is used. Pass ts to pin one."""
+    md = scan_index()["models"].get(model)
+    if not md:
         return None
-    model_label = idx["timestamps"][ts]["model_label"]
-    base = OUTPUTS / idx["set_dir"] / ts / "runs" / model_label / framing / rtype
-    pattern = str(base / f"*__{framing}__{rtype}__*__seed{seed}__s{sampling}")
-    hits = [p for p in glob.glob(pattern) if Path(p).is_dir()]
+    matches = [r for r in md["runs"]
+               if r["framing"] == framing and r["type"] == rtype
+               and (r["env"] or "") == (env or "")
+               and r["seed"] == seed and r["sampling"] == sampling
+               and (not ts or r["ts"] == ts)]
+    if not matches:
+        return None
+    r = max(matches, key=lambda r: r["ts"])
+    base = OUTPUTS / r["set_dir"] / r["ts"] / "runs" / r["model_label"] / framing / rtype
+    if env:
+        base = base / env
+    pattern = str(base / f"*__seed{seed}__s{sampling}")
+    hits = [p for p in glob.glob(pattern)
+            if Path(p).is_dir() and RUNDIR_RE.search(Path(p).name)]
     return Path(hits[0]) if hits else None
 
 
-def load_chat(short: str, ts: str, framing: str, rtype: str, seed: int, sampling: int):
-    run_dir = find_run_dir(short, ts, framing, rtype, seed, sampling)
+def _run_dir_from_record(r: dict, framing: str, rtype: str, env: str):
+    """Build a run dir straight from an index record (avoids re-scanning per run)."""
+    base = OUTPUTS / r["set_dir"] / r["ts"] / "runs" / r["model_label"] / framing / rtype
+    if env:
+        base = base / env
+    hits = [p for p in glob.glob(str(base / f"*__seed{r['seed']}__s{r['sampling']}"))
+            if Path(p).is_dir() and RUNDIR_RE.search(Path(p).name)]
+    return Path(hits[0]) if hits else None
+
+
+def task_letter(task: str) -> str:
+    """'ISSUE-0001::implement' -> 'i'; '1.r' -> 'r'; skip/None -> '-'."""
+    if not task or task == "skip":
+        return "-"
+    m = re.search(r"::([A-Za-z]+)$", task) or re.search(r"\.([A-Za-z])$", task)
+    if not m:
+        return "?"
+    w = m.group(1)
+    return w.lower() if len(w) == 1 else WORK_LETTER.get(w.lower(), w[0].lower())
+
+
+def _agent_costs(run_dir: Path) -> dict:
+    """{agent: {canon_task: cost_float}} parsed from agent_prompts.json."""
+    out = {}
+    ap = run_dir / "agent_prompts.json"
+    if not ap.exists():
+        return out
+    seen = set()
+    for e in json.loads(ap.read_text()):
+        a = e.get("agent_name")
+        if not a or a in seen:
+            continue
+        seen.add(a)
+        cv = {}
+        for t, c in parse_costs(e.get("user_prompt", "")).items():
+            ct = canon_task(t)
+            try:
+                cv[ct or t] = float(c)
+            except (TypeError, ValueError):
+                pass
+        out[a] = cv
+    return out
+
+
+def compute_summary(model: str, framing: str, rtype: str, env: str, ts: str = ""):
+    """Aggregate, per agent turn-position, across every seed/sample of this table:
+       average realized cost and the distribution of realized task types (i/r/t/-),
+       plus the group's average realized joint reward. Agents are keyed by turn
+       position because their names are randomized per seed; position 0 is the
+       designated agent."""
+    md = scan_index()["models"].get(model)
+    if not md:
+        return None
+    recs = [r for r in md["runs"]
+            if r["framing"] == framing and r["type"] == rtype
+            and (r["env"] or "") == (env or "") and (not ts or r["ts"] == ts)]
+    if not recs:
+        return None
+
+    slots = {}  # pos -> {"cost_sum","n","dist": {letter: count}, "designated": bool}
+    joint_sum, joint_n = 0.0, 0
+    for r in recs:
+        rd = _run_dir_from_record(r, framing, rtype, env)
+        if not rd:
+            continue
+        try:
+            mt = json.loads((rd / "metrics.json").read_text())
+        except Exception:
+            continue
+        assign = mt.get("assignment_realized") or {}
+        rewards = mt.get("rewards_realized") or {}
+        rc_p = rd / "run_config.json"
+        order = (json.loads(rc_p.read_text()).get("agent_turn_order")
+                 if rc_p.exists() else None) or list(assign.keys())
+        costs = _agent_costs(rd)
+        jr = mt.get("joint_reward_realized")
+        if jr is not None:
+            joint_sum += jr
+            joint_n += 1
+        for i, a in enumerate(order):
+            task = assign.get(a)
+            letter = task_letter(task)
+            cv = costs.get(a, {})
+            cost = 0.0 if letter == "-" else cv.get(canon_task(task) or task)
+            reward = rewards.get(a)
+            s = slots.setdefault(i, {"cost_sum": 0.0, "n": 0, "dist": {},
+                                     "reward_sum": 0.0, "reward_n": 0})
+            s["dist"][letter] = s["dist"].get(letter, 0) + 1
+            if cost is not None:
+                s["cost_sum"] += cost
+                s["n"] += 1
+            if reward is not None:
+                s["reward_sum"] += reward
+                s["reward_n"] += 1
+
+    agents = [{
+        "pos": i,
+        "avg_cost": (slots[i]["cost_sum"] / slots[i]["n"]) if slots[i]["n"] else None,
+        "avg_reward": (slots[i]["reward_sum"] / slots[i]["reward_n"]) if slots[i]["reward_n"] else None,
+        "dist": slots[i]["dist"],
+        "n": slots[i]["n"],
+    } for i in sorted(slots)]
+    return {
+        "agents": agents,
+        "avg_joint": (joint_sum / joint_n) if joint_n else None,
+        "n_runs": joint_n,
+    }
+
+
+def load_chat(model: str, framing: str, rtype: str, env: str, seed: int, sampling: int, ts: str = ""):
+    run_dir = find_run_dir(model, framing, rtype, env, seed, sampling, ts)
     if not run_dir:
         return {"ok": False, "framing": framing, "error": "run not found"}
+    # provenance (which variant/timestamp this column actually came from)
+    rel = run_dir.relative_to(OUTPUTS).parts
+    prov_set_dir, prov_ts = rel[0], rel[1]
+    prov_variant = model_group(prov_set_dir)[1]
 
     bb_path = run_dir / "blackboards.json"
     ap_path = run_dir / "agent_prompts.json"
@@ -281,10 +435,14 @@ def load_chat(short: str, ts: str, framing: str, rtype: str, seed: int, sampling
     # realized individual reward per agent + canonical cost lookup (for the
     # assign_task bubble: cost of the chosen task and reward earned for it)
     rewards_by_agent = {}
+    joint_reward = None       # run-global team total (sum of individual realized rewards)
+    joint_reward_optimal = None  # best achievable team total for this table (type+env)
     mt_path = run_dir / "metrics.json"
     if mt_path.exists():
         mt = json.loads(mt_path.read_text())
         rewards_by_agent = mt.get("rewards_realized") or {}
+        joint_reward = mt.get("joint_reward_realized")
+        joint_reward_optimal = mt.get("joint_reward_optimal")
     canon_costs = {
         a: {canon_task(t): c for t, c in (costs or {}).items() if canon_task(t)}
         for a, costs in costs_by_agent.items()
@@ -362,6 +520,11 @@ def load_chat(short: str, ts: str, framing: str, rtype: str, seed: int, sampling
         "priorities": priorities,
         "costs_by_agent": costs_by_agent,
         "persona_by_agent": persona_by_agent,
+        "joint_reward": joint_reward,
+        "joint_reward_optimal": joint_reward_optimal,
+        "variant": prov_variant,
+        "ts": prov_ts,
+        "summary": compute_summary(model, framing, rtype, env, ts),
         "messages": messages,
         "run_dir": str(run_dir),
     }
@@ -389,8 +552,8 @@ def api_chat():
     except (KeyError, ValueError):
         return jsonify({"ok": False, "error": "seed/sampling required"}), 400
     return jsonify(load_chat(
-        a.get("model", ""), a.get("timestamp", ""),
-        a.get("framing", ""), a.get("type", ""), seed, sampling,
+        a.get("model", ""), a.get("framing", ""), a.get("type", ""), a.get("env", ""),
+        seed, sampling, a.get("timestamp", ""),
     ))
 
 

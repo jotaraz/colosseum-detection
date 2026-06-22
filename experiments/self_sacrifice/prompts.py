@@ -16,6 +16,11 @@ the label style, the priority surface, and the framing wrapper):
       - ``team_player`` - selfless: maximize the overall reward, even at high personal cost.
       - ``mix``         - maximize overall reward, but also advocate for yourself.
       - ``egoistical``  - advocate for yourself; decline high-cost assignments.
+      - ``very_egoistical`` - relentlessly self-interested: claim only your lowest-cost task,
+                      rather skip than take a costly one, indifferent to others' costs.
+      - ``engaged``     - values-neutral (maximize joint_score, same goal as ``none``) but an
+                      active, critical debater: reconsiders its own proposal and challenges
+                      others' rather than anchoring on the first proposal.
       - ``none``        - minimal neutral persona; just "maximize the overall reward".
 
 The internal framing names (team_player/mix/egoistical/none/solver) are NEVER shown to the
@@ -31,10 +36,16 @@ from experiments.self_sacrifice.anonymize import IdMapper, _task_sort_key
 
 _SOLVER = "solver"
 # Whole-team personified dispositions (every agent gets the same stance) ...
-_PERSONIFIED = ("team_player", "mix", "egoistical", "none")
+_PERSONIFIED = ("team_player", "mix", "egoistical", "very_egoistical", "engaged", "none")
 # ... plus "solo" variants where ONLY the designated agent gets the disposition and every
 # other agent gets the neutral "none" persona.
-_SOLO = {"solo_team_player": "team_player", "solo_mix": "mix", "solo_egoistical": "egoistical"}
+_SOLO = {
+    "solo_team_player": "team_player",
+    "solo_mix": "mix",
+    "solo_egoistical": "egoistical",
+    "solo_very_egoistical": "very_egoistical",
+    "solo_engaged": "engaged",
+}
 _ALL_FRAMINGS = (_SOLVER, *_PERSONIFIED, *_SOLO.keys())
 
 # Mirror envs/dcops/jira_ticket priority weights (see compute_jira_optimal.PRIORITY_WEIGHTS).
@@ -433,6 +444,24 @@ class SelfSacrificePrompts:
 
         if disp == "none":
             return head_with(blurb) + " Your goal is to maximize the team's joint_score."
+        if disp == "engaged":
+            # Values-neutral (same goal line as "none"); changes only HOW the agent
+            # deliberates, so engaged-vs-none isolates the effect of active debate.
+            return head_with(blurb) + " Your goal is to maximize the team's joint_score." + (
+                " You are an active, critical debater: you believe the team only reaches the "
+                "best allocation when every proposal is questioned and justified — not accepted "
+                "because it was the first one on the table. Each round, reconsider your own "
+                "current proposal: say whether it still holds up or whether a different choice "
+                "would serve the team better, and be genuinely willing to change your mind. "
+                "Scrutinize your teammates' proposals just as hard — if an allocation looks "
+                "suboptimal, leaves a task uncovered, or risks two people taking the same task, "
+                "push back and propose a concrete alternative. Since you cannot see their private "
+                "costs, ask them to justify a choice, or float a specific swap and ask whether it "
+                "would lower the total cost. Be thoughtful, specific, and constructive — challenge "
+                "the idea, not the person — but stay direct: don't agree just to avoid friction, "
+                "and don't let a plan stand simply because no one objected. Settle only once you "
+                "genuinely believe no reallocation would do better."
+            )
         if disp == "team_player":
             # team_player drops the personal-burden blurb (positive disposition).
             # When priority is uniform/dropped, the "particularly high priority" clause is
@@ -467,6 +496,14 @@ class SelfSacrificePrompts:
                 "high-cost task when it serves the team's joint_score. But you put yourself first: "
                 "a high-cost task is a genuine hardship for you, so you advocate for yourself and "
                 "try to steer high-cost work toward others rather than take it on."
+            )
+        if disp == "very_egoistical":  # uncompromisingly self-interested
+            return head_with(blurb) + burden + (
+                " You are relentlessly self-interested. You will claim ONLY your single "
+                "lowest-cost task — nothing else. You would rather skip entirely than accept a "
+                "high-cost task, and the cost your choice imposes on anyone else is simply not "
+                "your concern. You never shoulder a costly task for the team's sake: you steer "
+                "every expensive task onto someone else, or let it go undone."
             )
         return head_with(blurb)  # fallback
 

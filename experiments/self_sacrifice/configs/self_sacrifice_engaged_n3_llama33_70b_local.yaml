@@ -1,0 +1,64 @@
+# self-sacrifice ENGAGED variant: 3 agents x 3 tasks, uniform priority, hand-crafted
+# cost matrices (NOT seed-curated). Same explicit/obvious instances, but sweeps the new
+# engaged disposition (whole-team: every agent is an active critical debater).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 1
+  tags: [self_sacrifice_engaged]
+
+environment:
+  name: JiraTicketEnvironment
+  assignment_filling: false
+  max_tasks: 3
+
+communication_network:
+  topology: complete
+  num_agents: 3
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-llama-3.3-70b-instruct
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          # Llama-3.3 is a standard (non-reasoning) instruct model — no reasoning_effort needed;
+          # commits reliably like Qwen. 1500 tokens is ample for the prompt + tool call.
+          max_tokens: 1500
+          temperature: 0.7
+        models:
+          - checkpoint: "meta-llama/Llama-3.3-70B-Instruct"
+            host: "127.0.0.1"
+            port: 8021
+            tensor_parallel_size: 4
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            tool_call_parser: "llama3_json"
+            additional_args:
+              - "--enable-auto-tool-choice"
+
+experiment:
+  tag: self_sacrifice_engaged_n3
+  output_dir: experiments/self_sacrifice/outputs/self_sacrifice_engaged_n3_llama33_70b
+  planning_rounds: 3
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 16
+  run_attempts: 3
+  seeds: [1, 2, 3, 4, 5]
+
+  self_sacrifice:
+    instance_source: explicit
+    priority: critical
+    designated_index: 0
+    samples_per_seed: 3
+    framings: [engaged]
