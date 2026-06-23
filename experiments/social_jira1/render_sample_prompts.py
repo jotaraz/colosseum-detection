@@ -72,6 +72,9 @@ def main() -> None:
             planning = prompts.get_user_prompt(
                 actor, _context_from_scenario(scenario, actor, "planning", 1), {}
             )
+            vote = prompts.get_user_prompt(
+                actor, _context_from_scenario(scenario, actor, "survey", 1), {}
+            )
             execution = prompts.get_user_prompt(
                 actor, _context_from_scenario(scenario, actor, "execution"), {}
             )
@@ -80,6 +83,7 @@ def main() -> None:
                 f"actor={actor}  seed={args.seed} ##########\n\n"
                 f"===== SYSTEM =====\n{system}\n\n"
                 f"===== USER (planning, round 1) =====\n{planning}\n\n"
+                f"===== USER (preliminary vote, private) =====\n{vote}\n\n"
                 f"===== USER (execution) =====\n{execution}\n"
             )
             path = out_dir / f"sample_{scenario_type}_{framing}.md"

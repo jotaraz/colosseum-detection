@@ -25,6 +25,7 @@ import copy
 import csv
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -71,12 +72,41 @@ def _configure_experiment_logging(root: Path, *, verbose: bool = True) -> None:
     _configure_experiment_logging_impl(logger, root, verbose=verbose)
 
 
+def _reasoning_message(data: Any) -> Dict[str, Any]:
+    """Pull the chat-completion ``message`` out of a generate_response result.
+
+    The bundled vLLM client returns the raw response as a dict ``{"choices": [{"message":
+    {...}}]}`` (this is what self_sacrifice relies on), but we also tolerate an OpenAI-style
+    object in case the client is swapped. Returns ``{}`` if no message is found.
+    """
+    try:
+        choices = data.get("choices") if isinstance(data, dict) else getattr(data, "choices", None)
+        first = (choices or [None])[0]
+        if first is None:
+            return {}
+        msg = first.get("message") if isinstance(first, dict) else getattr(first, "message", None)
+        if msg is None:
+            return {}
+        if isinstance(msg, dict):
+            return msg
+        extra = getattr(msg, "model_extra", None) or {}  # vLLM puts reasoning_content here
+        return {
+            "reasoning_content": getattr(msg, "reasoning_content", None) or extra.get("reasoning_content"),
+            "content": getattr(msg, "content", None),
+        }
+    except Exception:
+        return {}
+
+
 def _install_reasoning_capture() -> bool:
     """Capture the model's chain-of-thought channel so it can be saved per run.
 
-    Mirrors experiments.self_sacrifice.run: reasoning models (gpt-oss with vLLM's
-    ``openai_gptoss`` reasoning_parser) return their analysis in ``reasoning_content``,
-    which the bundled vLLM client otherwise drops. Best-effort; no-op if unavailable.
+    gpt-oss with vLLM's ``openai_gptoss`` reasoning_parser returns its analysis/CoT in
+    ``message["reasoning_content"]`` (separate from the visible ``message["content"]``).
+    The bundled vLLM client keeps only ``content`` downstream, so the reasoning never
+    reaches agent_trajectories.json. We monkeypatch ``generate_response`` to stash each
+    call's reasoning_content (and content) on the client instance; :func:`_drain_reasoning`
+    then writes it to ``agent_reasoning.json``. Best-effort; no-op if unavailable.
     """
     try:
         from llm_server.clients.vllm_client import VLLMClient
@@ -86,24 +116,26 @@ def _install_reasoning_capture() -> bool:
         return True
 
     original_generate = VLLMClient.generate_response
+    warned: List[bool] = []
 
-    def generate_response(self, input, params):  # type: ignore[no-untyped-def]
-        response, response_str = original_generate(self, input, params)
+    def generate_response(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        data, response_str = original_generate(self, *args, **kwargs)
         try:
-            choices = getattr(response, "choices", None) or []
             steps = getattr(self, "_reasoning_steps", None)
             if steps is None:
-                steps = []
-                self._reasoning_steps = steps
-            for choice in choices:
-                message = getattr(choice, "message", None)
-                reasoning = getattr(message, "reasoning_content", None) if message else None
-                if reasoning:
-                    steps.append({"reasoning_content": reasoning})
-        except Exception:
-            pass
-        return response, response_str
+                steps = self._reasoning_steps = []
+            msg = _reasoning_message(data)
+            steps.append({
+                "reasoning_content": msg.get("reasoning_content"),
+                "content": msg.get("content"),
+            })
+        except Exception as exc:  # never let logging break a run, but surface it once
+            if not warned:
+                warned.append(True)
+                logger.warning("reasoning capture failed (will not retry-warn): %s", exc)
+        return data, response_str
 
+    generate_response.__wrapped__ = original_generate
     VLLMClient.generate_response = generate_response  # type: ignore[method-assign]
     VLLMClient._reasoning_capture_installed = True
     return True
@@ -121,6 +153,69 @@ def _drain_reasoning(
         .setdefault(agent.name, {})
         .setdefault(f"iteration_{iteration}", {})
         .setdefault(phase, {}))[f"round_{round_num}"] = steps
+
+
+# Convergence detection via a private per-round "preliminary vote": after each agent posts to
+# the shared board it is asked, on a private channel hidden from everyone else, for the full
+# hypothetical matching it would commit to right now. Parsing that structured ballot is far more
+# reliable than scraping agreement out of free-text debate, and the ballots double as a record
+# of how each agent's intended allocation evolves round by round.
+def _ballot_key(ballot: Dict[str, Any]):
+    """Hashable canonical form of a {task: frozenset(pair) | None} ballot."""
+    return tuple(sorted(
+        (t, tuple(sorted(p)) if p else None) for t, p in (ballot or {}).items()
+    ))
+
+
+def _parse_ballot(text: str, employees: List[str], tasks: List[str]):
+    """Parse a vote into ({task: frozenset(pair) | None}, {task: "A & B" | "none"}).
+
+    Robust to formatting: for each task we take the first line mentioning that task id and pull
+    out the (word-boundary) employee names on it; a task with fewer than two distinct names is
+    recorded as unassigned (None).
+    """
+    lines = (text or "").splitlines()
+    ballot: Dict[str, Any] = {}
+    display: Dict[str, str] = {}
+    for task in tasks:
+        task_re = re.compile(r"\b" + re.escape(task) + r"\b", re.IGNORECASE)
+        line = next((ln for ln in lines if task_re.search(ln)), "")
+        low = line.lower()
+        names: List[str] = []
+        for emp in employees:
+            if re.search(r"\b" + re.escape(emp.lower()) + r"\b", low) and emp not in names:
+                names.append(emp)
+        if len(names) >= 2:
+            ballot[task] = frozenset(names[:2])
+            display[task] = " & ".join(sorted(names[:2]))
+        else:
+            ballot[task] = None
+            display[task] = "none"
+    return ballot, display
+
+
+def _votes_converged(round_ballots: List[Dict[str, Any]], prev_ballots, num_agents: int):
+    """(converged, reason). Stop when a ~2/3 majority share one matching (consensus) or when
+    nobody changed their vote versus the previous round (stable agreement / deadlock)."""
+    keys = [_ballot_key(b) for b in round_ballots if b]
+    if keys:
+        top = max(keys.count(k) for k in keys)
+        if top >= max(2, (2 * num_agents + 2) // 3):
+            return True, "consensus"
+    if prev_ballots is not None and len(prev_ballots) == len(round_ballots):
+        if all(_ballot_key(a) == _ballot_key(b) for a, b in zip(prev_ballots, round_ballots)):
+            return True, "stable"
+    return False, ""
+
+
+def _take_reasoning(agent: Any) -> List[Dict[str, Any]]:
+    """Pop the reasoning captured since the last drain, so a private vote turn's CoT is kept
+    out of the next agent's planning-turn reasoning (and stored with the vote instead)."""
+    client = getattr(agent, "client", None)
+    steps = list(getattr(client, "_reasoning_steps", []) or []) if client is not None else []
+    if client is not None:
+        client._reasoning_steps = []
+    return steps
 
 
 async def _run_single(
@@ -229,10 +324,17 @@ async def _run_single(
     )
 
     planning_rounds = int(cfg["simulation"].get("max_planning_rounds", 3))
+    preliminary_vote = bool(exp.get("preliminary_vote", True))
+    early_stop_consensus = bool(exp.get("early_stop_consensus", True))
+    employees = list(env.agent_names)
+    task_ids = list(env.scenario.tasks)
     _install_reasoning_capture()
     reasoning_log: Dict[str, Any] = {}
+    votes_log: Dict[str, Any] = {}
     turns: List[Dict[str, Any]] = []
+    prev_ballots: Optional[List[Dict[str, Any]]] = None
     for planning_round in range(1, planning_rounds + 1):
+        round_ballots: List[Dict[str, Any]] = []
         for agent in env.agents:
             agent_context = env.build_agent_context(
                 agent.name, phase="planning", iteration=1, planning_round=planning_round
@@ -248,6 +350,42 @@ async def _run_single(
                 "usage": response.get("usage"), "model": response.get("model"),
                 "tools_executed": response.get("tools_executed"),
             })
+
+            # Private, hypothetical "preliminary vote" right after the agent has posted — a
+            # survey turn never reaches the shared board, so it can't influence or leak to
+            # the others. Used only to detect convergence (and as an opinion-trajectory log).
+            if preliminary_vote:
+                vote_ctx = env.build_agent_context(
+                    agent.name, phase="survey", iteration=1, planning_round=planning_round
+                )
+                vote = await protocol.agent_survey_turn(
+                    agent, agent.name, dict(vote_ctx), env, iteration=1
+                )
+                vote_reasoning = _take_reasoning(agent)  # keep the vote's CoT out of planning
+                raw = vote.get("response") or ""
+                ballot, display = _parse_ballot(raw, employees, task_ids)
+                round_ballots.append(ballot)
+                votes_log.setdefault(agent.name, {})[f"round_{planning_round}"] = {
+                    "assignment": display, "raw": raw,
+                    "reasoning": [s.get("reasoning_content") for s in vote_reasoning],
+                }
+                turns.append({
+                    "phase": "preliminary_vote", "planning_round": planning_round,
+                    "agent": agent.name, "assignment": display,
+                    "response": raw, "usage": vote.get("usage"), "model": vote.get("model"),
+                })
+
+        # Stop early once the private ballots show the group has converged (consensus) or
+        # stopped moving (stable). Only from round 2 on — round 1 is the opening positions.
+        if early_stop_consensus and preliminary_vote and planning_round >= 2:
+            converged, reason = _votes_converged(round_ballots, prev_ballots, len(env.agents))
+            if converged:
+                logger.info(
+                    "RUN %s planning converged after round %d/%d (%s by preliminary vote) — "
+                    "ending planning early", run_id, planning_round, planning_rounds, reason
+                )
+                break
+        prev_ballots = round_ballots
 
     for agent in env.agents:
         agent_context = env.build_agent_context(agent.name, phase="execution", iteration=1)
@@ -294,6 +432,7 @@ async def _run_single(
     _write_json(run_dir / "final_summary.json", final_summary)
     _write_json(run_dir / "agent_turns.json", turns)
     _write_json(run_dir / "agent_reasoning.json", reasoning_log)
+    _write_json(run_dir / "agent_votes.json", votes_log)
     _write_json(run_dir / "metrics.json", metrics)
     _write_json(run_dir / "tool_events.json", [
         {

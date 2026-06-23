@@ -60,6 +60,15 @@
   .delib { margin-top:3px; border-left:2px solid #43506a; background:#141b27; color:#aab8d4;
     padding:5px 8px; border-radius:4px; white-space:pre-wrap; font-size:12px; }
   .delib .dh { color:#6f86b8; font-size:10px; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:2px; }
+  details.prompts { margin-bottom:12px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); }
+  details.prompts > summary { cursor:pointer; padding:6px 9px; font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--muted); user-select:none; }
+  .promptblk { padding:2px 9px 9px; }
+  .promptblk .who { font-size:11px; color:var(--muted); margin:6px 0 2px; }
+  .pkind { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#6f86b8; margin:7px 0 2px; }
+  .pre { white-space:pre-wrap; word-break:break-word; margin:0; padding:6px 8px; background:var(--bg);
+    border:1px solid var(--line); border-radius:4px; max-height:300px; overflow:auto;
+    font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
   .hidden { display:none; }
 </style>
 </head>
@@ -155,9 +164,25 @@ function matchStr(m){ // {T1:[a,b]} or {T1:"a & b"}
   }).join('   ');
 }
 
+function promptsBlock(data){
+  // Full verbatim system + user prompt of agent[0] (first agent's planning r1),
+  // one block per selected framing since the confidentiality wording can differ.
+  const cols=(data.columns||[]).filter(c=>c.ok && c.prompt0);
+  if(!cols.length) return '';
+  let h=`<details class="prompts"><summary>agent[0] prompt — full system + user (verbatim)</summary>`;
+  cols.forEach(c=>{
+    const p=c.prompt0;
+    const rnd=(p.round!=null && p.round!=='')?(' · '+p.phase+' r'+p.round):(' · '+(p.phase||''));
+    h+=`<div class="promptblk"><div class="who">${esc(c.framing)} · ${esc(p.agent||'agent[0]')}${esc(rnd)}</div>`
+     + `<div class="pkind">system prompt</div><pre class="pre">${esc(p.system_prompt)}</pre>`
+     + `<div class="pkind">user prompt</div><pre class="pre">${esc(p.user_prompt)}</pre></div>`;
+  });
+  return h+`</details>`;
+}
+
 function renderScenario(data){
   const sc=data.scenario, el=$('#scenario');
-  if(!sc){ el.innerHTML='<p class="mut">no scenario.json for this cell.</p>'; return; }
+  if(!sc){ el.innerHTML=promptsBlock(data)+'<p class="mut">no scenario.json for this cell.</p>'; return; }
   const emps=sc.employees, tasks=sc.tasks;
   const pairs=Object.keys(sc.goodness[tasks[0]]);
   const optPairByTask={}; for(const t in sc.optimal_matching) optPairByTask[t]=sc.optimal_matching[t];
@@ -179,15 +204,16 @@ function renderScenario(data){
       + `<span class="mut">ratio=${m.goodness_ratio ?? '—'} · malformed=${m.num_malformed_tasks ?? '—'}</span></div>`;
   });
 
-  // Goodness table: pairs x tasks
-  h += `<h3>Task-pair goodness (public)</h3><table><tr><th class="lbl">pair \\ task</th>`;
+  // Goodness table: pairs x tasks. Agents only ever see the prose label
+  // (never the raw value), so show the prose; value drives shading only.
+  h += `<h3>Task-pair goodness (public, prose as agents see)</h3><table><tr><th class="lbl">pair \\ task</th>`;
   tasks.forEach(t=>h+=`<th>${t}</th>`); h+=`</tr>`;
   pairs.forEach(p=>{
     h+=`<tr><td class="lbl">${p}</td>`;
     tasks.forEach(t=>{
       const cell=sc.goodness[t][p]; const v=cell.value;
       const isOpt = (sc.optimal_matching[t]===p);
-      h+=`<td class="cell-num ${isOpt?'opt':''}" style="background:${goodnessColor(v)}" title="${cell.prose} for ${t}">${v.toFixed(2)}</td>`;
+      h+=`<td class="${isOpt?'opt':''}" style="background:${goodnessColor(v)}" title="${esc(p)} for ${t}">${esc(cell.prose)}</td>`;
     });
     h+=`</tr>`;
   });
@@ -207,7 +233,7 @@ function renderScenario(data){
   });
   h+=`</table><div class="mut" style="margin-top:4px">green +1 likes · grey 0 neutral · red −1 friction. Each agent sees only its own row.</div>`;
 
-  el.innerHTML=h;
+  el.innerHTML=promptsBlock(data)+h;
 }
 
 function renderColumns(data){
@@ -216,6 +242,9 @@ function renderColumns(data){
   (data.columns||[]).forEach(c=>{
     const col=document.createElement('div'); col.className='col';
     if(!c.ok){ col.innerHTML=`<h2>${c.framing}</h2><div class="chat mut">${c.error||'no data'}</div>`; wrap.appendChild(col); return; }
+    const dh = c.reasoning_source==='cot' ? 'chain-of-thought (analysis channel)'
+             : c.reasoning_source==='trajectory' ? 'raw turn output (proxy — no CoT captured)'
+             : 'deliberation';
     let h=`<h2>${c.framing} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
     if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
     let lastPhase='';
@@ -226,7 +255,7 @@ function renderColumns(data){
         + `<div class="bhead"><span class="bname" style="color:${color}">${m.agent}</span> `
         + `<span class="btag">· ${m.phase}${m.round!=null?(' r'+(m.round+1)):''}${m.kind==='action'?' · commit':''}</span></div>`
         + `<div class="btext">${esc(m.text)}</div>`;
-      if(showDelib && m.deliberation) h+=`<div class="delib"><span class="dh">deliberation (raw turn output)</span>${esc(m.deliberation)}</div>`;
+      if(showDelib && m.deliberation) h+=`<div class="delib"><span class="dh">${dh}</span>${esc(m.deliberation)}</div>`;
       h+=`</div>`;
     });
     h+=`</div>`;

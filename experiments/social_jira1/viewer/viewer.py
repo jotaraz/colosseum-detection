@@ -101,12 +101,47 @@ def _round_num(key: str) -> int:
     return int(m.group(1)) if m else 0
 
 
-def build_reasoning(run_dir: Path):
-    """(agent, phase) -> [deliberation text per round, in round order].
+def _reasoning_from_cot(run_dir: Path):
+    """(agent, phase) -> [CoT text per round] from agent_reasoning.json.
 
-    agent_trajectories.json nests agent -> iteration -> phase -> round -> trajectory ->
-    step -> {reasoning, tools}. We join each round's non-empty step 'reasoning' text plus
-    a compact note of any tool calls, giving the raw per-turn model output.
+    This is the real chain-of-thought: gpt-oss's analysis channel, captured per turn as
+    agent -> iteration -> phase -> round -> {step -> {reasoning_content, content}}. We join
+    each round's non-empty reasoning_content across steps. Returns {} when the file is
+    missing or holds no actual reasoning (older runs where capture came up empty).
+    """
+    p = run_dir / "agent_reasoning.json"
+    if not p.exists():
+        return {}
+    try:
+        rj = json.loads(p.read_text())
+    except Exception:
+        return {}
+    out: dict = {}
+    any_text = False
+    for agent, iters in (rj or {}).items():
+        for itk in sorted(iters.keys(), key=_round_num):
+            for phase, rounds in (iters[itk] or {}).items():
+                for rk in sorted(rounds.keys(), key=_round_num):
+                    steps = rounds[rk] or {}
+                    parts = []
+                    for sk in sorted(steps.keys(), key=_round_num):
+                        r = ((steps[sk] or {}).get("reasoning_content") or "").strip()
+                        if r:
+                            parts.append(r)
+                    text = "\n\n".join(parts).strip()
+                    if text:
+                        any_text = True
+                    out.setdefault((agent, phase), []).append(text)
+    return out if any_text else {}
+
+
+def _reasoning_from_trajectories(run_dir: Path):
+    """(agent, phase) -> [text per round] reconstructed from agent_trajectories.json.
+
+    Fallback proxy when no real CoT was captured: agent_trajectories.json nests agent ->
+    iteration -> phase -> round -> trajectory -> step -> {reasoning, tools}. We join each
+    round's non-empty step 'reasoning' (the raw per-turn output, which for gpt-oss often
+    just restates the posted message) plus a compact note of any non-post tool calls.
     """
     p = run_dir / "agent_trajectories.json"
     if not p.exists():
@@ -137,12 +172,55 @@ def build_reasoning(run_dir: Path):
     return out
 
 
+def build_reasoning(run_dir: Path):
+    """((agent, phase) -> [text per round], source).
+
+    Prefer the real chain-of-thought in agent_reasoning.json (gpt-oss analysis channel);
+    fall back to the per-turn raw output from agent_trajectories.json when no CoT was
+    captured. ``source`` is 'cot', 'trajectory', or 'none' so the UI can label it honestly.
+    """
+    cot = _reasoning_from_cot(run_dir)
+    if cot:
+        return cot, "cot"
+    traj = _reasoning_from_trajectories(run_dir)
+    return traj, ("trajectory" if traj else "none")
+
+
 # --------------------------------------------------------------------------- #
 # Load one run: scenario ground truth + aligned conversation                   #
 # --------------------------------------------------------------------------- #
 def load_scenario(run_dir: Path):
     p = run_dir / "scenario.json"
     return json.loads(p.read_text()) if p.exists() else None
+
+
+def load_agent_prompt(run_dir: Path, agent: str = None):
+    """Full system + user prompt for one agent's first turn.
+
+    agent_prompts.json is a time-ordered list of per-turn records, each with
+    agent_name / phase / round / system_prompt / user_prompt. We return the
+    earliest record for `agent` (default: the very first record = agent[0],
+    the first agent's planning round 1) so the panel shows exactly what that
+    agent was handed verbatim.
+    """
+    p = run_dir / "agent_prompts.json"
+    if not p.exists():
+        return None
+    try:
+        recs = json.loads(p.read_text())
+    except Exception:
+        return None
+    if not recs:
+        return None
+    rec = next((r for r in recs if r.get("agent_name") == agent), None) if agent else None
+    rec = rec or recs[0]
+    return {
+        "agent": rec.get("agent_name"),
+        "phase": rec.get("phase"),
+        "round": rec.get("round"),
+        "system_prompt": rec.get("system_prompt", ""),
+        "user_prompt": rec.get("user_prompt", ""),
+    }
 
 
 def load_outcome(run_dir: Path):
@@ -171,10 +249,7 @@ def load_messages(run_dir: Path):
     rc = run_dir / "run_config.json"
     if rc.exists():
         turn_order = json.loads(rc.read_text()).get("agent_turn_order") or turn_order
-    turn_pos = {a: i for i, a in enumerate(turn_order)}
-
-    reasoning_idx = build_reasoning(run_dir)
-    PHASE_RANK = {"planning": 0, "execution": 1}
+    reasoning_idx, reasoning_source = build_reasoning(run_dir)
 
     seen_in_phase: dict = {}
     context_msg = None
@@ -210,14 +285,17 @@ def load_messages(run_dir: Path):
 
         messages.append({
             "agent": agent, "kind": mkind, "text": text,
-            "phase": phase, "phase_rank": PHASE_RANK.get(phase, 9),
-            "round": rnd, "pos": turn_pos.get(agent, 99),
+            "phase": phase, "round": rnd,
             "deliberation": deliberation, **extra,
         })
 
-    messages.sort(key=lambda m: (m["phase_rank"], m["round"], m["pos"]))
+    # Keep the blackboard's own (chronological) event order so post references
+    # like "[3]/[4]/[6]" line up with the turns that actually preceded a message.
+    # (A prior version re-sorted by fixed turn position, which made the
+    # round-robin's first speaker appear to cite posts that came after it.)
     return {"participants": participants, "turn_order": turn_order,
-            "context": context_msg, "messages": messages}
+            "context": context_msg, "messages": messages,
+            "reasoning_source": reasoning_source}
 
 
 def load_cell(model, ts, rtype, seed, sampling, framings):
@@ -233,8 +311,10 @@ def load_cell(model, ts, rtype, seed, sampling, framings):
             scenario = load_scenario(rd)
         chat = load_messages(rd)
         outcome = load_outcome(rd)
+        # agent[0] = first agent in the turn order; show its full verbatim prompt.
+        prompt0 = load_agent_prompt(rd, (chat.get("turn_order") or [None])[0])
         columns.append({"framing": framing, "ok": True, "run_dir": str(rd),
-                        **chat, **outcome})
+                        "prompt0": prompt0, **chat, **outcome})
     return {"scenario": scenario, "columns": columns,
             "dims": {"model": model, "ts": ts, "type": rtype,
                      "seed": seed, "sampling": sampling}}
