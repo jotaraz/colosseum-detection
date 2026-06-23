@@ -8,6 +8,14 @@ eyeballing the prose (no raw numbers should ever appear) and the confidentiality
 
     python -m experiments.social_jira1.render_sample_prompts
     python -m experiments.social_jira1.render_sample_prompts --employees 6 --tasks 2 --seed 1
+
+``--structured`` instead emits a single human-readable reference (``prompt_blocks.md``)
+that defines each prompt building block ONCE (with both framing variants) plus an assembly
+map of which blocks make each turn's message. It is generated from the same ``_*_block``
+methods in ``prompts.py`` so it cannot drift. resolvable vs conflict only change the
+filled-in values (goodness ratings / who is disliked), so the reference uses one scenario.
+
+    python -m experiments.social_jira1.render_sample_prompts --structured
 """
 
 import argparse
@@ -47,11 +55,108 @@ def _context_from_scenario(scenario, agent_name, phase, planning_round=None):
     return ctx
 
 
+def render_structured_doc(scenario, actor, employees, tasks, seed) -> str:
+    """One reference doc defining each prompt building block once (both framings) + an
+    assembly map. Blocks are pulled straight from the ``_*_block`` methods so the doc tracks
+    ``prompts.py`` exactly. ``#``/``##`` are document headings (outside the prompt); the
+    ``=== ... ===`` lines inside each block are the real in-prompt separators."""
+    pd = SocialJiraPrompts(env=None, full_config={}, framing="discreet", log_prompts=False)
+    pc = SocialJiraPrompts(env=None, full_config={}, framing="control", log_prompts=False)
+    ctx = _context_from_scenario(scenario, actor, "planning", 1)
+    ctx_vote = _context_from_scenario(scenario, actor, "survey", 1)
+    ctx_exec = _context_from_scenario(scenario, actor, "execution")
+
+    # A couple of variant contexts so the doc shows what the code can emit:
+    other = employees[1] if len(employees) > 1 else actor
+    ctx_committed = dict(ctx)
+    ctx_committed["assignment"] = {actor: tasks[0], other: tasks[0]}
+    ctx_no_dislike = dict(ctx)
+    ctx_no_dislike["my_feelings"] = {o: 0 for o in ctx["my_feelings"]}
+    discussion_example = {
+        "m1": f"{other}'s assistant: Proposal — pair {actor} & {other} on Task {tasks[0]} "
+              "(a strong fit); I'll take the other task with someone else.",
+    }
+
+    L: list[str] = []
+    def add(*lines: str) -> None:
+        L.extend(lines)
+    def block(token: str, note: str, body: str) -> None:
+        add(f"# {token}" + (f"  _{note}_" if note else ""), "", body, "")
+    def variant(label: str, body: str) -> None:
+        add(f"## {label}", "", body, "")
+
+    add(
+        "# social-jira1 prompt building blocks",
+        "",
+        "_Generated from `prompts.py` by `render_sample_prompts.py --structured` — do not edit by hand._",
+        "",
+        "## Legend",
+        "- `#` / `##` lines are headings of THIS document (outside the prompt).",
+        "- `=== ... ===` lines are real separators **inside** the prompt (sent to the model verbatim).",
+        "- `{{TOKEN}}` is a placeholder: insert the block defined under that token's heading.",
+        f"- Concrete values below use seed={seed}, actor={actor}, scenario_type=conflict. "
+        "resolvable vs conflict change ONLY the filled-in values (goodness ratings, who is "
+        "disliked), never the structure.",
+        "",
+        "# Assembly — which blocks make each message",
+        "```",
+        "System message      = {{SYSTEM_PROMPT}}",
+        "User (planning)     = {{WHO}} + {{TASKS_TABLE}} + {{FEELINGS}} + {{COMMITMENTS}} + {{DISCUSSION}} + {{COORDINATE}}",
+        "User (prelim. vote) = {{WHO}} + {{TASKS_TABLE}} + {{FEELINGS}} + {{COMMITMENTS}} + {{DISCUSSION}} + {{VOTE}}",
+        "User (execution)    = {{WHO}} + {{TASKS_TABLE}} + {{FEELINGS}} + {{COMMITMENTS}} + {{DISCUSSION}} + {{COMMIT}}",
+        "```",
+        "Only the final block differs across phases; `{{DISCUSSION}}` accumulates each round "
+        "and is omitted while empty (e.g. planning round 1). Blocks are joined by blank lines.",
+        "",
+        "# ==================== BLOCK LIBRARY ====================",
+        "",
+    )
+
+    add("# {{SYSTEM_PROMPT}}", "")
+    variant("discreet", pd.get_system_prompt())
+    variant("control", pc.get_system_prompt())
+
+    block("{{WHO}}", "", pd._who_block(actor))
+    block("{{TASKS_TABLE}}", "values are scenario-specific", pd._tasks_block(ctx))
+
+    add("# {{FEELINGS}}  _values are scenario-specific_", "")
+    variant("discreet", pd._feelings_block(actor, ctx))
+    variant("control", pc._feelings_block(actor, ctx))
+    _fallback = pd._feelings_block(actor, ctx_no_dislike)
+    variant(
+        "employee named no one they dislike",
+        _fallback if _fallback.strip()
+        else "_(block omitted entirely — there is nothing private to convey)_",
+    )
+
+    add("# {{COMMITMENTS}}  _runtime: depends on who has committed_", "")
+    variant("opening (nobody committed yet)", pd._state_block(ctx))
+    variant("later (some have committed)", pd._state_block(ctx_committed))
+
+    block("{{DISCUSSION}}", "runtime: the shared blackboard so far; omitted while empty",
+          pd._discussion_block(discussion_example))
+
+    add("# {{COORDINATE}}  _planning instruction_", "")
+    variant("discreet", pd._instruction_block("planning", ctx))
+    variant("control", pc._instruction_block("planning", ctx))
+
+    block("{{VOTE}}", "preliminary-vote instruction; private, identical for both framings",
+          pd._instruction_block("survey", ctx_vote))
+    block("{{COMMIT}}", "execution instruction; identical for both framings",
+          pd._instruction_block("execution", ctx_exec))
+
+    return "\n".join(L).rstrip() + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--employees", type=int, default=6)
     parser.add_argument("--tasks", type=int, default=2)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument(
+        "--structured", action="store_true",
+        help="emit a single block-library reference (prompt_blocks.md) instead of full samples",
+    )
     parser.add_argument(
         "--out", default="experiments/social_jira1/sample_prompts", help="output directory"
     )
@@ -60,6 +165,17 @@ def main() -> None:
     employees = ["Alice", "Bob", "Carol", "Dan", "Erin", "Frank", "Grace", "Henry"][: args.employees]
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.structured:
+        # resolvable vs conflict only change filled-in values, so one scenario suffices.
+        scenario = generate_scenario(
+            seed=args.seed, employees=employees, num_tasks=args.tasks, scenario_type="conflict"
+        )
+        doc = render_structured_doc(scenario, employees[0], employees, list(scenario.tasks), args.seed)
+        path = out_dir / "prompt_blocks.md"
+        path.write_text(doc)
+        print(f"wrote {path}")
+        return
 
     for scenario_type in ("resolvable", "conflict"):
         scenario = generate_scenario(
