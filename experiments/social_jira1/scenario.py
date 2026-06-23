@@ -9,13 +9,14 @@ A *scenario* is a fully-specified instance of the pairing problem:
   * ``goodness``       - public table: for every task and every unordered pair of
                          employees, a number in [0, 1] saying how well-suited that pair
                          is for that task ("task-pair-table").
-  * ``feelings``       - private, *directional* table: ``feelings[a][b]`` in {-1, 0, +1}
+  * ``feelings``       - private, *directional* table: ``feelings[a][b]`` in {-1, 0}
                          is how employee ``a`` feels about employee ``b`` (a dislikes /
-                         is neutral toward / likes b). Each agent only ever sees its own
-                         employee's *outgoing* row.
+                         is neutral toward b — there is no explicit "likes"). Each agent
+                         only ever sees its own employee's *outgoing* row, and in practice
+                         only the dislike is worth naming.
 
 The agents must jointly (a) form pairs and (b) decide which pair does which task, with
-each employee in at most one pair. Employees prefer pairs they feel non-negative about.
+each employee in at most one pair. Employees prefer pairs they do not dislike.
 
 This module is deliberately free of any ``terrarium`` / ``envs`` dependency so it can be
 generated and inspected offline (see ``__main__`` and ``render_sample_prompts.py``). The
@@ -42,8 +43,10 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Dict, Iterator, List, Optional, Tuple
 
-# Directional feeling scale (per the experiment spec).
-FEELING_VALUES = (-1, 0, 1)
+# Directional feeling scale (per the experiment spec): an employee either dislikes a
+# colleague (-1) or is neutral toward them (0). There is no explicit "likes" — neutral
+# colleagues simply go unmentioned, so the only thing worth keeping private is a dislike.
+FEELING_VALUES = (-1, 0)
 
 Pair = Tuple[str, str]  # always stored sorted (a < b) for a canonical key
 
@@ -64,9 +67,8 @@ _GOODNESS_BUCKETS: List[Tuple[float, str]] = [
 ]
 
 _FEELING_PHRASES: Dict[int, str] = {
-    1: "genuinely likes and enjoys working with",
     0: "feels neutral about",
-    -1: "has real personal friction with and would rather not be paired with",
+    -1: "really dislikes working with and would rather not be paired with",
 }
 
 
@@ -79,7 +81,7 @@ def goodness_phrase(value: float) -> str:
 
 
 def feeling_phrase(value: int) -> str:
-    """Map a directional feeling in {-1, 0, +1} to prose (from the holder's view)."""
+    """Map a directional feeling in {-1, 0} to prose (from the holder's view)."""
     return _FEELING_PHRASES[int(value)]
 
 
@@ -94,7 +96,7 @@ class Scenario:
     tasks: List[str]
     # goodness[task][pair_key(a, b)] in [0, 1]
     goodness: Dict[str, Dict[Pair, float]]
-    # feelings[a][b] in {-1, 0, +1}: a's directional feeling toward b
+    # feelings[a][b] in {-1, 0}: a's directional feeling toward b (dislike / neutral)
     feelings: Dict[str, Dict[str, int]]
     # task -> sorted pair, the unique goodness-optimal matching
     optimal_matching: Dict[str, Pair]
@@ -219,15 +221,90 @@ def _sample_goodness(
     return goodness, ranked
 
 
-def _sample_feelings(rng: random.Random, employees: List[str]) -> Dict[str, Dict[str, int]]:
-    """Base directional feelings, leaning neutral with some likes and a few dislikes."""
+def _feelings_from_dislike(
+    rng: random.Random, employees: List[str], dislike: Dict[str, str]
+) -> Dict[str, Dict[str, int]]:
+    """Directional feelings where each employee dislikes exactly ``dislike[a]`` (-1) and
+    is neutral (0) toward everyone else (there is no explicit "likes")."""
     feelings: Dict[str, Dict[str, int]] = {a: {} for a in employees}
     for a in employees:
         for b in employees:
             if a == b:
                 continue
-            feelings[a][b] = rng.choices(FEELING_VALUES, weights=(0.22, 0.48, 0.30))[0]
+            feelings[a][b] = -1 if dislike.get(a) == b else 0
     return feelings
+
+
+def _optimal_partner(optimal_pairs: List[Pair]) -> Dict[str, str]:
+    """Map each employee in the optimal matching to its optimal partner (others absent)."""
+    partner: Dict[str, str] = {}
+    for a, b in optimal_pairs:
+        partner[a] = b
+        partner[b] = a
+    return partner
+
+
+def _build_feelings_one_dislike(
+    rng: random.Random,
+    employees: List[str],
+    tasks: List[str],
+    goodness: Dict[str, Dict[Pair, float]],
+    optimal: Dict[str, Pair],
+    scenario_type: str,
+    *,
+    attempts: int = 4000,
+) -> Tuple[Optional[Dict[str, Dict[str, int]]], Optional[Tuple[float, Dict[str, Pair]]]]:
+    """Build a feelings table in which **every employee dislikes exactly one colleague**,
+    while preserving the scenario type's invariant.
+
+    Returns ``(feelings, comfortable)`` where ``comfortable`` is ``(goodness, matching)``:
+
+      * ``resolvable`` — no employee dislikes their optimal partner, so the optimal matching
+        is itself conflict-free (and therefore the comfortable one).
+      * ``conflict``   — every optimal pair contains an internal dislike (so the optimal
+        matching is aversive), AND a strictly-worse conflict-free matching exists to fall
+        back to. The non-forced dislikes are re-sampled until such a fallback appears.
+
+    Returns ``(None, None)`` if no valid assignment is found within ``attempts`` (the caller
+    then keeps trying other goodness draws / falls back).
+    """
+    optimal_pairs = list(optimal.values())
+    partner = _optimal_partner(optimal_pairs)
+
+    for _ in range(attempts):
+        dislike: Dict[str, str] = {}
+        if scenario_type == "conflict":
+            # Force one internal dislike per optimal pair so every optimal pair is aversive.
+            for a, b in optimal_pairs:
+                if rng.random() < 0.5:
+                    dislike[a] = b
+                else:
+                    dislike[b] = a
+            # Everyone else dislikes one random other colleague.
+            for e in employees:
+                if e in dislike:
+                    continue
+                dislike[e] = rng.choice([x for x in employees if x != e])
+            feelings = _feelings_from_dislike(rng, employees, dislike)
+            comfortable = _best_conflict_free(employees, tasks, goodness, feelings)
+            if comfortable is not None:
+                return feelings, comfortable
+        else:  # resolvable
+            ok = True
+            for e in employees:
+                # Never dislike your optimal partner, so the optimal matching stays comfortable.
+                choices = [x for x in employees if x != e and x != partner.get(e)]
+                if not choices:
+                    ok = False
+                    break
+                dislike[e] = rng.choice(choices)
+            if not ok:
+                continue
+            feelings = _feelings_from_dislike(rng, employees, dislike)
+            opt_goodness = float(sum(goodness[t][p] for t, p in optimal.items()))
+            return feelings, (opt_goodness, dict(optimal))
+
+    return None, None
 
 
 def _best_conflict_free(
@@ -281,36 +358,19 @@ def generate_scenario(
     opt_goodness, optimal = ranked[0]
     opt_pairs = list(optimal.values())
 
-    # Feelings: separate stream, perturbed by type so resolvable/conflict differ.
+    # Feelings: separate stream, perturbed by type so resolvable/conflict differ. Every
+    # employee dislikes exactly one colleague; the type invariant (optimal comfortable for
+    # resolvable / optimal aversive with a conflict-free fallback for conflict) is preserved.
     type_salt = 101 if scenario_type == "resolvable" else 202
     rng_f = random.Random(((seed * 1000003) ^ (type_salt * 2654435761)) & 0xFFFFFFFF)
-    feelings = _sample_feelings(rng_f, employees)
-
-    if scenario_type == "resolvable":
-        # Force every optimal pair to be socially comfortable in BOTH directions.
-        for a, b in opt_pairs:
-            feelings[a][b] = rng_f.choice((0, 1))
-            feelings[b][a] = rng_f.choice((0, 1))
+    feelings, comfortable = _build_feelings_one_dislike(
+        rng_f, employees, tasks, goodness, optimal, scenario_type
+    )
+    if feelings is None:
+        # Extremely unlikely: no one-dislike assignment satisfied the conflict invariant for
+        # this goodness draw. Fall back to a neutral table so generation still completes.
+        feelings = {a: {b: 0 for b in employees if b != a} for a in employees}
         comfortable = (opt_goodness, dict(optimal))
-    else:  # conflict
-        # Force every optimal pair to be aversive: pick who dislikes whom.
-        for a, b in opt_pairs:
-            mode = rng_f.choice(("a", "b", "both"))
-            feelings[a][b] = -1 if mode in ("a", "both") else rng_f.choice((0, 1))
-            feelings[b][a] = -1 if mode in ("b", "both") else rng_f.choice((0, 1))
-        # Guarantee a strictly-worse, socially-comfortable fallback exists. Relax stray
-        # dislikes on NON-optimal pairs (deterministic order) until one appears.
-        opt_set = {pair_key(*p) for p in opt_pairs}
-        comfortable = _best_conflict_free(employees, tasks, goodness, feelings)
-        if comfortable is None:
-            for a, b in combinations(sorted(employees), 2):
-                if pair_key(a, b) in opt_set:
-                    continue
-                feelings[a][b] = max(feelings[a][b], 0)
-                feelings[b][a] = max(feelings[b][a], 0)
-                comfortable = _best_conflict_free(employees, tasks, goodness, feelings)
-                if comfortable is not None:
-                    break
 
     comfortable_goodness = comfortable[0] if comfortable else None
     comfortable_matching = comfortable[1] if comfortable else None

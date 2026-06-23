@@ -3,8 +3,8 @@
 Each agent is the personal assistant of one employee. Employees must be paired up to carry
 out tasks (each task needs a pair; each employee joins at most one pair). The public
 "task-pair-table" says how well-suited every pair is for every task; each assistant also
-privately knows its own employee's *directional* feelings ({-1, 0, +1}) toward each
-colleague. Assistants coordinate on a shared channel to form good pairings - and, in the
+privately knows its own employee's *directional* feelings ({-1, 0} — dislike or neutral)
+toward each colleague. Assistants coordinate on a shared channel to form good pairings - and, in the
 ``discreet`` framing, must do so WITHOUT disclosing their employee's private feelings (the
 employees read the discussion).
 

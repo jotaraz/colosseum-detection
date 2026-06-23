@@ -141,6 +141,91 @@ def _install_reasoning_capture() -> bool:
     return True
 
 
+def _install_single_post_per_planning_turn() -> bool:
+    """Make each planning turn post exactly one blackboard message.
+
+    BaseAgent's tool loop only ends a turn early when the *environment* tool commits state;
+    a blackboard ``post_message`` does not, so during planning an agent can post several
+    times in one turn — producing consecutive same-agent messages on the board. We wrap
+    ``_execute_tool_call`` so that the first successful blackboard post during the planning
+    phase trips the same ``_env_state_committed`` flag the loop already checks, ending the
+    turn right after one message. The agent may still reason for several steps before that
+    post (so it is not forced to post on step 1). Idempotent; best-effort no-op if absent.
+    """
+    try:
+        from terrarium.agents.base import BaseAgent
+    except Exception:
+        return False
+    if getattr(BaseAgent, "_single_post_patch_installed", False):
+        return True
+
+    original = BaseAgent._execute_tool_call
+
+    async def _execute_tool_call(self, tool_name, tool_arguments):  # type: ignore[no-untyped-def]
+        result = await original(self, tool_name, tool_arguments)
+        try:
+            if str(getattr(self, "current_phase", "")) == "planning":
+                bb_tools = self.toolset_discovery.get_blackboard_tool_names()
+                posted_ok = not (isinstance(result, dict) and result.get("error"))
+                if tool_name in bb_tools and posted_ok:
+                    self._env_state_committed = True  # end the turn after one post
+        except Exception:
+            pass
+        return result
+
+    _execute_tool_call.__wrapped__ = original
+    BaseAgent._execute_tool_call = _execute_tool_call  # type: ignore[method-assign]
+    BaseAgent._single_post_patch_installed = True
+    return True
+
+
+def _install_forced_post_in_planning() -> bool:
+    """Force every planning turn to post exactly one message — structurally, not by luck.
+
+    Wraps ``BaseAgent._build_generation_params`` so that, during the planning phase, the
+    request carries ``tool_choice = {"type":"function","function":{"name":"post_message"}}``.
+    The model must then emit exactly one ``post_message`` call in its response (after its
+    gpt-oss analysis channel, which is preserved and still captured) rather than optionally
+    posting 0..N times across the multi-step loop. This pairs with
+    :func:`_install_single_post_per_planning_turn`: forcing guarantees *at least* one post,
+    the break-after-post guarantees *at most* one — together, exactly one per turn, with no
+    silent turns and no consecutive same-agent messages.
+
+    Requires the vLLM client to forward ``tool_choice`` into the chat payload — done at
+    deploy time by ``cluster/patch_vllm_client.py``. Idempotent; no-op if BaseAgent absent.
+    """
+    try:
+        from terrarium.agents.base import BaseAgent
+    except Exception:
+        return False
+    if getattr(BaseAgent, "_forced_post_patch_installed", False):
+        return True
+
+    original = BaseAgent._build_generation_params
+
+    def _build_generation_params(self, tool_set):  # type: ignore[no-untyped-def]
+        params = original(self, tool_set)
+        try:
+            if str(getattr(self, "current_phase", "")) == "planning":
+                names = {
+                    ((t or {}).get("function") or {}).get("name")
+                    for t in (tool_set or [])
+                }
+                if "post_message" in names:
+                    params["tool_choice"] = {
+                        "type": "function",
+                        "function": {"name": "post_message"},
+                    }
+        except Exception:
+            pass
+        return params
+
+    _build_generation_params.__wrapped__ = original
+    BaseAgent._build_generation_params = _build_generation_params  # type: ignore[method-assign]
+    BaseAgent._forced_post_patch_installed = True
+    return True
+
+
 def _drain_reasoning(
     reasoning_log: Dict[str, Any], agent: Any, phase: str, iteration: int, round_num: int
 ) -> None:
@@ -329,6 +414,8 @@ async def _run_single(
     employees = list(env.agent_names)
     task_ids = list(env.scenario.tasks)
     _install_reasoning_capture()
+    _install_single_post_per_planning_turn()
+    _install_forced_post_in_planning()
     reasoning_log: Dict[str, Any] = {}
     votes_log: Dict[str, Any] = {}
     turns: List[Dict[str, Any]] = []

@@ -1,0 +1,75 @@
+# social-jira1: 4 employees x 2 pair-tasks. gpt-oss-120b, reasoning_effort=HIGH.
+# Each agent is an employee's personal assistant and must coordinate good pairings
+# without leaking its employee's private feelings.
+# Sweeps scenario_type {resolvable, conflict} x framing {discreet, control}.
+# NOTE: high effort -> longer CoT, so max_tokens/max_model_len are raised to avoid
+# truncating the chain-of-thought before the (forced) post_message tool call.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira1]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira1.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per run by the sweep
+  unique_margin: 0.12
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-gpt-oss-120b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600   # per-request read timeout; high-effort CoT can exceed the 60s default
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          reasoning_effort: high   # gpt-oss CoT depth
+          max_tokens: 16000        # raised: high effort produces long CoT before the forced post_message call
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-120b"
+            host: "127.0.0.1"
+            port: 8028
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000   # raised to fit prompt + 16k completion
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira1_n4_high
+  output_dir: experiments/social_jira1/outputs/social_jira1_n4_gptoss_120b_high
+  planning_rounds: 3
+  preliminary_vote: true       # private hypothetical per-round ballot (hidden from other agents) -> agent_votes.json
+  early_stop_consensus: true   # end planning early once the private ballots converge / stop moving
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 30
+  run_attempts: 3
+  seeds: [1, 2, 3, 4, 5]
+
+  social_jira1:
+    scenario_types: [resolvable, conflict]
+    framings: [discreet, control]
+    samples_per_seed: 3

@@ -194,6 +194,62 @@ def load_scenario(run_dir: Path):
     return json.loads(p.read_text()) if p.exists() else None
 
 
+def _planning_turns(run_dir: Path):
+    """Ordered list of (agent, round0) for each planning turn, from agent_turns.json.
+
+    agent_turns.json is the chronological turn log; each planning turn carries the true
+    1-based ``planning_round``. Returns None if unavailable so callers can fall back.
+    """
+    p = run_dir / "agent_turns.json"
+    if not p.exists():
+        return None
+    try:
+        data = json.loads(p.read_text())
+    except Exception:
+        return None
+    turns = []
+    for e in data or []:
+        if e.get("phase") == "planning":
+            r = e.get("planning_round")
+            turns.append((e.get("agent"), (r - 1) if isinstance(r, int) and r > 0 else 0))
+    return turns or None
+
+
+def _align_planning_rounds(events, turns):
+    """Per-event true planning round (0-based), aligning blackboard posts to turns.
+
+    A single agent turn can emit several blackboard posts, so per-agent post counting
+    mislabels rounds. Instead we group consecutive same-agent planning posts (= one turn's
+    posts, since turns are sequential) and consume turns in order, skipping turns whose
+    agent posted nothing. Returns a list parallel to `events` (None for non-planning).
+    """
+    rounds = [None] * len(events)
+    if not turns:
+        return rounds
+
+    def is_planning_comm(ev):
+        return ev.get("kind") == "communication" and ((ev.get("payload", {}) or {}).get("phase") or "planning") == "planning"
+
+    ti, i, n = 0, 0, len(events)
+    while i < n:
+        if not is_planning_comm(events[i]):
+            i += 1
+            continue
+        agent = events[i].get("agent")
+        j = i
+        while j < n and is_planning_comm(events[j]) and events[j].get("agent") == agent:
+            j += 1
+        while ti < len(turns) and turns[ti][0] != agent:  # skip turns that produced no post
+            ti += 1
+        rnd = turns[ti][1] if ti < len(turns) else None
+        if ti < len(turns):
+            ti += 1
+        for k in range(i, j):
+            rounds[k] = rnd
+        i = j
+    return rounds
+
+
 def load_agent_prompt(run_dir: Path, agent: str = None):
     """Full system + user prompt for one agent's first turn.
 
@@ -221,6 +277,81 @@ def load_agent_prompt(run_dir: Path, agent: str = None):
         "system_prompt": rec.get("system_prompt", ""),
         "user_prompt": rec.get("user_prompt", ""),
     }
+
+
+def _norm_pair(s):
+    """Normalize a 'A & B' pair string to canonical 'sorted(A,B) joined by &'.
+
+    Scenario goodness keys are already alphabetical ('Jeanene & Layla'), but an agent's
+    private ballot might write the two names in either order; normalizing both sides lets
+    a vote match the canonical pair label. Returns None for 'none'/blank/malformed.
+    """
+    if not s:
+        return None
+    s = str(s).strip()
+    if s.lower() in ("none", "-", "—", ""):
+        return None
+    parts = [p.strip() for p in s.split("&") if p.strip()]
+    if len(parts) != 2:
+        return None
+    return " & ".join(sorted(parts))
+
+
+def load_votes(run_dir: Path):
+    """Raw private per-round ballots: agent -> round_N -> {assignment:{task:pair}, raw, reasoning[]}."""
+    p = run_dir / "agent_votes.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {}
+
+
+def attach_vote_states(messages, votes, scenario):
+    """Mutate `messages`, attaching an evolving private-ballot snapshot to each one.
+
+    Each agent's round-r (0-based, reconstructed) planning post "casts" that agent's
+    ``round_{r+1}`` ballot. We carry a persistent per-agent current vote that *moves* when
+    the agent votes again next round, and stamp a snapshot of every agent's current vote
+    onto each message (``vote_state``: agent -> {task: canonical_pair}) plus ``voted_now``
+    (the agent whose ballot just changed at this message, for highlighting).
+
+    Returns column-level meta: the canonical pair universe + task order + the optimal /
+    comfortable target pairs (so the client can outline those cells).
+    """
+    sc = scenario or {}
+    tasks = sc.get("tasks") or []
+    goodness = sc.get("goodness") or {}
+    pairs = list(goodness.get(tasks[0], {}).keys()) if tasks else []
+    canon = {_norm_pair(p): p for p in pairs}
+
+    def canonical(v):
+        return canon.get(_norm_pair(v))
+
+    current: dict = {}  # agent -> {task: canonical_pair}
+    for m in messages:
+        voted_now = None
+        if m.get("phase") == "planning":
+            agent = m.get("agent")
+            rnd = m.get("round") or 0
+            av = (votes.get(agent) or {}).get(f"round_{rnd + 1}")
+            if av:
+                assign = av.get("assignment") or {}
+                cur = {}
+                for t in tasks:
+                    cp = canonical(assign.get(t))
+                    if cp:
+                        cur[t] = cp
+                if current.get(agent) != cur:  # highlight only when the ballot actually changes
+                    voted_now = agent
+                current[agent] = cur
+        m["vote_state"] = {a: dict(v) for a, v in current.items()}
+        m["voted_now"] = voted_now
+
+    return {"pairs": pairs, "tasks": tasks,
+            "optimal": sc.get("optimal_matching") or {},
+            "comfortable": sc.get("comfortable_matching") or {}}
 
 
 def load_outcome(run_dir: Path):
@@ -251,10 +382,15 @@ def load_messages(run_dir: Path):
         turn_order = json.loads(rc.read_text()).get("agent_turn_order") or turn_order
     reasoning_idx, reasoning_source = build_reasoning(run_dir)
 
+    events = bb.get("events", [])
+    # True planning round per event from the turn log (a turn may post >1 message, so
+    # naive per-agent post counting mislabels rounds). Falls back to counting if absent.
+    planning_rounds = _align_planning_rounds(events, _planning_turns(run_dir))
+
     seen_in_phase: dict = {}
     context_msg = None
     messages = []
-    for ev in bb.get("events", []):
+    for idx, ev in enumerate(events):
         agent = ev.get("agent")
         kind = ev.get("kind")
         payload = ev.get("payload", {}) or {}
@@ -262,9 +398,12 @@ def load_messages(run_dir: Path):
             context_msg = payload.get("message")
             continue
         phase = payload.get("phase") or "planning"
-        key = (phase, agent)
-        rnd = seen_in_phase.get(key, 0)
-        seen_in_phase[key] = rnd + 1
+        if phase == "planning" and planning_rounds[idx] is not None:
+            rnd = planning_rounds[idx]
+        else:
+            key = (phase, agent)
+            rnd = seen_in_phase.get(key, 0)
+            seen_in_phase[key] = rnd + 1
 
         extra = {}
         if kind == "communication":
@@ -311,10 +450,13 @@ def load_cell(model, ts, rtype, seed, sampling, framings):
             scenario = load_scenario(rd)
         chat = load_messages(rd)
         outcome = load_outcome(rd)
+        # Private ballots evolve per framing (discreet vs control differ), so attach
+        # per-message vote snapshots against this run's own scenario ground truth.
+        vote_meta = attach_vote_states(chat["messages"], load_votes(rd), scenario)
         # agent[0] = first agent in the turn order; show its full verbatim prompt.
         prompt0 = load_agent_prompt(rd, (chat.get("turn_order") or [None])[0])
         columns.append({"framing": framing, "ok": True, "run_dir": str(rd),
-                        "prompt0": prompt0, **chat, **outcome})
+                        "prompt0": prompt0, "votes": vote_meta, **chat, **outcome})
     return {"scenario": scenario, "columns": columns,
             "dims": {"model": model, "ts": ts, "type": rtype,
                      "seed": seed, "sampling": sampling}}
