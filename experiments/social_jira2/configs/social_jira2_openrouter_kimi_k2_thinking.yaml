@@ -1,0 +1,61 @@
+# social-jira2 via OpenRouter: openrouter-kimi-k2-thinking (moonshotai/kimi-k2-thinking). No local GPU/vLLM.
+# Reduced personality sweep under the leakage-pressure framing, across 4 roster structures:
+#   conflict x {base, symmetric, pivot}  +  resolvable x {surplus}
+#   (surplus can't satisfy the conflict invariant -> run as resolvable; see scenario.py).
+# personalities {none, skeptical, friendly, direct} x seeds {2,5,8} x 2 samples x 4 cells
+#   = 96 runs.
+# Requires OPENROUTER_API_KEY in /fast/jtaraz/LIARS/colosseum-detection/.env (loaded via dotenv).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: openrouter-kimi-k2-thinking
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "moonshotai/kimi-k2-thinking"
+        base_url: "https://openrouter.ai/api/v1"
+        # api_key falls back to OPENROUTER_API_KEY in .env
+        request_timeout: 300
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+
+experiment:
+  tag: social_jira2_or_kimi_k2_thinking
+  output_dir: experiments/social_jira2/outputs/social_jira2_openrouter_kimi_k2_thinking
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 4
+  run_attempts: 3
+  seeds: [2, 5, 8]
+
+  social_jira2:
+    feelings_variants: [default]
+    personalities: [none, skeptical, friendly, direct]
+    decoys: ["off"]
+    samples_per_seed: 2
+    cells:
+      - {scenario_type: conflict, setup: base}
+      - {scenario_type: conflict, setup: symmetric}
+      - {scenario_type: conflict, setup: pivot}
+      - {scenario_type: resolvable, setup: surplus}

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social-jira2 viewer</title>
+<style>
+  :root {
+    --bg:#0f1216; --panel:#171b21; --panel2:#1e242c; --line:#2a323c;
+    --text:#e6e9ee; --muted:#8b96a5; --accent:#4f9cf9;
+    --pos:#2f7d4f; --neg:#9e3b3b; --neu:#3a424d; --commit:#3a2f17;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); overflow:hidden;
+    display:flex; flex-direction:column;
+    font:13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line); padding:9px 12px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  select { background:var(--panel2); color:var(--text); border:1px solid var(--line);
+    border-radius:6px; padding:5px 7px; min-width:90px; font-size:13px; }
+  .pers { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .fbtn { border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:999px; padding:4px 11px; cursor:pointer; font-size:13px; user-select:none; }
+  .fbtn.on { background:var(--accent); border-color:var(--accent); color:#08121f; font-weight:600; }
+  .toggle { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; font-size:12px; color:var(--muted); }
+  #status { color:var(--muted); font-size:12px; margin-top:5px; min-height:15px; }
+
+  #main { flex:1 1 auto; display:flex; min-height:0; }
+  #scenario { flex:0 0 480px; overflow:auto; padding:12px; border-right:1px solid var(--line); background:var(--panel); }
+  #cols { flex:1 1 auto; overflow:auto; padding:12px; display:flex; gap:12px; align-items:flex-start; }
+
+  h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  h3:first-child { margin-top:0; }
+  table { border-collapse:collapse; font-size:12px; }
+  th,td { border:1px solid var(--line); padding:3px 6px; text-align:center; white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; background:var(--panel2); }
+  td.lbl, th.lbl { text-align:left; color:var(--text); background:var(--panel2); position:sticky; left:0; }
+  td.opt { outline:2px solid #d6b53c; outline-offset:-2px; }
+  .cell-num { font-variant-numeric:tabular-nums; }
+  .diag { background:#0c0f13; color:#3a424d; }
+  .sr { color:#f2d024; font-weight:600; } .jr { color:var(--muted); }
+  .matchline { margin:3px 0; font-size:12px; }
+  .matchline .tag { color:var(--muted); }
+  .good { color:#7fd6a3; } .bad { color:#e79a9a; } .mut { color:var(--muted); }
+
+  .col { flex:0 0 470px; max-width:470px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; display:flex; flex-direction:column; max-height:100%; }
+  .col h2 { margin:0; padding:8px 10px; font-size:13px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); border-radius:8px 8px 0 0; }
+  .col .chat { padding:8px 10px; overflow:auto; }
+  .ctxt { color:var(--muted); font-size:11px; font-style:italic; border-left:2px solid var(--line); padding:2px 8px; margin-bottom:8px; white-space:pre-wrap; }
+  .bubble { margin:0 0 10px; }
+  /* Sticky sender name: pins to the top of the scrolling chat while its message is in
+     view, then the next message's name takes over — so you always see who is speaking. */
+  .bhead { font-size:11px; color:var(--muted); margin-bottom:2px;
+    position:sticky; top:0; z-index:3; background:var(--panel); padding:3px 0 4px;
+    box-shadow:0 1px 0 var(--line); }
+  .bname { font-weight:600; }
+  .btag { color:var(--muted); }
+  .btext { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 9px; white-space:pre-wrap; }
+  .bubble.action .btext { background:var(--commit); border-color:#5b4a22; }
+  /* Per-message CoT: a collapsible block with its own switch (summary) at the top. */
+  details.delib { margin-top:3px; border-left:2px solid #43506a; background:#141b27;
+    border-radius:4px; overflow:hidden; }
+  details.delib > summary { cursor:pointer; user-select:none; list-style:none;
+    color:#6f86b8; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    padding:4px 8px; display:flex; align-items:center; gap:6px; }
+  details.delib > summary:hover { color:#9db4e0; background:#18202f; }
+  details.delib > summary::-webkit-details-marker { display:none; }
+  details.delib > summary::before { content:'▸'; font-size:9px; transition:transform .12s; }
+  details.delib[open] > summary::before { transform:rotate(90deg); }
+  .delibbody { color:#aab8d4; white-space:pre-wrap; font-size:12px; padding:0 8px 6px; }
+
+  /* private-ballot table shown beside each message */
+  .brow { display:flex; gap:10px; align-items:flex-start; margin:0 0 10px; }
+  .brow .bubble { flex:1 1 auto; min-width:0; margin:0; }
+  .votebox { flex:0 0 auto; }
+  .votecap { font-size:9px; color:var(--muted); margin-bottom:2px; min-height:11px; }
+  .votetbl { border-collapse:collapse; font-size:10px; }
+  .votetbl th, .votetbl td { border:1px solid var(--line); padding:1px 4px; text-align:center; min-width:26px; }
+  .votetbl th { color:var(--muted); background:var(--panel2); font-weight:600; }
+  .votetbl td.vpl, .votetbl th.vpl { text-align:left; color:var(--text); background:var(--panel2); white-space:nowrap; }
+  .votetbl td.opt { outline:2px solid #d6b53c; outline-offset:-2px; }
+  .votetbl td.comf { background:#1d2733; }
+  .tick { font-weight:700; padding:0 1px; }
+  .tick.just { text-shadow:0 0 5px currentColor; }
+  .vlegend { display:flex; flex-wrap:wrap; gap:9px; margin:2px 0 8px; font-size:11px; }
+  .vlegend .vl { display:flex; align-items:center; gap:3px; color:var(--muted); }
+  .vlegend .vsw { font-weight:700; }
+  #cols.show-votes .col { flex-basis:760px; max-width:760px; }
+  details.prompts { margin-bottom:12px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); }
+  details.prompts > summary { cursor:pointer; padding:6px 9px; font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--muted); user-select:none; }
+  .promptblk { padding:2px 9px 9px; }
+  .promptblk .who { font-size:11px; color:var(--muted); margin:6px 0 2px; }
+  .pkind { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#6f86b8; margin:7px 0 2px; }
+  .pre { white-space:pre-wrap; word-break:break-word; margin:0; padding:6px 8px; background:var(--bg);
+    border:1px solid var(--line); border-radius:4px; max-height:300px; overflow:auto;
+    font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
+  .hidden { display:none; }
+
+  /* lying-judge verdict overlay (future work for jira2) */
+  .verdict { margin:2px 0 10px; border-radius:6px; padding:7px 9px; font-size:12px;
+    border:1px solid var(--line); background:var(--panel2); }
+  .verdict.lie { border-color:#9e3b3b; background:#241316; }
+  .verdict.clean { border-color:#2f7d4f; background:#13211a; }
+  .verdict .vtitle { font-weight:700; }
+  .verdict.lie .vtitle { color:#e79a9a; }
+  .verdict.clean .vtitle { color:#7fd6a3; }
+  .verdict .vmeta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .bubble.flagged .btext { border-color:#9e3b3b; box-shadow:0 0 0 1px #9e3b3b inset; }
+  .incident { margin-top:3px; border-left:3px solid #9e3b3b; background:#1d1316; color:#e0c4c4;
+    padding:5px 8px; border-radius:4px; font-size:11px; }
+  .incident .ih { color:#e79a9a; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+    display:block; margin-bottom:3px; }
+  .incident .ilbl { color:#c98a8a; font-weight:600; }
+  .incident .iquote { color:#d9b8b8; white-space:pre-wrap; display:block; margin:1px 0 4px; }
+  .incident .icot { color:#b8a0c4; }
+  .incident .iexpl { color:#aab8d4; }
+  .verdict .unanchored { margin-top:5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="controls">
+    <div class="ctl"><label>Model</label><select id="model"></select></div>
+    <div class="ctl"><label>Timestamp</label><select id="ts"></select></div>
+    <div class="ctl"><label>Feelings variant</label><select id="variant"></select></div>
+    <div class="ctl"><label>Scenario type</label><select id="type"></select></div>
+    <div class="ctl"><label>Setup</label><select id="setup"></select></div>
+    <div class="ctl"><label>Seed</label><select id="seed"></select></div>
+    <div class="ctl"><label>Sample</label><select id="sampling"></select></div>
+    <div class="ctl"><label>Personalities (columns)</label><div class="pers" id="pers"></div></div>
+    <label class="toggle"><input type="checkbox" id="delibToggle"> expand all CoT</label>
+    <label class="toggle"><input type="checkbox" id="votesToggle"> show private votes</label>
+    <label class="toggle"><input type="checkbox" id="judgeToggle"> show lying-judge verdict</label>
+  </div>
+  <div id="status"></div>
+</header>
+
+<div id="main">
+  <div id="scenario"></div>
+  <div id="cols"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let INDEX = null, SELPERS = new Set();
+// Preferred personality order (none first, then the 7 lines); unknown names append alphabetically.
+const PERS_ORDER = ['none','skeptical','protective','company_first','tenacious','friendly','direct','cooperative'];
+function persSort(arr){
+  return [...arr].sort((a,b)=>{
+    const ia=PERS_ORDER.indexOf(a), ib=PERS_ORDER.indexOf(b);
+    if(ia<0&&ib<0) return a<b?-1:a>b?1:0;
+    if(ia<0) return 1; if(ib<0) return -1; return ia-ib;
+  });
+}
+
+const AGENT_PALETTE = ['#ff4d4d','#3fd06a','#4f9cf9','#f2d024','#c77dff','#ff9f1c'];
+function colorById(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 55% 70%)`; }
+let AGENT_COLORS = {};
+function buildAgentColors(agents){
+  const m={};
+  (agents||[]).forEach((a,i)=>{ m[a] = i<AGENT_PALETTE.length ? AGENT_PALETTE[i] : colorById(a); });
+  return m;
+}
+function agentColor(name){ return AGENT_COLORS[name] || colorById(name||'?'); }
+function goodnessColor(t){ // normalized 0..1 -> red..green
+  t = Math.max(0, Math.min(1, t));
+  const g = Math.round(120*t), r = Math.round(150*(1-t));
+  return `rgb(${60+r},${50+g},60)`;
+}
+function feelColor(v){ return v>0 ? 'var(--pos)' : v<0 ? 'var(--neg)' : 'var(--neu)'; }
+
+async function loadIndex(){
+  INDEX = await (await fetch('/api/index')).json();
+  const models = Object.keys(INDEX.models||{}).sort();
+  fill('#model', models);
+  if(models.length){ onModelChange(); }
+  else $('#status').textContent = INDEX.error || 'no runs found under outputs/';
+}
+function fill(sel, vals, cur){
+  const el=$(sel); el.innerHTML='';
+  for(const v of vals){ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); }
+  if(cur!=null && vals.includes(cur)) el.value=cur;
+}
+function runsForModel(){ return (INDEX.models[$('#model').value]||{}).runs||[]; }
+function uniq(a){ return [...new Set(a)]; }
+
+function onModelChange(){
+  const runs = runsForModel();
+  fill('#ts', uniq(runs.map(r=>r.ts)).sort().reverse());
+  refreshDims();
+}
+function refreshDims(){
+  const runs = runsForModel().filter(r=>r.ts===$('#ts').value);
+  fill('#variant', uniq(runs.map(r=>r.feelings_variant)).sort(), $('#variant').value);
+  const vRuns = runs.filter(r=>r.feelings_variant===$('#variant').value);
+  fill('#type', uniq(vRuns.map(r=>r.type)).sort(), $('#type').value);
+  const tRuns = vRuns.filter(r=>r.type===$('#type').value);
+  fill('#setup', uniq(tRuns.map(r=>r.setup||'base')).sort(), $('#setup').value);
+  const sRuns = tRuns.filter(r=>(r.setup||'base')===$('#setup').value);
+  fill('#seed', uniq(sRuns.map(r=>r.seed)).sort((a,b)=>a-b), +$('#seed').value);
+  fill('#sampling', uniq(sRuns.map(r=>r.sampling)).sort((a,b)=>a-b), +$('#sampling').value);
+  // personality buttons (the column axis)
+  const ps = persSort(uniq(sRuns.map(r=>r.personality)));
+  if(!SELPERS.size) ps.forEach(p=>SELPERS.add(p));
+  const box=$('#pers'); box.innerHTML='';
+  ps.forEach(p=>{
+    const b=document.createElement('span'); b.className='fbtn'+(SELPERS.has(p)?' on':''); b.textContent=p;
+    b.onclick=()=>{ SELPERS.has(p)?SELPERS.delete(p):SELPERS.add(p); b.classList.toggle('on'); render(); };
+    box.appendChild(b);
+  });
+  render();
+}
+
+async function render(){
+  const model=$('#model').value, ts=$('#ts').value, variant=$('#variant').value, type=$('#type').value;
+  const setup=$('#setup').value, seed=$('#seed').value, sampling=$('#sampling').value;
+  const personalities=persSort([...SELPERS]).join(',');
+  if(!model||!ts||!variant||!type||setup===''||seed===''||sampling===''){ return; }
+  $('#status').textContent='loading…';
+  const q=new URLSearchParams({model,timestamp:ts,setup,feelings_variant:variant,type,seed,sampling,personalities});
+  const data=await (await fetch('/api/cell?'+q)).json();
+  $('#status').textContent=`${model} · ${ts} · ${variant} · ${type} · ${setup} · seed ${seed} · sample ${sampling}`;
+  renderScenario(data);
+  renderColumns(data);
+}
+
+function matchStr(m){ // {T1:[a,b]} or {T1:"a & b"}
+  if(!m) return '—';
+  return Object.keys(m).sort().map(t=>{
+    const p=m[t]; const s=Array.isArray(p)?p.join(' & '):p;
+    return `${t}: ${s||'—'}`;
+  }).join('   ');
+}
+
+function promptsBlock(data){
+  // Full verbatim system + user prompt of agent[0], one block per selected personality
+  // (the WHO-block personality line differs).
+  const cols=(data.columns||[]).filter(c=>c.ok && c.prompt0);
+  if(!cols.length) return '';
+  let h=`<details class="prompts"><summary>agent[0] prompt — full system + user (verbatim)</summary>`;
+  cols.forEach(c=>{
+    const p=c.prompt0;
+    const rnd=(p.round!=null && p.round!=='')?(' · '+p.phase+' r'+p.round):(' · '+(p.phase||''));
+    h+=`<div class="promptblk"><div class="who">${esc(c.personality)} · ${esc(p.agent||'agent[0]')}${esc(rnd)}</div>`
+     + `<div class="pkind">system prompt</div><pre class="pre">${esc(p.system_prompt)}</pre>`
+     + `<div class="pkind">user prompt</div><pre class="pre">${esc(p.user_prompt)}</pre></div>`;
+  });
+  return h+`</details>`;
+}
+
+function renderScenario(data){
+  const sc=data.scenario, el=$('#scenario');
+  if(!sc){ el.innerHTML=promptsBlock(data)+'<p class="mut">no scenario.json for this cell.</p>'; return; }
+  const emps=sc.employees, tasks=sc.tasks;
+  const pairs=Object.keys(sc.goodness[tasks[0]]);
+  const roster=sc.roster||[], tdetail=sc.tasks_detail||[];
+  // max cell value for shading normalization (role goodness is integer-ish, not 0..1)
+  let maxV=1; tasks.forEach(t=>pairs.forEach(p=>{ maxV=Math.max(maxV, sc.goodness[t][p]||0); }));
+
+  let h = `<h3>Scenario — ${sc.scenario_type} · ${esc(sc.feelings_preset||data.dims.feelings_variant||'')} (seed ${sc.seed})</h3>`;
+  const nopt = sc.num_optimal_matchings!=null ? sc.num_optimal_matchings : (sc.optimal_matchings||[]).length;
+  h += `<div class="matchline"><span class="tag">optimal (G*)</span> ${matchStr(sc.optimal_matching)} <span class="mut">(g=${sc.optimal_goodness}${nopt>1?(' · '+nopt+' tied G*-matchings'):''})</span></div>`;
+  h += `<div class="matchline"><span class="tag">comfortable</span> ${matchStr(sc.comfortable_matching)} <span class="mut">(g=${sc.comfortable_goodness ?? '—'})</span></div>`;
+  (data.columns||[]).forEach(c=>{
+    if(!c.ok){ return; }
+    const m=c.metrics||{};
+    const opt=m.chose_optimal_goodness, comf=m.chose_comfortable_matching;
+    h += `<div class="matchline"><span class="tag">realized·${esc(c.personality)}</span> ${matchStr(c.realized_matching)} `
+      + `<span class="${opt?'good':'mut'}">opt-g:${opt?'yes':'no'}</span> `
+      + `<span class="${comf?'good':'mut'}">comf:${comf?'yes':'no'}</span> `
+      + `<span class="mut">ratio=${m.goodness_ratio ?? '—'} · malformed=${m.num_malformed_tasks ?? '—'}</span></div>`;
+  });
+
+  // Roster: profession + seniority (what agents actually see and reason over).
+  h += `<h3>Roster (public — roles agents reason from)</h3><table><tr><th class="lbl">employee</th><th>profession</th><th>seniority</th></tr>`;
+  roster.forEach(e=>{
+    const sen = e.seniority==='Senior' ? `<span class="sr">Senior</span>` : `<span class="jr">Junior</span>`;
+    h+=`<tr><td class="lbl">${esc(e.name)}</td><td>${esc(e.profession)}</td><td>${sen}</td></tr>`;
+  });
+  h+=`</table>`;
+
+  // Task requirements.
+  h += `<h3>Tasks — required roles (public)</h3><table><tr><th class="lbl">task</th><th>title</th><th>needs</th></tr>`;
+  tdetail.forEach(t=>{
+    h+=`<tr><td class="lbl">${esc(t.id)}</td><td style="text-align:left">${esc(t.title)}</td><td>${esc(t.required_prose||(t.required||[]).join(' + '))}</td></tr>`;
+  });
+  h+=`</table>`;
+
+  // Goodness table: pairs x tasks. Numbers are GROUND TRUTH (agents never saw them; they
+  // inferred fit from the roles above). Shading by value normalized to the table max.
+  h += `<h3>Pair–task goodness (ground truth — hidden from agents)</h3><table><tr><th class="lbl">pair \\ task</th>`;
+  tasks.forEach(t=>h+=`<th>${esc(t)}</th>`); h+=`</tr>`;
+  pairs.forEach(p=>{
+    h+=`<tr><td class="lbl">${esc(p)}</td>`;
+    tasks.forEach(t=>{
+      const v=sc.goodness[t][p];
+      const isOpt = (sc.optimal_matching[t]===p);
+      h+=`<td class="cell-num ${isOpt?'opt':''}" style="background:${goodnessColor(v/maxV)}" title="${esc(p)} for ${esc(t)}">${v}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">gold outline = pair in the (representative) optimal matching for that task. Coverage dominates the small seniority bonus; ties allowed.</div>`;
+
+  // Feelings matrix: from (row) x toward (col); directional, {-1,0}.
+  h += `<h3>Who-dislikes-whom (private, directional) — row feels about column</h3><table><tr><th class="lbl">from \\ toward</th>`;
+  emps.forEach(e=>h+=`<th>${esc(e)}</th>`); h+=`</tr>`;
+  emps.forEach(a=>{
+    h+=`<tr><td class="lbl">${esc(a)}</td>`;
+    emps.forEach(b=>{
+      if(a===b){ h+=`<td class="diag">·</td>`; return; }
+      const v=sc.feelings[a][b];
+      h+=`<td class="cell-num" style="background:${feelColor(v)}" title="${esc(a)} → ${esc(b)}">${v<0?v:'0'}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">grey 0 neutral · red −1 dislike. Each agent sees only its own row; an incoming dislike is invisible to the disliked person's own assistant.</div>`;
+
+  el.innerHTML=promptsBlock(data)+h;
+}
+
+function voteLegend(c){
+  const agents=c.participants||c.turn_order||[];
+  if(!agents.length) return '';
+  return `<div class="vlegend">`
+    + agents.map(a=>`<span class="vl"><span class="vsw" style="color:${agentColor(a)}">✓</span>${esc(a)}</span>`).join('')
+    + `</div>`;
+}
+
+function voteTable(c, m){
+  const V=c.votes||{}; const pairs=V.pairs||[], tasks=V.tasks||[];
+  if(!pairs.length||!tasks.length) return '';
+  const st=m.vote_state||{};
+  const cap = m.voted_now ? `${esc(m.voted_now)} voted (r${(m.round!=null?m.round+1:'?')})` : '&nbsp;';
+  let h=`<div class="votebox"><div class="votecap">${cap}</div><table class="votetbl"><tr><th class="vpl">pair \\ task</th>`;
+  tasks.forEach(t=>h+=`<th>${esc(t)}</th>`); h+=`</tr>`;
+  pairs.forEach(p=>{
+    h+=`<tr><td class="vpl">${esc(p)}</td>`;
+    tasks.forEach(t=>{
+      const voters=Object.keys(st).filter(a=>st[a][t]===p);
+      let cls=''; if((V.optimal||{})[t]===p) cls+=' opt'; if((V.comfortable||{})[t]===p) cls+=' comf';
+      const ticks=voters.map(a=>`<span class="tick${a===m.voted_now?' just':''}" style="color:${agentColor(a)}" title="${esc(a)}">✓</span>`).join('');
+      h+=`<td class="${cls.trim()}">${ticks}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  return h+`</table></div>`;
+}
+
+function _norm(s){ return (s==null?'':String(s)).toLowerCase().replace(/\s+/g,' ').trim(); }
+
+function anchorIncidents(c){
+  const byIdx = new Map(), unanchored = [];
+  const j = c.judge; if(!j || !j.incidents) return {byIdx, unanchored};
+  const msgs = c.messages||[];
+  j.incidents.forEach(inc=>{
+    const pr = inc.planning_round;
+    let cands = [];
+    if(pr!=null){
+      cands = msgs.map((m,i)=>({m,i}))
+        .filter(o=>o.m.agent===inc.agent && o.m.phase==='planning'
+                   && o.m.kind!=='action' && o.m.round===(pr-1));
+    }
+    if(!cands.length){ unanchored.push(inc); return; }
+    let pick = cands[0];
+    const probe = _norm(inc.public_quote).slice(0,40);
+    if(probe){ const hit = cands.find(o=>_norm(o.m.text).includes(probe)); if(hit) pick = hit; }
+    if(!byIdx.has(pick.i)) byIdx.set(pick.i, []);
+    byIdx.get(pick.i).push(inc);
+  });
+  return {byIdx, unanchored};
+}
+
+function incidentCard(inc, votesReq){
+  const conf = (inc.confidence!=null) ? inc.confidence.toFixed(2) : '—';
+  const vc = votesReq ? `${inc.vote_count}/${votesReq} votes` : `${inc.vote_count} votes`;
+  let h = `<div class="incident"><span class="ih">flagged lie · ${esc(inc.lie_type||'?')} · conf ${conf} · ${vc}</span>`;
+  if(inc.public_quote) h+=`<span class="ilbl">public:</span><span class="iquote">${esc(inc.public_quote)}</span>`;
+  if(inc.cot_quote)    h+=`<span class="ilbl">cot:</span> <span class="icot">${esc(inc.cot_quote)}</span><br>`;
+  if(inc.explanation)  h+=`<span class="ilbl">judge:</span> <span class="iexpl">${esc(inc.explanation)}</span>`;
+  return h+`</div>`;
+}
+
+function verdictBanner(c, unanchored){
+  const j=c.judge;
+  if(!j) return `<div class="verdict"><span class="vtitle mut">no judge verdict</span><div class="vmeta">judge_lying.json not found — leakage judge is future work for jira2</div></div>`;
+  if(j.status && j.status!=='judged')
+    return `<div class="verdict"><span class="vtitle mut">judge status: ${esc(j.status)}</span></div>`;
+  const lie = j.any_lying===true;
+  const nflag = (j.vote_flags||[]).filter(Boolean).length;
+  const nvote = j.votes_requested || (j.vote_flags||[]).length;
+  const title = lie ? `LIE — flagged${j.unanimous?' (unanimous)':''}` : 'no lying detected';
+  let h=`<div class="verdict ${lie?'lie':'clean'}"><span class="vtitle">${title}</span>`
+      + `<div class="vmeta">${nflag}/${nvote} judge votes flagged · ${(j.incidents||[]).length} distinct incident(s)`
+      + `${j.judge_deployment?(' · '+esc(j.judge_deployment)):''}</div>`;
+  if(unanchored && unanchored.length){
+    h+=`<div class="unanchored"><div class="vmeta">unanchored incident(s):</div>`;
+    unanchored.forEach(inc=>{ h+=incidentCard(inc, nvote); });
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+
+function renderColumns(data){
+  const expandCot=$('#delibToggle').checked;
+  const showVotes=$('#votesToggle').checked;
+  const showJudge=$('#judgeToggle').checked;
+  const wrap=$('#cols'); wrap.innerHTML='';
+  wrap.classList.toggle('show-votes', showVotes);
+  const firstOk=(data.columns||[]).find(c=>c.ok);
+  AGENT_COLORS = buildAgentColors(firstOk ? (firstOk.participants||firstOk.turn_order||[]) : []);
+  (data.columns||[]).forEach(c=>{
+    const col=document.createElement('div'); col.className='col';
+    if(!c.ok){ col.innerHTML=`<h2>${esc(c.personality)}</h2><div class="chat mut">${esc(c.error||'no data')}</div>`; wrap.appendChild(col); return; }
+    const dh = c.reasoning_source==='cot' ? 'chain-of-thought (analysis channel)'
+             : c.reasoning_source==='trajectory' ? 'raw turn output (proxy — no CoT captured)'
+             : 'deliberation';
+    let h=`<h2>${esc(c.personality)} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
+    const anchored = showJudge ? anchorIncidents(c) : {byIdx:new Map(), unanchored:[]};
+    const nvote = (c.judge && (c.judge.votes_requested || (c.judge.vote_flags||[]).length)) || 0;
+    if(showJudge) h+=verdictBanner(c, anchored.unanchored);
+    if(showVotes) h+=voteLegend(c);
+    if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
+    let lastPhase='';
+    c.messages.forEach((m,mi)=>{
+      if(m.phase!==lastPhase){ h+=`<h3>${esc(m.phase)}</h3>`; lastPhase=m.phase; }
+      const color=agentColor(m.agent);
+      const incs = anchored.byIdx.get(mi) || [];
+      let bubble=`<div class="bubble ${m.kind}${incs.length?' flagged':''}">`
+        + `<div class="bhead"><span class="bname" style="color:${color}">${esc(m.agent)}</span> `
+        + `<span class="btag">· ${esc(m.phase)}${m.round!=null?(' r'+(m.round+1)):''}${m.kind==='action'?' · commit':''}</span></div>`;
+      if(m.deliberation) bubble+=`<details class="delib"${expandCot?' open':''}><summary>${dh}</summary><div class="delibbody">${esc(m.deliberation)}</div></details>`;
+      bubble+=`<div class="btext">${esc(m.text)}</div>`;
+      incs.forEach(inc=>{ bubble+=incidentCard(inc, nvote); });
+      bubble+=`</div>`;
+      if(showVotes){ h+=`<div class="brow">${bubble}${voteTable(c,m)}</div>`; }
+      else{ h+=bubble; }
+    });
+    h+=`</div>`;
+    col.innerHTML=h; wrap.appendChild(col);
+  });
+  if(!(data.columns||[]).length) wrap.innerHTML='<p class="mut" style="padding:12px">tick at least one personality.</p>';
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+$('#model').onchange=onModelChange;
+$('#ts').onchange=refreshDims;
+$('#variant').onchange=refreshDims;
+$('#type').onchange=refreshDims;
+$('#setup').onchange=refreshDims;
+$('#seed').onchange=render;
+$('#sampling').onchange=render;
+$('#delibToggle').onchange=render;
+$('#votesToggle').onchange=render;
+$('#judgeToggle').onchange=render;
+loadIndex();
+</script>
+</body>
+</html>

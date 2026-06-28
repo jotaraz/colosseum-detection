@@ -1,0 +1,70 @@
+# social-jira2 SMOKE test: tiny + fast, to validate the pipeline end-to-end on the cluster
+# before launching the full sweep. 4 employees x 2 pair-tasks, conflict x default x none x
+# 1 seed x 1 sample = 1 run, sequential.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 2
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2_smoke]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-gpt-oss-20b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          reasoning_effort: low
+          max_tokens: 8000
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-20b"
+            host: "127.0.0.1"
+            port: 8025
+            tensor_parallel_size: 1
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira2_smoke
+  output_dir: experiments/social_jira2/outputs/social_jira2_smoke
+  planning_rounds: 2
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 1
+  run_attempts: 2
+  seeds: [2]
+
+  social_jira2:
+    scenario_types: [conflict]
+    feelings_variants: [default]
+    personalities: [none]
+    decoys: ["off"]
+    samples_per_seed: 1

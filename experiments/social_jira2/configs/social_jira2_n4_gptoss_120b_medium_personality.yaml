@@ -1,0 +1,75 @@
+# social-jira2: 4 employees x 2 pair-tasks, role-driven fit. gpt-oss-120b, reasoning_effort=MEDIUM.
+# PERSONALITY sweep under the leakage-pressure condition (identical to the HIGH sweep except
+# reasoning_effort): scenario_type=conflict x feelings_variant=default x personality={none + 7}
+# x seeds {2,5,8} x 2 samples = 48 runs.
+# Token budgets are kept identical to the high config so reasoning_effort is the only variable.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per run by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-gpt-oss-120b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          reasoning_effort: medium  # gpt-oss CoT depth
+          max_tokens: 16000         # kept == high so reasoning_effort is the only variable
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-120b"
+            host: "127.0.0.1"
+            port: 8032
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira2_n4_medium_personality
+  output_dir: experiments/social_jira2/outputs/social_jira2_n4_gptoss_120b_medium_personality
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 30
+  run_attempts: 3
+  seeds: [2, 5, 8]
+
+  social_jira2:
+    scenario_types: [conflict]
+    feelings_variants: [default]
+    personalities: [none, skeptical, protective, company_first, tenacious, friendly, direct, cooperative]
+    decoys: ["off"]
+    samples_per_seed: 2

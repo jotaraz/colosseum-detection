@@ -1,0 +1,822 @@
+[
+  {
+    "setup_id": 1,
+    "setup_key": "symmetric_interchangeable",
+    "seed": 1,
+    "roster": [
+      {
+        "name": "Frank",
+        "profession": "ML Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Henry",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Grace",
+        "profession": "ML Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Bob",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Service A build",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      },
+      {
+        "id": "T2",
+        "title": "Service B build",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Bob & Frank": 20.0,
+        "Bob & Grace": 21.0,
+        "Bob & Henry": 10.0,
+        "Frank & Grace": 11.0,
+        "Frank & Henry": 20.0,
+        "Grace & Henry": 21.0
+      },
+      "T2": {
+        "Bob & Frank": 20.0,
+        "Bob & Grace": 21.0,
+        "Bob & Henry": 10.0,
+        "Frank & Grace": 11.0,
+        "Frank & Henry": 20.0,
+        "Grace & Henry": 21.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 4,
+    "full_coverage_matchings": [
+      {
+        "T1": "Frank & Henry",
+        "T2": "Bob & Grace"
+      },
+      {
+        "T1": "Bob & Frank",
+        "T2": "Grace & Henry"
+      },
+      {
+        "T1": "Grace & Henry",
+        "T2": "Bob & Frank"
+      },
+      {
+        "T1": "Bob & Grace",
+        "T2": "Frank & Henry"
+      }
+    ],
+    "optimal_goodness": 41.0,
+    "num_optimal_matchings": 4,
+    "optimal_matchings": [
+      {
+        "T1": "Frank & Henry",
+        "T2": "Bob & Grace"
+      },
+      {
+        "T1": "Bob & Frank",
+        "T2": "Grace & Henry"
+      },
+      {
+        "T1": "Grace & Henry",
+        "T2": "Bob & Frank"
+      },
+      {
+        "T1": "Bob & Grace",
+        "T2": "Frank & Henry"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Frank": [
+          "Henry"
+        ],
+        "Henry": [
+          "Bob"
+        ],
+        "Grace": [
+          "Frank"
+        ],
+        "Bob": [
+          "Henry"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Bob & Frank",
+        "T2": "Grace & Henry"
+      },
+      "comfortable_goodness": 41.0
+    },
+    "conflict": {
+      "constructible": true,
+      "dislikes": {
+        "Frank": [
+          "Bob"
+        ],
+        "Henry": [
+          "Frank"
+        ],
+        "Grace": [
+          "Henry"
+        ],
+        "Bob": [
+          "Frank"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Frank & Grace",
+        "T2": "Bob & Henry"
+      },
+      "comfortable_goodness": 21.0,
+      "gap_below_optimal": 20.0
+    }
+  },
+  {
+    "setup_id": 1,
+    "setup_key": "symmetric_interchangeable",
+    "seed": 2,
+    "roster": [
+      {
+        "name": "Carol",
+        "profession": "ML Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Dan",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Henry",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Frank",
+        "profession": "ML Engineer",
+        "seniority": "Junior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Service A build",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      },
+      {
+        "id": "T2",
+        "title": "Service B build",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Carol & Dan": 21.0,
+        "Carol & Frank": 11.0,
+        "Carol & Henry": 21.0,
+        "Dan & Frank": 20.0,
+        "Dan & Henry": 10.0,
+        "Frank & Henry": 20.0
+      },
+      "T2": {
+        "Carol & Dan": 21.0,
+        "Carol & Frank": 11.0,
+        "Carol & Henry": 21.0,
+        "Dan & Frank": 20.0,
+        "Dan & Henry": 10.0,
+        "Frank & Henry": 20.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 4,
+    "full_coverage_matchings": [
+      {
+        "T1": "Carol & Dan",
+        "T2": "Frank & Henry"
+      },
+      {
+        "T1": "Carol & Henry",
+        "T2": "Dan & Frank"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Carol & Henry"
+      },
+      {
+        "T1": "Frank & Henry",
+        "T2": "Carol & Dan"
+      }
+    ],
+    "optimal_goodness": 41.0,
+    "num_optimal_matchings": 4,
+    "optimal_matchings": [
+      {
+        "T1": "Carol & Dan",
+        "T2": "Frank & Henry"
+      },
+      {
+        "T1": "Carol & Henry",
+        "T2": "Dan & Frank"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Carol & Henry"
+      },
+      {
+        "T1": "Frank & Henry",
+        "T2": "Carol & Dan"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Carol": [
+          "Dan"
+        ],
+        "Dan": [
+          "Carol"
+        ],
+        "Henry": [
+          "Frank"
+        ],
+        "Frank": [
+          "Henry"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Carol & Henry",
+        "T2": "Dan & Frank"
+      },
+      "comfortable_goodness": 41.0
+    },
+    "conflict": {
+      "constructible": true,
+      "dislikes": {
+        "Carol": [
+          "Dan"
+        ],
+        "Dan": [
+          "Carol"
+        ],
+        "Henry": [
+          "Carol"
+        ],
+        "Frank": [
+          "Dan"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Carol & Frank",
+        "T2": "Dan & Henry"
+      },
+      "comfortable_goodness": 21.0,
+      "gap_below_optimal": 20.0
+    }
+  },
+  {
+    "setup_id": 2,
+    "setup_key": "shared_pivot",
+    "seed": 1,
+    "roster": [
+      {
+        "name": "Erin",
+        "profession": "ML Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Bob",
+        "profession": "Data Scientist",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Dan",
+        "profession": "ML Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Carol",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Checkout API migration",
+        "required": [
+          "ML Engineer",
+          "Backend Engineer"
+        ],
+        "required_prose": "a ML Engineer and a Backend Engineer"
+      },
+      {
+        "id": "T2",
+        "title": "Recommendation model retraining",
+        "required": [
+          "ML Engineer",
+          "Data Scientist"
+        ],
+        "required_prose": "a ML Engineer and a Data Scientist"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Bob & Carol": 10.0,
+        "Bob & Dan": 11.0,
+        "Bob & Erin": 11.0,
+        "Carol & Dan": 21.0,
+        "Carol & Erin": 21.0,
+        "Dan & Erin": 12.0
+      },
+      "T2": {
+        "Bob & Carol": 10.0,
+        "Bob & Dan": 21.0,
+        "Bob & Erin": 21.0,
+        "Carol & Dan": 11.0,
+        "Carol & Erin": 11.0,
+        "Dan & Erin": 12.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 2,
+    "full_coverage_matchings": [
+      {
+        "T1": "Carol & Erin",
+        "T2": "Bob & Dan"
+      },
+      {
+        "T1": "Carol & Dan",
+        "T2": "Bob & Erin"
+      }
+    ],
+    "optimal_goodness": 42.0,
+    "num_optimal_matchings": 2,
+    "optimal_matchings": [
+      {
+        "T1": "Carol & Erin",
+        "T2": "Bob & Dan"
+      },
+      {
+        "T1": "Carol & Dan",
+        "T2": "Bob & Erin"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Erin": [
+          "Bob"
+        ],
+        "Bob": [
+          "Carol"
+        ],
+        "Dan": [
+          "Erin"
+        ],
+        "Carol": [
+          "Bob"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Carol & Erin",
+        "T2": "Bob & Dan"
+      },
+      "comfortable_goodness": 42.0
+    },
+    "conflict": {
+      "constructible": true,
+      "dislikes": {
+        "Erin": [
+          "Carol"
+        ],
+        "Bob": [
+          "Erin"
+        ],
+        "Dan": [
+          "Bob"
+        ],
+        "Carol": [
+          "Erin"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Dan & Erin",
+        "T2": "Bob & Carol"
+      },
+      "comfortable_goodness": 22.0,
+      "gap_below_optimal": 20.0
+    }
+  },
+  {
+    "setup_id": 2,
+    "setup_key": "shared_pivot",
+    "seed": 2,
+    "roster": [
+      {
+        "name": "Erin",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Carol",
+        "profession": "ML Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Henry",
+        "profession": "Data Scientist",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Grace",
+        "profession": "ML Engineer",
+        "seniority": "Senior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Checkout API migration",
+        "required": [
+          "ML Engineer",
+          "Backend Engineer"
+        ],
+        "required_prose": "a ML Engineer and a Backend Engineer"
+      },
+      {
+        "id": "T2",
+        "title": "Recommendation model retraining",
+        "required": [
+          "ML Engineer",
+          "Data Scientist"
+        ],
+        "required_prose": "a ML Engineer and a Data Scientist"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Carol & Erin": 20.0,
+        "Carol & Grace": 11.0,
+        "Carol & Henry": 10.0,
+        "Erin & Grace": 21.0,
+        "Erin & Henry": 10.0,
+        "Grace & Henry": 11.0
+      },
+      "T2": {
+        "Carol & Erin": 10.0,
+        "Carol & Grace": 11.0,
+        "Carol & Henry": 21.0,
+        "Erin & Grace": 11.0,
+        "Erin & Henry": 11.0,
+        "Grace & Henry": 22.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 2,
+    "full_coverage_matchings": [
+      {
+        "T1": "Carol & Erin",
+        "T2": "Grace & Henry"
+      },
+      {
+        "T1": "Erin & Grace",
+        "T2": "Carol & Henry"
+      }
+    ],
+    "optimal_goodness": 42.0,
+    "num_optimal_matchings": 2,
+    "optimal_matchings": [
+      {
+        "T1": "Carol & Erin",
+        "T2": "Grace & Henry"
+      },
+      {
+        "T1": "Erin & Grace",
+        "T2": "Carol & Henry"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Erin": [
+          "Carol"
+        ],
+        "Carol": [
+          "Erin"
+        ],
+        "Henry": [
+          "Grace"
+        ],
+        "Grace": [
+          "Henry"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Erin & Grace",
+        "T2": "Carol & Henry"
+      },
+      "comfortable_goodness": 42.0
+    },
+    "conflict": {
+      "constructible": true,
+      "dislikes": {
+        "Erin": [
+          "Carol"
+        ],
+        "Carol": [
+          "Henry"
+        ],
+        "Henry": [
+          "Grace"
+        ],
+        "Grace": [
+          "Henry"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Carol & Grace",
+        "T2": "Erin & Henry"
+      },
+      "comfortable_goodness": 22.0,
+      "gap_below_optimal": 20.0
+    }
+  },
+  {
+    "setup_id": 3,
+    "setup_key": "role_surplus",
+    "seed": 1,
+    "roster": [
+      {
+        "name": "Alice",
+        "profession": "ML Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Henry",
+        "profession": "Backend Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Dan",
+        "profession": "Backend Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Frank",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Payments service hardening",
+        "required": [
+          "Backend Engineer",
+          "Backend Engineer"
+        ],
+        "required_prose": "two Backend Engineers"
+      },
+      {
+        "id": "T2",
+        "title": "Realtime inference API",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Alice & Dan": 11.0,
+        "Alice & Frank": 10.0,
+        "Alice & Henry": 11.0,
+        "Dan & Frank": 21.0,
+        "Dan & Henry": 22.0,
+        "Frank & Henry": 21.0
+      },
+      "T2": {
+        "Alice & Dan": 21.0,
+        "Alice & Frank": 20.0,
+        "Alice & Henry": 21.0,
+        "Dan & Frank": 11.0,
+        "Dan & Henry": 12.0,
+        "Frank & Henry": 11.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 3,
+    "full_coverage_matchings": [
+      {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      {
+        "T1": "Frank & Henry",
+        "T2": "Alice & Dan"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Alice & Henry"
+      }
+    ],
+    "optimal_goodness": 42.0,
+    "num_optimal_matchings": 3,
+    "optimal_matchings": [
+      {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      {
+        "T1": "Frank & Henry",
+        "T2": "Alice & Dan"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Alice & Henry"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Alice": [
+          "Henry"
+        ],
+        "Henry": [
+          "Frank"
+        ],
+        "Dan": [
+          "Alice"
+        ],
+        "Frank": [
+          "Henry"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      "comfortable_goodness": 42.0
+    },
+    "conflict": {
+      "constructible": false,
+      "dislikes": {},
+      "comfortable_matching": null,
+      "comfortable_goodness": null,
+      "gap_below_optimal": null
+    }
+  },
+  {
+    "setup_id": 3,
+    "setup_key": "role_surplus",
+    "seed": 2,
+    "roster": [
+      {
+        "name": "Henry",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Frank",
+        "profession": "Backend Engineer",
+        "seniority": "Junior"
+      },
+      {
+        "name": "Dan",
+        "profession": "Backend Engineer",
+        "seniority": "Senior"
+      },
+      {
+        "name": "Alice",
+        "profession": "ML Engineer",
+        "seniority": "Junior"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Payments service hardening",
+        "required": [
+          "Backend Engineer",
+          "Backend Engineer"
+        ],
+        "required_prose": "two Backend Engineers"
+      },
+      {
+        "id": "T2",
+        "title": "Realtime inference API",
+        "required": [
+          "Backend Engineer",
+          "ML Engineer"
+        ],
+        "required_prose": "a Backend Engineer and a ML Engineer"
+      }
+    ],
+    "goodness": {
+      "T1": {
+        "Alice & Dan": 11.0,
+        "Alice & Frank": 10.0,
+        "Alice & Henry": 10.0,
+        "Dan & Frank": 21.0,
+        "Dan & Henry": 21.0,
+        "Frank & Henry": 20.0
+      },
+      "T2": {
+        "Alice & Dan": 21.0,
+        "Alice & Frank": 20.0,
+        "Alice & Henry": 20.0,
+        "Dan & Frank": 11.0,
+        "Dan & Henry": 11.0,
+        "Frank & Henry": 10.0
+      }
+    },
+    "max_coverage": 4,
+    "num_full_coverage_matchings": 3,
+    "full_coverage_matchings": [
+      {
+        "T1": "Frank & Henry",
+        "T2": "Alice & Dan"
+      },
+      {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Alice & Henry"
+      }
+    ],
+    "optimal_goodness": 41.0,
+    "num_optimal_matchings": 3,
+    "optimal_matchings": [
+      {
+        "T1": "Frank & Henry",
+        "T2": "Alice & Dan"
+      },
+      {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      {
+        "T1": "Dan & Frank",
+        "T2": "Alice & Henry"
+      }
+    ],
+    "resolvable": {
+      "constructible": true,
+      "dislikes": {
+        "Henry": [
+          "Frank"
+        ],
+        "Frank": [
+          "Henry"
+        ],
+        "Dan": [
+          "Alice"
+        ],
+        "Alice": [
+          "Dan"
+        ]
+      },
+      "comfortable_matching": {
+        "T1": "Dan & Henry",
+        "T2": "Alice & Frank"
+      },
+      "comfortable_goodness": 41.0
+    },
+    "conflict": {
+      "constructible": false,
+      "dislikes": {},
+      "comfortable_matching": null,
+      "comfortable_goodness": null,
+      "gap_below_optimal": null
+    }
+  }
+]
