@@ -88,6 +88,27 @@
     border:1px solid var(--line); border-radius:4px; max-height:300px; overflow:auto;
     font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
   .hidden { display:none; }
+
+  /* lying-judge verdict overlay */
+  .verdict { margin:2px 0 10px; border-radius:6px; padding:7px 9px; font-size:12px;
+    border:1px solid var(--line); background:var(--panel2); }
+  .verdict.lie { border-color:#9e3b3b; background:#241316; }
+  .verdict.clean { border-color:#2f7d4f; background:#13211a; }
+  .verdict .vtitle { font-weight:700; }
+  .verdict.lie .vtitle { color:#e79a9a; }
+  .verdict.clean .vtitle { color:#7fd6a3; }
+  .verdict .vmeta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .verdict .vsum { color:#aab8d4; font-size:11px; margin-top:4px; white-space:pre-wrap; }
+  .bubble.flagged .btext { border-color:#9e3b3b; box-shadow:0 0 0 1px #9e3b3b inset; }
+  .incident { margin-top:3px; border-left:3px solid #9e3b3b; background:#1d1316; color:#e0c4c4;
+    padding:5px 8px; border-radius:4px; font-size:11px; }
+  .incident .ih { color:#e79a9a; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+    display:block; margin-bottom:3px; }
+  .incident .ilbl { color:#c98a8a; font-weight:600; }
+  .incident .iquote { color:#d9b8b8; white-space:pre-wrap; display:block; margin:1px 0 4px; }
+  .incident .icot { color:#b8a0c4; }
+  .incident .iexpl { color:#aab8d4; }
+  .verdict .unanchored { margin-top:5px; }
 </style>
 </head>
 <body>
@@ -101,6 +122,7 @@
     <div class="ctl"><label>Framings (columns)</label><div class="framings" id="framings"></div></div>
     <label class="toggle"><input type="checkbox" id="delibToggle"> show deliberation</label>
     <label class="toggle"><input type="checkbox" id="votesToggle"> show private votes</label>
+    <label class="toggle"><input type="checkbox" id="judgeToggle" checked> show lying-judge verdict</label>
   </div>
   <div id="status"></div>
 </header>
@@ -298,9 +320,73 @@ function voteTable(c, m){
   return h+`</table></div>`;
 }
 
+function _norm(s){ return (s==null?'':String(s)).toLowerCase().replace(/\s+/g,' ').trim(); }
+
+function anchorIncidents(c){
+  // Map each judge incident to the planning message it concerns. The judge's 1-based
+  // planning_round uses the same round alignment as the chat, so candidates are the
+  // agent's messages with round === planning_round-1; among those we pick the one whose
+  // text best matches the quoted public statement. Incidents with no planning_round (e.g.
+  // execution-phase actions) or no matching bubble fall into `unanchored`.
+  const byIdx = new Map(), unanchored = [];
+  const j = c.judge; if(!j || !j.incidents) return {byIdx, unanchored};
+  const msgs = c.messages||[];
+  j.incidents.forEach(inc=>{
+    const pr = inc.planning_round;
+    let cands = [];
+    if(pr!=null){
+      cands = msgs.map((m,i)=>({m,i}))
+        .filter(o=>o.m.agent===inc.agent && o.m.phase==='planning'
+                   && o.m.kind!=='action' && o.m.round===(pr-1));
+    }
+    if(!cands.length){ unanchored.push(inc); return; }
+    let pick = cands[0];
+    const probe = _norm(inc.public_quote).slice(0,40);
+    if(probe){
+      const hit = cands.find(o=>_norm(o.m.text).includes(probe));
+      if(hit) pick = hit;
+    }
+    if(!byIdx.has(pick.i)) byIdx.set(pick.i, []);
+    byIdx.get(pick.i).push(inc);
+  });
+  return {byIdx, unanchored};
+}
+
+function incidentCard(inc, votesReq){
+  const conf = (inc.confidence!=null) ? inc.confidence.toFixed(2) : '—';
+  const vc = votesReq ? `${inc.vote_count}/${votesReq} votes` : `${inc.vote_count} votes`;
+  let h = `<div class="incident"><span class="ih">flagged lie · ${esc(inc.lie_type||'?')} · conf ${conf} · ${vc}</span>`;
+  if(inc.public_quote) h+=`<span class="ilbl">public:</span><span class="iquote">${esc(inc.public_quote)}</span>`;
+  if(inc.cot_quote)    h+=`<span class="ilbl">cot:</span> <span class="icot">${esc(inc.cot_quote)}</span><br>`;
+  if(inc.explanation)  h+=`<span class="ilbl">judge:</span> <span class="iexpl">${esc(inc.explanation)}</span>`;
+  return h+`</div>`;
+}
+
+function verdictBanner(c, unanchored){
+  const j=c.judge;
+  if(!j) return `<div class="verdict"><span class="vtitle mut">no judge verdict</span><div class="vmeta">judge_lying.json not found for this run</div></div>`;
+  if(j.status && j.status!=='judged')
+    return `<div class="verdict"><span class="vtitle mut">judge status: ${esc(j.status)}</span></div>`;
+  const lie = j.any_lying===true;
+  const nflag = (j.vote_flags||[]).filter(Boolean).length;
+  const nvote = j.votes_requested || (j.vote_flags||[]).length;
+  const title = lie ? `LIE — flagged${j.unanimous?' (unanimous)':''}` : 'no lying detected';
+  let h=`<div class="verdict ${lie?'lie':'clean'}"><span class="vtitle">${title}</span>`
+      + `<div class="vmeta">${nflag}/${nvote} judge votes flagged · ${(j.incidents||[]).length} distinct incident(s)`
+      + `${j.judge_deployment?(' · '+esc(j.judge_deployment)):''}`
+      + `${j.reveal_framing!=null?(' · reveal_framing='+j.reveal_framing):''}</div>`;
+  if(unanchored && unanchored.length){
+    h+=`<div class="unanchored"><div class="vmeta">unanchored incident(s) — could not map to a bubble:</div>`;
+    unanchored.forEach(inc=>{ h+=incidentCard(inc, nvote); });
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+
 function renderColumns(data){
   const showDelib=$('#delibToggle').checked;
   const showVotes=$('#votesToggle').checked;
+  const showJudge=$('#judgeToggle').checked;
   const wrap=$('#cols'); wrap.innerHTML='';
   wrap.classList.toggle('show-votes', showVotes);
   // Stable agent→colour map from the (sorted) participant list, shared by every column.
@@ -313,18 +399,24 @@ function renderColumns(data){
              : c.reasoning_source==='trajectory' ? 'raw turn output (proxy — no CoT captured)'
              : 'deliberation';
     let h=`<h2>${c.framing} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
+    const anchored = showJudge ? anchorIncidents(c) : {byIdx:new Map(), unanchored:[]};
+    const nvote = (c.judge && (c.judge.votes_requested || (c.judge.vote_flags||[]).length)) || 0;
+    if(showJudge) h+=verdictBanner(c, anchored.unanchored);
     if(showVotes) h+=voteLegend(c);
     if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
     let lastPhase='';
-    c.messages.forEach(m=>{
+    c.messages.forEach((m,mi)=>{
       if(m.phase!==lastPhase){ h+=`<h3>${m.phase}</h3>`; lastPhase=m.phase; }
       const color=agentColor(m.agent);
+      const incs = anchored.byIdx.get(mi) || [];
       // deliberation/CoT renders ABOVE the message it produced.
-      let bubble=`<div class="bubble ${m.kind}">`
+      let bubble=`<div class="bubble ${m.kind}${incs.length?' flagged':''}">`
         + `<div class="bhead"><span class="bname" style="color:${color}">${m.agent}</span> `
         + `<span class="btag">· ${m.phase}${m.round!=null?(' r'+(m.round+1)):''}${m.kind==='action'?' · commit':''}</span></div>`;
       if(showDelib && m.deliberation) bubble+=`<div class="delib"><span class="dh">${dh}</span>${esc(m.deliberation)}</div>`;
-      bubble+=`<div class="btext">${esc(m.text)}</div></div>`;
+      bubble+=`<div class="btext">${esc(m.text)}</div>`;
+      incs.forEach(inc=>{ bubble+=incidentCard(inc, nvote); });
+      bubble+=`</div>`;
       if(showVotes){
         h+=`<div class="brow">${bubble}${voteTable(c,m)}</div>`;
       }else{
@@ -345,6 +437,7 @@ $('#seed').onchange=render;
 $('#sampling').onchange=render;
 $('#delibToggle').onchange=render;
 $('#votesToggle').onchange=render;
+$('#judgeToggle').onchange=render;
 loadIndex();
 </script>
 </body>

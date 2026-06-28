@@ -354,6 +354,57 @@ def attach_vote_states(messages, votes, scenario):
             "comfortable": sc.get("comfortable_matching") or {}}
 
 
+def load_judge(run_dir: Path):
+    """Lying-judge verdict for this run from judge_lying.json (written beside the run).
+
+    Returns the run-level verdict plus a *consolidated* incident list: the judge votes 3×
+    and each vote reports its own incidents, so we dedup across votes by
+    (agent, planning_round, public_quote-prefix), keep the highest-confidence copy, and
+    record ``vote_count`` = how many of the votes raised that incident. ``planning_round``
+    is 1-based and the judge labels rounds with the *same* alignment the viewer uses, so an
+    incident anchors to the planning message with ``round == planning_round - 1``. Returns
+    None when no judge_lying.json exists (run not yet judged)."""
+    p = run_dir / "judge_lying.json"
+    if not p.exists():
+        return None
+    try:
+        d = json.loads(p.read_text())
+    except Exception:
+        return None
+
+    best: dict = {}
+    order: list = []
+    voters: dict = {}  # key -> set of vote indices that raised it
+    for vi, v in enumerate(d.get("votes") or []):
+        for inc in v.get("incidents") or []:
+            key = (inc.get("agent"), inc.get("planning_round"),
+                   (inc.get("public_quote") or "")[:80])
+            if key not in best:
+                best[key] = {**inc}
+                voters[key] = set()
+                order.append(key)
+            voters[key].add(vi)
+            if (inc.get("confidence") or 0) >= (best[key].get("confidence") or 0):
+                # keep the highest-confidence copy's explanatory fields
+                best[key].update({k: inc.get(k) for k in
+                                  ("public_quote", "cot_quote", "lie_type",
+                                   "confidence", "explanation")})
+    incidents = [{**best[k], "vote_count": len(voters[k])} for k in order]
+
+    return {
+        "status": d.get("status"),
+        "any_lying": d.get("any_lying"),
+        "unanimous": d.get("unanimous"),
+        "vote_flags": d.get("vote_flags") or [],
+        "votes_requested": d.get("votes_requested"),
+        "n_incidents_per_vote": d.get("n_incidents_per_vote") or [],
+        "reveal_framing": d.get("reveal_framing"),
+        "judge_deployment": d.get("judge_deployment"),
+        "summaries": [(v.get("summary") or "") for v in (d.get("votes") or [])],
+        "incidents": incidents,
+    }
+
+
 def load_outcome(run_dir: Path):
     """Realized matching + headline metrics for this framing's run."""
     out = {"realized_matching": {}, "metrics": {}}
@@ -456,7 +507,8 @@ def load_cell(model, ts, rtype, seed, sampling, framings):
         # agent[0] = first agent in the turn order; show its full verbatim prompt.
         prompt0 = load_agent_prompt(rd, (chat.get("turn_order") or [None])[0])
         columns.append({"framing": framing, "ok": True, "run_dir": str(rd),
-                        "prompt0": prompt0, "votes": vote_meta, **chat, **outcome})
+                        "prompt0": prompt0, "votes": vote_meta,
+                        "judge": load_judge(rd), **chat, **outcome})
     return {"scenario": scenario, "columns": columns,
             "dims": {"model": model, "ts": ts, "type": rtype,
                      "seed": seed, "sampling": sampling}}
