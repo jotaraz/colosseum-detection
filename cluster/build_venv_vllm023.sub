@@ -1,0 +1,19 @@
+# HTCondor submit: one-time CPU-only build of .venv-vllm023 (terrarium + vLLM 0.23.0).
+# No GPU requested (build doesn't need one). Submit with:
+#   condor_submit_bid 50 cluster/build_venv_vllm023.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/build_venv_vllm023.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = build_venv_vllm023_$(Cluster).err
+output = build_venv_vllm023_$(Cluster).out
+log    = build_venv_vllm023_$(Cluster).log
+
+request_gpus   = 0
+request_memory = 32768
+request_cpus   = 8
+request_disk   = 80G
++BypassLXCfs   = "true"
+queue

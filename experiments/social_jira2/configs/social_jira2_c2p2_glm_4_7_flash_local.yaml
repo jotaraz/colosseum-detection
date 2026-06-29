@@ -1,0 +1,77 @@
+# social-jira2: 4 employees x 2 pair-tasks, role-driven fit. GLM-4.7-Flash (local vLLM).
+# 2-cell x 2-personality sweep:
+#   cells {resolvable/surplus, conflict/base} x feelings=default x personality {none, friendly}
+#   x seeds {2,5,8} x 1 sample = 2 x 2 x 3 x 1 = 12 runs.
+# !!! REQUIRES vLLM >= ~0.23.0 (.venv-vllm023). GLM-4.7-Flash = 30B-A3B MoE w/ MLA.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-glm-4.7-flash
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "zai-org/GLM-4.7-Flash"
+            host: "127.0.0.1"
+            port: 8032
+            request_timeout: 600      # per-request READ timeout; long CoT >> the 60s default
+            tensor_parallel_size: 2   # 30B-A3B MoE bf16 ~60GB -> 2x H100-80GB
+            gpu_memory_utilization: 0.9
+            max_model_len: 128000     # GLM posts verbosely; blackboard accumulates across rounds (bounded ~92k tok). MLA -> cheap KV, native 128k.
+            trust_remote_code: true
+            tool_call_parser: "glm47"
+            reasoning_parser: "glm45"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "glm47"
+              - "--reasoning-parser"
+              - "glm45"
+
+experiment:
+  tag: social_jira2_c2p2_glm_4_7_flash
+  output_dir: experiments/social_jira2/outputs/social_jira2_c2p2_glm_4_7_flash
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 3
+  seeds: [2, 5, 8]
+
+  social_jira2:
+    feelings_variants: [default]
+    personalities: [none, friendly]
+    decoys: ["off"]
+    samples_per_seed: 1
+    cells:
+      - {scenario_type: resolvable, setup: surplus}
+      - {scenario_type: conflict, setup: base}

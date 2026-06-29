@@ -1,0 +1,76 @@
+# social-jira2: 4 employees x 2 pair-tasks, role-driven fit. DeepSeek-R1-Distill-Llama-70B (local vLLM).
+# Mirrors the gpt-oss-120b PERSONALITY sweep for cross-model comparability:
+#   scenario_type=conflict x feelings_variant=default x personality={none + the 7 lines}
+#   x seeds {2,5,8} x 2 samples = 8 x 3 x 2 = 48 runs.
+# Arch = LlamaForCausalLM -> runs on the PINNED vLLM 0.12.0 (no upgrade needed).
+# R1-distill emits <think> CoT, so reasoning_parser=deepseek_r1 and max_tokens/max_model_len
+# are raised to avoid truncating the chain-of-thought before the (forced) post_message call.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per run by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-deepseek-r1-distill-llama-70b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600   # per-request read timeout; long CoT can exceed the 60s default
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000        # R1-distill produces long <think> CoT before the forced post_message call
+          temperature: 0.6         # DeepSeek-R1 recommended sampling temp
+        models:
+          - checkpoint: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+            host: "127.0.0.1"
+            port: 8031
+            tensor_parallel_size: 4   # ~140GB bf16 -> 4x H100-80GB (must divide 64 attention heads)
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000      # prompt + 16k completion
+            trust_remote_code: true
+            tool_call_parser: "llama3_json"   # distill keeps the Llama tokenizer/template
+            reasoning_parser: "deepseek_r1"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "llama3_json"
+              - "--reasoning-parser"
+              - "deepseek_r1"
+
+experiment:
+  tag: social_jira2_n4_deepseek_r1_llama_70b
+  output_dir: experiments/social_jira2/outputs/social_jira2_n4_deepseek_r1_llama_70b
+  planning_rounds: 3
+  preliminary_vote: true       # private hypothetical per-round ballot (hidden from other agents) -> agent_votes.json
+  early_stop_consensus: true   # end planning early once the private ballots converge / stop moving
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 30
+  run_attempts: 3
+  seeds: [2, 5, 8]
+
+  social_jira2:
+    scenario_types: [conflict]
+    feelings_variants: [default]
+    personalities: [none, skeptical, protective, company_first, tenacious, friendly, direct, cooperative]
+    decoys: ["off"]
+    samples_per_seed: 2

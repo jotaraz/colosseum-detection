@@ -1,0 +1,23 @@
+# HTCondor submit: Qwen3.6-35B-A3B social-jira2 personality sweep
+# (conflict x default x 8 personalities x 3 seeds x 2 samples = 48 runs). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira2_qwen3_6_35b_a3b.sub
+# NOTE: needs the upgraded vLLM venv (>=0.19.0); the .sh builds .venv-vllm023.
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_qwen3_6_35b_a3b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_qwen3_6_35b_a3b_$(Cluster).err
+output = social_jira2_qwen3_6_35b_a3b_$(Cluster).out
+log    = social_jira2_qwen3_6_35b_a3b_$(Cluster).log
+
+# Qwen3.6-35B-A3B MoE bf16 ~70 GB -> 2x H100-80GB (tensor_parallel_size: 2 in the YAML).
+request_gpus   = 2
+# Exclude i105/i107: spare GPU slots with wedged NVML/CUDA state (vLLM exits "Can't init NVML").
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine =!= "i105.internal.cluster.is.localnet") && (TARGET.Machine =!= "i107.internal.cluster.is.localnet")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

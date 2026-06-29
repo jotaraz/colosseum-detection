@@ -1,0 +1,21 @@
+# HTCondor submit: SMOKE TEST — GLM-4.7-Flash on the upgraded vLLM 0.23.0 venv (1 run).
+# Validates terrarium 0.1.1 + vllm 0.23.0 + GLM4-MoE arch + glm47/glm45 parsers before the
+# full sweeps (GLM and Qwen3.6 both depend on this venv). Submit with:
+#   condor_submit_bid 50 cluster/run_social_jira2_smoke_glm_4_7_flash.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_smoke_glm_4_7_flash.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_smoke_glm_4_7_flash_$(Cluster).err
+output = social_jira2_smoke_glm_4_7_flash_$(Cluster).out
+log    = social_jira2_smoke_glm_4_7_flash_$(Cluster).log
+
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine =!= "i105.internal.cluster.is.localnet") && (TARGET.Machine =!= "i107.internal.cluster.is.localnet")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

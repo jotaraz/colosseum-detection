@@ -10,7 +10,8 @@ confidentiality framing, and the role-driven tasks block.
     python -m experiments.social_jira2.render_sample_prompts
     python -m experiments.social_jira2.render_sample_prompts --employees 4 --tasks 2 --seed 2
     python -m experiments.social_jira2.render_sample_prompts --personalities    # one file per personality
-    python -m experiments.social_jira2.render_sample_prompts --structured       # block library
+    python -m experiments.social_jira2.render_sample_prompts --structured       # block library (prompt_blocks.md)
+    python -m experiments.social_jira2.render_sample_prompts --structured --structured-name prompt_blocks_v2.md
 """
 
 import argparse
@@ -56,7 +57,7 @@ def _context_from_scenario(scenario, agent_name, phase, planning_round=None):
     return ctx
 
 
-def render_structured_doc(scenario, actor, employees, tasks, seed) -> str:
+def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="prompt_blocks.md") -> str:
     """One reference doc defining each prompt building block once (both presets) + an
     assembly map. Blocks are pulled straight from the ``_*_block`` methods so the doc tracks
     ``prompts.py`` exactly."""
@@ -87,7 +88,7 @@ def render_structured_doc(scenario, actor, employees, tasks, seed) -> str:
     add(
         "# social-jira2 prompt building blocks",
         "",
-        "_Generated from `prompts.py` by `render_sample_prompts.py --structured` — do not edit by hand._",
+        f"_Generated from `prompts.py` by `render_sample_prompts.py --structured --structured-name {out_name}` — do not edit by hand._",
         "",
         "## Legend",
         "- `#` / `##` lines are headings of THIS document (outside the prompt).",
@@ -156,6 +157,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=2)
     parser.add_argument("--structured", action="store_true",
                         help="emit a single block-library reference (prompt_blocks.md)")
+    parser.add_argument("--structured-name", default="prompt_blocks.md",
+                        help="filename for the --structured output (e.g. prompt_blocks_v2.md)")
     parser.add_argument("--personalities", action="store_true",
                         help="also emit one WHO-block sample per personality")
     parser.add_argument("--out", default="experiments/social_jira2/sample_prompts")
@@ -169,8 +172,11 @@ def main() -> None:
         scenario = generate_scenario(
             seed=args.seed, employees=employees, num_tasks=args.tasks, scenario_type="conflict"
         )
-        doc = render_structured_doc(scenario, employees[0], employees, list(scenario.task_ids), args.seed)
-        path = out_dir / "prompt_blocks.md"
+        doc = render_structured_doc(
+            scenario, employees[0], employees, list(scenario.task_ids), args.seed,
+            out_name=args.structured_name,
+        )
+        path = out_dir / args.structured_name
         path.write_text(doc)
         print(f"wrote {path}")
         return

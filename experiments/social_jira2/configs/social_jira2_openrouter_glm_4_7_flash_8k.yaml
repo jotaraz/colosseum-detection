@@ -39,7 +39,8 @@ llm_models:
 
 experiment:
   tag: social_jira2_or_glm_4_7_flash_8k
-  output_dir: experiments/social_jira2/outputs/social_jira2_openrouter_glm_4_7_flash_8k
+  output_dir: experiments/social_jira2/outputs/social_jira2_openrouter_glm_4_7_flash_8k_merged
+  resume: true
   planning_rounds: 3
   preliminary_vote: true
   early_stop_consensus: true
@@ -56,6 +57,4 @@ experiment:
     samples_per_seed: 2
     cells:
       - {scenario_type: conflict, setup: base}
-      - {scenario_type: conflict, setup: symmetric}
-      - {scenario_type: conflict, setup: pivot}
       - {scenario_type: resolvable, setup: surplus}

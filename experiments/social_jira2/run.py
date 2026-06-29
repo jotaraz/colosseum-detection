@@ -177,11 +177,30 @@ def _install_single_post_per_planning_turn() -> bool:
     async def _execute_tool_call(self, tool_name, tool_arguments):  # type: ignore[no-untyped-def]
         result = await original(self, tool_name, tool_arguments)
         try:
-            if str(getattr(self, "current_phase", "")) == "planning":
-                bb_tools = self.toolset_discovery.get_blackboard_tool_names()
-                posted_ok = not (isinstance(result, dict) and result.get("error"))
-                if tool_name in bb_tools and posted_ok:
+            phase = str(getattr(self, "current_phase", ""))
+            bb_tools = self.toolset_discovery.get_blackboard_tool_names()
+            ok = not (isinstance(result, dict) and result.get("error"))
+            if phase == "planning":
+                if tool_name in bb_tools and ok:
                     self._env_state_committed = True  # end the turn after one post
+            elif phase == "execution" and getattr(self, "_force_execution_commit", False):
+                # Robust-assignment execution = two forced sub-turns: announce (post_message)
+                # FIRST, then commit (assign_task). Once the announcement lands, flip the
+                # turn's (reused) generation params to force assign_task on the NEXT step, and
+                # do NOT end the turn — let the forced commit step run. assign_task itself sets
+                # `_env_state_committed` (state_updates) in the base handler, ending the turn.
+                if (
+                    tool_name in bb_tools
+                    and ok
+                    and getattr(self, "_exec_forced_stage", "post") == "post"
+                ):
+                    self._exec_forced_stage = "assign"
+                    ref = getattr(self, "_exec_params_ref", None)
+                    if isinstance(ref, dict):
+                        ref["tool_choice"] = {
+                            "type": "function",
+                            "function": {"name": "assign_task"},
+                        }
         except Exception:
             pass
         return result
@@ -206,15 +225,29 @@ def _install_forced_post_in_planning() -> bool:
     def _build_generation_params(self, tool_set):  # type: ignore[no-untyped-def]
         params = original(self, tool_set)
         try:
-            if str(getattr(self, "current_phase", "")) == "planning":
-                names = {
-                    ((t or {}).get("function") or {}).get("name")
-                    for t in (tool_set or [])
-                }
+            phase = str(getattr(self, "current_phase", ""))
+            names = {
+                ((t or {}).get("function") or {}).get("name")
+                for t in (tool_set or [])
+            }
+            if phase == "planning":
                 if "post_message" in names:
                     params["tool_choice"] = {
                         "type": "function",
                         "function": {"name": "post_message"},
+                    }
+            elif phase == "execution" and getattr(self, "_force_execution_commit", False):
+                # Build once per turn (called before the step loop): start by forcing the
+                # announcement post, stash a ref to THIS params dict so `_execute_tool_call`
+                # can flip tool_choice -> assign_task after the post lands. Resets the stage
+                # each turn. If there's no post_message tool, force assign_task immediately.
+                self._exec_forced_stage = "post" if "post_message" in names else "assign"
+                self._exec_params_ref = params
+                target = "post_message" if self._exec_forced_stage == "post" else "assign_task"
+                if target in names:
+                    params["tool_choice"] = {
+                        "type": "function",
+                        "function": {"name": target},
                     }
         except Exception:
             pass
@@ -248,26 +281,79 @@ def _ballot_key(ballot: Dict[str, Any]):
     ))
 
 
+_THINK_SPAN_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
 def _parse_ballot(text: str, employees: List[str], tasks: List[str]):
-    """Parse a vote into ({task: frozenset(pair) | None}, {task: "A & B" | "none"})."""
-    lines = (text or "").splitlines()
+    """Parse a vote into ({task: frozenset(pair) | None}, {task: "A & B" | "none"}).
+
+    Robust to reasoning-style output: closed ``<think>...</think>`` spans are dropped, and for
+    each task we take the LAST line that both mentions it AND names a pair. Scanning from the
+    end skips exploratory mentions earlier in a reasoning stream (the final pick comes last);
+    requiring a pair on the line skips trailing caveats like "T1 could be none" that follow a
+    clean answer (which is why a plain last-match would regress well-behaved models).
+    """
+    cleaned = _THINK_SPAN_RE.sub(" ", text or "")
+    lines = cleaned.splitlines()
     ballot: Dict[str, Any] = {}
     display: Dict[str, str] = {}
     for task in tasks:
         task_re = re.compile(r"\b" + re.escape(task) + r"\b", re.IGNORECASE)
-        line = next((ln for ln in lines if task_re.search(ln)), "")
-        low = line.lower()
-        names: List[str] = []
-        for emp in employees:
-            if re.search(r"\b" + re.escape(emp.lower()) + r"\b", low) and emp not in names:
-                names.append(emp)
-        if len(names) >= 2:
-            ballot[task] = frozenset(names[:2])
-            display[task] = " & ".join(sorted(names[:2]))
+        chosen: List[str] = []
+        for ln in reversed(lines):
+            if not task_re.search(ln):
+                continue
+            low = ln.lower()
+            names: List[str] = []
+            for emp in employees:
+                if re.search(r"\b" + re.escape(emp.lower()) + r"\b", low) and emp not in names:
+                    names.append(emp)
+            if len(names) >= 2:
+                chosen = names
+                break
+        if len(chosen) >= 2:
+            ballot[task] = frozenset(chosen[:2])
+            display[task] = " & ".join(sorted(chosen[:2]))
         else:
             ballot[task] = None
             display[task] = "none"
     return ballot, display
+
+
+def _ballot_is_empty(ballot: Dict[str, Any]) -> bool:
+    """True when no task got a parseable pair (every entry is None)."""
+    return not any(v for v in (ballot or {}).values())
+
+
+def _reasoning_text(reasoning_steps: List[Dict[str, Any]]) -> str:
+    """Flatten captured CoT steps into a single string for fallback parsing."""
+    return "\n".join(
+        str(s.get("reasoning_content") or "") for s in (reasoning_steps or [])
+    )
+
+
+def _extract_ballot(
+    raw: str,
+    reasoning_steps: List[Dict[str, Any]],
+    employees: List[str],
+    tasks: List[str],
+):
+    """Parse the ballot from the model's answer, falling back to its reasoning channel.
+
+    Non-Harmony reasoning models (served via OpenRouter) often leave ``content`` empty and put
+    the formatted ballot in their reasoning stream, so when ``content`` yields nothing usable we
+    re-parse the captured CoT. Returns ``(ballot, display, source)`` with source in
+    {"content", "reasoning", "none"}.
+    """
+    ballot, display = _parse_ballot(raw, employees, tasks)
+    if not _ballot_is_empty(ballot):
+        return ballot, display, "content"
+    reasoning_text = _reasoning_text(reasoning_steps)
+    if reasoning_text.strip():
+        r_ballot, r_display = _parse_ballot(reasoning_text, employees, tasks)
+        if not _ballot_is_empty(r_ballot):
+            return r_ballot, r_display, "reasoning"
+    return ballot, display, "none"
 
 
 def _votes_converged(round_ballots: List[Dict[str, Any]], prev_ballots, num_agents: int):
@@ -292,6 +378,27 @@ def _take_reasoning(agent: Any) -> List[Dict[str, Any]]:
     return steps
 
 
+def _cached_summary(run_dir: Path) -> Dict[str, Any]:
+    """Rebuild a summary row from an already-completed run's on-disk artifacts (resume mode)."""
+    m = json.loads((run_dir / "metrics.json").read_text())
+    rc = json.loads((run_dir / "run_config.json").read_text())
+    out: Dict[str, Any] = {
+        k: rc.get(k) for k in (
+            "run_id", "model_label", "model", "feelings_variant", "scenario_type",
+            "personality", "decoys", "setup", "seed",
+        )
+    }
+    out["sample"] = m.get("sample", rc.get("sample"))
+    for k in (
+        "status", "num_valid_pairs", "num_malformed_tasks", "chose_optimal_goodness",
+        "chose_comfortable_matching", "realized_goodness", "optimal_goodness",
+        "comfortable_goodness", "goodness_ratio", "system_regret", "realized_feeling_sum",
+        "aversive_realized_pairs", "feelings_fallback",
+    ):
+        out[k] = m.get(k)
+    return out
+
+
 async def _run_single(
     *,
     base_cfg: Dict[str, Any],
@@ -307,6 +414,7 @@ async def _run_single(
     num_tasks: int,
     seed: int,
     sample: int = 0,
+    resume: bool = False,
     out_dir: Path,
 ) -> Dict[str, Any]:
     feelings_variant = str(feelings_variant).strip().lower()
@@ -348,6 +456,11 @@ async def _run_single(
     run_dir = out_dir.joinpath(
         "runs", model_label, setup_label, feelings_variant, scenario_type, personality, run_id
     )
+    # Resume/glue: a run that already completed (has metrics.json) is reused, not re-run, so a
+    # merged output dir can be filled in with only the missing runs.
+    if resume and (run_dir / "metrics.json").exists():
+        logger.info("RUN SKIP (cached) %s", run_id)
+        return _cached_summary(run_dir)
     _ensure_dir(run_dir)
     logger.info("RUN START %s", run_id)
 
@@ -406,16 +519,27 @@ async def _run_single(
 
     await env.async_init()
 
+    # Prompt variant hardened for weak tool-callers (first-round "you are first — propose" +
+    # mandatory assign_task at execution). Off unless `experiment.robust_assignment: true`.
+    robust_assignment = bool(exp.get("robust_assignment", False))
+
     env.feelings_preset = feelings_variant
     env.personality = personality
+    env.robust_assignment = robust_assignment
     env.prompts = SocialJiraPrompts(
         env,
         cfg,
         feelings_preset=feelings_variant,
         personality=personality,
+        robust_assignment=robust_assignment,
         experiment_prompt_logger=prompt_logger,
         log_prompts=log_prompts,
     )
+
+    # Gate the execution-commit forcing (two forced sub-turns: announce -> assign_task) per
+    # agent, so the global BaseAgent patches only force it when robust_assignment is on.
+    for a in agents:
+        a._force_execution_commit = robust_assignment
 
     planning_rounds = int(cfg["simulation"].get("max_planning_rounds", 3))
     preliminary_vote = bool(exp.get("preliminary_vote", True))
@@ -456,15 +580,37 @@ async def _run_single(
                 )
                 vote_reasoning = _take_reasoning(agent)  # keep the vote's CoT out of planning
                 raw = vote.get("response") or ""
-                ballot, display = _parse_ballot(raw, employees, task_ids)
+                # Parse content, falling back to the reasoning channel for models that leave
+                # `content` empty (see _extract_ballot).
+                ballot, display, vote_source = _extract_ballot(
+                    raw, vote_reasoning, employees, task_ids
+                )
+                # If still unreadable, re-ask once with a hard "answer only" reminder.
+                if vote_source == "none":
+                    retry_ctx = dict(vote_ctx)
+                    retry_ctx["vote_retry"] = True
+                    vote = await protocol.agent_survey_turn(
+                        agent, agent.name, retry_ctx, env, iteration=1
+                    )
+                    retry_reasoning = _take_reasoning(agent)
+                    retry_raw = vote.get("response") or ""
+                    r_ballot, r_display, r_source = _extract_ballot(
+                        retry_raw, retry_reasoning, employees, task_ids
+                    )
+                    if r_source != "none":
+                        ballot, display = r_ballot, r_display
+                        raw, vote_reasoning = retry_raw, retry_reasoning
+                        vote_source = f"retry-{r_source}"
+                    else:
+                        vote_source = "retry-none"
                 round_ballots.append(ballot)
                 votes_log.setdefault(agent.name, {})[f"round_{planning_round}"] = {
-                    "assignment": display, "raw": raw,
+                    "assignment": display, "raw": raw, "source": vote_source,
                     "reasoning": [s.get("reasoning_content") for s in vote_reasoning],
                 }
                 turns.append({
                     "phase": "preliminary_vote", "planning_round": planning_round,
-                    "agent": agent.name, "assignment": display,
+                    "agent": agent.name, "assignment": display, "source": vote_source,
                     "response": raw, "usage": vote.get("usage"), "model": vote.get("model"),
                 })
 
@@ -513,6 +659,7 @@ async def _run_single(
         "personality": personality,
         "decoys": decoys,
         "setup": setup_label,
+        "robust_assignment": robust_assignment,
         "environment_cfg": cfg.get("environment") or {},
         "environment_name": env.__class__.__name__,
         "topology": topology,
@@ -631,7 +778,11 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
     models = cfg.get("llm_models") or []
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    root = Path(out_dir or exp.get("output_dir") or "experiments/social_jira2/outputs/social_jira2") / timestamp
+    # Resume mode writes into a FIXED dir (no timestamp) and skips already-completed runs, so an
+    # interrupted/partial sweep can be filled in and glued into one directory per model.
+    resume = bool(exp.get("resume", False))
+    base_out = Path(out_dir or exp.get("output_dir") or "experiments/social_jira2/outputs/social_jira2")
+    root = base_out if resume else base_out / timestamp
     _ensure_dir(root)
     _write_json(root / "config.json", cfg)
     _configure_experiment_logging(root)
@@ -667,7 +818,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
                                         feelings_variant=feelings_variant, scenario_type=scenario_type,
                                         personality=personality, decoys=decoys, setup=setup,
                                         topology=topology, num_agents=num_agents, num_tasks=num_tasks,
-                                        seed=int(seed), sample=int(sample), out_dir=root,
+                                        seed=int(seed), sample=int(sample), resume=resume, out_dir=root,
                                     ),
                                 })
 

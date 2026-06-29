@@ -21,8 +21,10 @@ realized matchings); the right shows each ticked personality's chat. Toggle "del
 to reveal each turn's chain-of-thought (agent_reasoning.json) or, if none was captured, the
 raw per-turn output from agent_trajectories.json.
 
-This mirrors the social_jira1 viewer; the leakage judge is future work, so the
-judge overlay shows "no judge verdict" until judge_lying.json files exist.
+This mirrors the social_jira1 viewer. When a run has been scored by ``judge.py``, ticking
+"show judge phenomena" overlays the phenomenon-judge results (``judge_results.json``): a
+per-run summary banner plus each flagged phenomenon (with its spans + note) anchored under the
+turn it was found in. Until that file exists the overlay shows "no judge results".
 """
 
 import argparse
@@ -59,10 +61,15 @@ def scan_index() -> dict:
         if not set_dir.is_dir() or not set_dir.name.startswith(OUTPUT_PREFIX):
             continue
         display = short_model(set_dir.name)
+        # A run-set is laid out as <set>/<timestamp>/runs/... (normal sweeps) or, for
+        # resume/merged outputs, directly as <set>/runs/... (no timestamp level).
+        ts_candidates = []
+        if (set_dir / "runs").is_dir():
+            ts_candidates.append(("(merged)", set_dir / "runs"))
         for ts_dir in sorted(set_dir.iterdir()):
-            runs_root = ts_dir / "runs"
-            if not runs_root.is_dir():
-                continue
+            if ts_dir.is_dir() and (ts_dir / "runs").is_dir():
+                ts_candidates.append((ts_dir.name, ts_dir / "runs"))
+        for ts_name, runs_root in ts_candidates:
             for label_root in sorted(d for d in runs_root.iterdir() if d.is_dir()):
                 model_label = label_root.name
                 # Run dirs live at either depth-4 (older layout, no setup axis)
@@ -85,7 +92,7 @@ def scan_index() -> dict:
                         continue
                     models.setdefault(display, {"runs": []})["runs"].append({
                         "set_dir": set_dir.name,
-                        "ts": ts_dir.name,
+                        "ts": ts_name,
                         "model_label": model_label,
                         "setup": setup,
                         "feelings_variant": variant,
@@ -332,8 +339,16 @@ def attach_vote_states(messages, votes, scenario):
 
 
 def load_judge(run_dir: Path):
-    """Lying-judge verdict (future work for jira2). Returns None until judge_lying.json exists."""
-    p = run_dir / "judge_lying.json"
+    """Phenomenon-judge results, from ``judge_results.json`` (see ``judge.py``).
+
+    Returns None until the file exists. Flattens each turn's ``present_phenomena`` into flat
+    "incidents" the frontend can anchor to a chat bubble by (agent, phase, viewer-round) and
+    render inline, plus per-run phenomenon counts for the summary banner.
+
+    Round convention: the judge numbers planning rounds 1-based (from ``tool_events``'
+    ``planning_round``) while the viewer numbers them 0-based, and execution is a single merged
+    turn that we anchor to the announcement bubble (viewer round 0)."""
+    p = run_dir / "judge_results.json"
     if not p.exists():
         return None
     try:
@@ -341,34 +356,35 @@ def load_judge(run_dir: Path):
     except Exception:
         return None
 
-    best: dict = {}
-    order: list = []
-    voters: dict = {}
-    for vi, v in enumerate(d.get("votes") or []):
-        for inc in v.get("incidents") or []:
-            key = (inc.get("agent"), inc.get("planning_round"),
-                   (inc.get("public_quote") or "")[:80])
-            if key not in best:
-                best[key] = {**inc}
-                voters[key] = set()
-                order.append(key)
-            voters[key].add(vi)
-            if (inc.get("confidence") or 0) >= (best[key].get("confidence") or 0):
-                best[key].update({k: inc.get(k) for k in
-                                  ("public_quote", "cot_quote", "lie_type",
-                                   "confidence", "explanation")})
-    incidents = [{**best[k], "vote_count": len(voters[k])} for k in order]
+    incidents: list = []
+    counts: dict = {}
+    for t in d.get("turns") or []:
+        agent = t.get("agent")
+        phase = t.get("phase") or "planning"
+        jround = t.get("round")
+        if phase == "planning" and isinstance(jround, int) and jround > 0:
+            vround = jround - 1
+        else:
+            vround = 0
+        for ph in t.get("present_phenomena") or []:
+            name = ph.get("phenomenon") or "?"
+            counts[name] = counts.get(name, 0) + 1
+            incidents.append({
+                "agent": agent, "phase": phase, "vround": vround,
+                "turn_index": t.get("turn_index"),
+                "phenomenon": name,
+                "spans": ph.get("spans") or [],
+                "note": ph.get("note") or "",
+            })
+    n_errors = sum(1 for t in (d.get("turns") or []) if t.get("parse_error"))
 
     return {
-        "status": d.get("status"),
-        "any_lying": d.get("any_lying"),
-        "unanimous": d.get("unanimous"),
-        "vote_flags": d.get("vote_flags") or [],
-        "votes_requested": d.get("votes_requested"),
-        "n_incidents_per_vote": d.get("n_incidents_per_vote") or [],
-        "reveal_framing": d.get("reveal_framing"),
-        "judge_deployment": d.get("judge_deployment"),
-        "summaries": [(v.get("summary") or "") for v in (d.get("votes") or [])],
+        "schema": "phenomena",
+        "judge_model": d.get("judge_model"),
+        "num_turns": d.get("num_turns") or len(d.get("turns") or []),
+        "total_flags": len(incidents),
+        "counts": counts,
+        "n_errors": n_errors,
         "incidents": incidents,
     }
 

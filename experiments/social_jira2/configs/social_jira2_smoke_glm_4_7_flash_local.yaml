@@ -1,0 +1,75 @@
+# SMOKE TEST for the upgraded vLLM 0.23.0 venv (.venv-vllm023) + terrarium 0.1.1 compat.
+# Runs a SINGLE social_jira2 cell on GLM-4.7-Flash to validate end-to-end before the full sweep:
+#   - does `uv pip install vllm==0.23.0` over terrarium produce a working venv?
+#   - does terrarium launch a vLLM 0.23 server + pass the readiness check?
+#   - does the GLM4-MoE arch load and the glm47/glm45 parsers handle tool calls?
+# Expands to 1 run (conflict x default x none x seed2 x 1 sample).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2, smoke]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-glm-4.7-flash
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "zai-org/GLM-4.7-Flash"
+            host: "127.0.0.1"
+            port: 8032
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000
+            trust_remote_code: true
+            tool_call_parser: "glm47"
+            reasoning_parser: "glm45"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "glm47"
+              - "--reasoning-parser"
+              - "glm45"
+
+experiment:
+  tag: social_jira2_smoke_glm_4_7_flash
+  output_dir: experiments/social_jira2/outputs/social_jira2_smoke_glm_4_7_flash
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 1
+  run_attempts: 1
+  seeds: [2]
+
+  social_jira2:
+    scenario_types: [conflict]
+    feelings_variants: [default]
+    personalities: [none]
+    decoys: ["off"]
+    samples_per_seed: 1

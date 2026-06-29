@@ -61,6 +61,8 @@
   .btag { color:var(--muted); }
   .btext { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 9px; white-space:pre-wrap; }
   .bubble.action .btext { background:var(--commit); border-color:#5b4a22; }
+  /* Execution-phase public announcement (post_message right before assign_task). */
+  .bubble.announce .btext { border-color:#5b4a22; border-left:3px solid #5b4a22; }
   /* Per-message CoT: a collapsible block with its own switch (summary) at the top. */
   details.delib { margin-top:3px; border-left:2px solid #43506a; background:#141b27;
     border-radius:4px; overflow:hidden; }
@@ -101,7 +103,7 @@
     font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
   .hidden { display:none; }
 
-  /* lying-judge verdict overlay (future work for jira2) */
+  /* phenomenon-judge overlay (judge_results.json) */
   .verdict { margin:2px 0 10px; border-radius:6px; padding:7px 9px; font-size:12px;
     border:1px solid var(--line); background:var(--panel2); }
   .verdict.lie { border-color:#9e3b3b; background:#241316; }
@@ -110,14 +112,17 @@
   .verdict.lie .vtitle { color:#e79a9a; }
   .verdict.clean .vtitle { color:#7fd6a3; }
   .verdict .vmeta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .verdict .vchips { margin-top:5px; display:flex; flex-wrap:wrap; gap:3px; }
+  .verdict .vchip { font-size:10px; padding:1px 6px; border-radius:9px; background:#2a1a1d;
+    border:1px solid #5e2f33; color:#e0b4b4; white-space:nowrap; }
   .bubble.flagged .btext { border-color:#9e3b3b; box-shadow:0 0 0 1px #9e3b3b inset; }
   .incident { margin-top:3px; border-left:3px solid #9e3b3b; background:#1d1316; color:#e0c4c4;
     padding:5px 8px; border-radius:4px; font-size:11px; }
   .incident .ih { color:#e79a9a; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
     display:block; margin-bottom:3px; }
   .incident .ilbl { color:#c98a8a; font-weight:600; }
-  .incident .iquote { color:#d9b8b8; white-space:pre-wrap; display:block; margin:1px 0 4px; }
-  .incident .icot { color:#b8a0c4; }
+  .incident .iquote { color:#d9b8b8; white-space:pre-wrap; display:block; margin:1px 0 4px;
+    padding-left:6px; border-left:2px solid #5e2f33; }
   .incident .iexpl { color:#aab8d4; }
   .verdict .unanchored { margin-top:5px; }
 </style>
@@ -135,7 +140,7 @@
     <div class="ctl"><label>Personalities (columns)</label><div class="pers" id="pers"></div></div>
     <label class="toggle"><input type="checkbox" id="delibToggle"> expand all CoT</label>
     <label class="toggle"><input type="checkbox" id="votesToggle"> show private votes</label>
-    <label class="toggle"><input type="checkbox" id="judgeToggle"> show lying-judge verdict</label>
+    <label class="toggle"><input type="checkbox" id="judgeToggle"> show judge phenomena</label>
   </div>
   <div id="status"></div>
 </header>
@@ -147,7 +152,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let INDEX = null, SELPERS = new Set();
+let INDEX = null, SELPERS = new Set(), AVAILPERS = new Set();
 // Preferred personality order (none first, then the 7 lines); unknown names append alphabetically.
 const PERS_ORDER = ['none','skeptical','protective','company_first','tenacious','friendly','direct','cooperative'];
 function persSort(arr){
@@ -206,6 +211,10 @@ function refreshDims(){
   fill('#sampling', uniq(sRuns.map(r=>r.sampling)).sort((a,b)=>a-b), +$('#sampling').value);
   // personality buttons (the column axis)
   const ps = persSort(uniq(sRuns.map(r=>r.personality)));
+  AVAILPERS = new Set(ps);
+  // Drop selected personalities not present in this cell (e.g. after switching from a model
+  // with more personalities) so missing ones don't render as empty ghost columns.
+  [...SELPERS].forEach(p=>{ if(!AVAILPERS.has(p)) SELPERS.delete(p); });
   if(!SELPERS.size) ps.forEach(p=>SELPERS.add(p));
   const box=$('#pers'); box.innerHTML='';
   ps.forEach(p=>{
@@ -219,7 +228,7 @@ function refreshDims(){
 async function render(){
   const model=$('#model').value, ts=$('#ts').value, variant=$('#variant').value, type=$('#type').value;
   const setup=$('#setup').value, seed=$('#seed').value, sampling=$('#sampling').value;
-  const personalities=persSort([...SELPERS]).join(',');
+  const personalities=persSort([...SELPERS].filter(p=>AVAILPERS.has(p))).join(',');
   if(!model||!ts||!variant||!type||setup===''||seed===''||sampling===''){ return; }
   $('#status').textContent='loading…';
   const q=new URLSearchParams({model,timestamp:ts,setup,feelings_variant:variant,type,seed,sampling,personalities});
@@ -358,48 +367,48 @@ function anchorIncidents(c){
   const j = c.judge; if(!j || !j.incidents) return {byIdx, unanchored};
   const msgs = c.messages||[];
   j.incidents.forEach(inc=>{
-    const pr = inc.planning_round;
-    let cands = [];
-    if(pr!=null){
-      cands = msgs.map((m,i)=>({m,i}))
-        .filter(o=>o.m.agent===inc.agent && o.m.phase==='planning'
-                   && o.m.kind!=='action' && o.m.round===(pr-1));
-    }
+    // Anchor to the communication bubble of the same (agent, phase, viewer-round); skip the
+    // execution 'commit' action bubble so phenomena land on the announce/post message.
+    let cands = msgs.map((m,i)=>({m,i}))
+      .filter(o=>o.m.agent===inc.agent && o.m.phase===inc.phase
+                 && o.m.kind!=='action' && o.m.round===inc.vround);
     if(!cands.length){ unanchored.push(inc); return; }
     let pick = cands[0];
-    const probe = _norm(inc.public_quote).slice(0,40);
-    if(probe){ const hit = cands.find(o=>_norm(o.m.text).includes(probe)); if(hit) pick = hit; }
+    // Prefer a candidate whose message OR deliberation contains the first span verbatim
+    // (spans may come from either the public message or the private CoT).
+    const probe = _norm((inc.spans&&inc.spans[0])||'').slice(0,40);
+    if(probe){ const hit = cands.find(o=>_norm(o.m.text).includes(probe) || _norm(o.m.deliberation).includes(probe)); if(hit) pick = hit; }
     if(!byIdx.has(pick.i)) byIdx.set(pick.i, []);
     byIdx.get(pick.i).push(inc);
   });
   return {byIdx, unanchored};
 }
 
-function incidentCard(inc, votesReq){
-  const conf = (inc.confidence!=null) ? inc.confidence.toFixed(2) : '—';
-  const vc = votesReq ? `${inc.vote_count}/${votesReq} votes` : `${inc.vote_count} votes`;
-  let h = `<div class="incident"><span class="ih">flagged lie · ${esc(inc.lie_type||'?')} · conf ${conf} · ${vc}</span>`;
-  if(inc.public_quote) h+=`<span class="ilbl">public:</span><span class="iquote">${esc(inc.public_quote)}</span>`;
-  if(inc.cot_quote)    h+=`<span class="ilbl">cot:</span> <span class="icot">${esc(inc.cot_quote)}</span><br>`;
-  if(inc.explanation)  h+=`<span class="ilbl">judge:</span> <span class="iexpl">${esc(inc.explanation)}</span>`;
+function incidentCard(inc){
+  const ti = inc.turn_index!=null ? ` · turn ${inc.turn_index}` : '';
+  let h = `<div class="incident"><span class="ih">${esc(inc.phenomenon||'?')}${ti}</span>`;
+  (inc.spans||[]).forEach(s=>{ h+=`<span class="iquote">${esc(s)}</span>`; });
+  if(inc.note) h+=`<span class="ilbl">note:</span> <span class="iexpl">${esc(inc.note)}</span>`;
   return h+`</div>`;
 }
 
 function verdictBanner(c, unanchored){
   const j=c.judge;
-  if(!j) return `<div class="verdict"><span class="vtitle mut">no judge verdict</span><div class="vmeta">judge_lying.json not found — leakage judge is future work for jira2</div></div>`;
-  if(j.status && j.status!=='judged')
-    return `<div class="verdict"><span class="vtitle mut">judge status: ${esc(j.status)}</span></div>`;
-  const lie = j.any_lying===true;
-  const nflag = (j.vote_flags||[]).filter(Boolean).length;
-  const nvote = j.votes_requested || (j.vote_flags||[]).length;
-  const title = lie ? `LIE — flagged${j.unanimous?' (unanimous)':''}` : 'no lying detected';
-  let h=`<div class="verdict ${lie?'lie':'clean'}"><span class="vtitle">${title}</span>`
-      + `<div class="vmeta">${nflag}/${nvote} judge votes flagged · ${(j.incidents||[]).length} distinct incident(s)`
-      + `${j.judge_deployment?(' · '+esc(j.judge_deployment)):''}</div>`;
+  if(!j) return `<div class="verdict"><span class="vtitle mut">no judge results</span><div class="vmeta">judge_results.json not found — run judge.py to score this run</div></div>`;
+  const counts=j.counts||{};
+  const names=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const flagged = (j.total_flags||0)>0;
+  const title = flagged ? `${j.total_flags} phenomena flagged across ${names.length} type(s)` : 'no phenomena flagged';
+  let h=`<div class="verdict ${flagged?'lie':'clean'}"><span class="vtitle">${title}</span>`
+      + `<div class="vmeta">${j.num_turns} turns judged`
+      + `${j.judge_model?(' · '+esc(j.judge_model)):''}`
+      + `${j.n_errors?(' · '+j.n_errors+' parse error(s)'):''}</div>`;
+  if(names.length){
+    h+=`<div class="vchips">`+names.map(n=>`<span class="vchip">${esc(n)} · ${counts[n]}</span>`).join('')+`</div>`;
+  }
   if(unanchored && unanchored.length){
-    h+=`<div class="unanchored"><div class="vmeta">unanchored incident(s):</div>`;
-    unanchored.forEach(inc=>{ h+=incidentCard(inc, nvote); });
+    h+=`<div class="unanchored"><div class="vmeta">unanchored (round not matched):</div>`;
+    unanchored.forEach(inc=>{ h+=incidentCard(inc); });
     h+=`</div>`;
   }
   return h+`</div>`;
@@ -421,7 +430,6 @@ function renderColumns(data){
              : 'deliberation';
     let h=`<h2>${esc(c.personality)} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
     const anchored = showJudge ? anchorIncidents(c) : {byIdx:new Map(), unanchored:[]};
-    const nvote = (c.judge && (c.judge.votes_requested || (c.judge.vote_flags||[]).length)) || 0;
     if(showJudge) h+=verdictBanner(c, anchored.unanchored);
     if(showVotes) h+=voteLegend(c);
     if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
@@ -430,12 +438,18 @@ function renderColumns(data){
       if(m.phase!==lastPhase){ h+=`<h3>${esc(m.phase)}</h3>`; lastPhase=m.phase; }
       const color=agentColor(m.agent);
       const incs = anchored.byIdx.get(mi) || [];
-      let bubble=`<div class="bubble ${m.kind}${incs.length?' flagged':''}">`
+      const isExec = m.phase==='execution';
+      const isAnnounce = isExec && m.kind==='msg';
+      // Execution is a single commit turn (announce + assign_task), so its per-event round
+      // counter is noise — suppress it. Tag the announcement and the commit explicitly.
+      const roundTag = (m.round!=null && !isExec) ? (' r'+(m.round+1)) : '';
+      const kindTag = m.kind==='action' ? ' · commit' : (isAnnounce ? ' · announce' : '');
+      let bubble=`<div class="bubble ${m.kind}${isAnnounce?' announce':''}${incs.length?' flagged':''}">`
         + `<div class="bhead"><span class="bname" style="color:${color}">${esc(m.agent)}</span> `
-        + `<span class="btag">· ${esc(m.phase)}${m.round!=null?(' r'+(m.round+1)):''}${m.kind==='action'?' · commit':''}</span></div>`;
+        + `<span class="btag">· ${esc(m.phase)}${roundTag}${kindTag}</span></div>`;
       if(m.deliberation) bubble+=`<details class="delib"${expandCot?' open':''}><summary>${dh}</summary><div class="delibbody">${esc(m.deliberation)}</div></details>`;
       bubble+=`<div class="btext">${esc(m.text)}</div>`;
-      incs.forEach(inc=>{ bubble+=incidentCard(inc, nvote); });
+      incs.forEach(inc=>{ bubble+=incidentCard(inc); });
       bubble+=`</div>`;
       if(showVotes){ h+=`<div class="brow">${bubble}${voteTable(c,m)}</div>`; }
       else{ h+=bubble; }

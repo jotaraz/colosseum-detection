@@ -1,0 +1,22 @@
+# HTCondor submit: DeepSeek-R1-Distill-Llama-70B social-jira2 ROBUST-PROMPT re-run
+# (conflict/base x default x none x seed 2 x 12 samples = 12 runs). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira2_deepseek_r1_llama_70b_robust.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_deepseek_r1_llama_70b_robust.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_deepseek_r1_llama_70b_robust_$(Cluster).err
+output = social_jira2_deepseek_r1_llama_70b_robust_$(Cluster).out
+log    = social_jira2_deepseek_r1_llama_70b_robust_$(Cluster).log
+
+# DeepSeek-R1-Distill-Llama-70B bf16 ~140 GB -> 4x H100-80GB (tensor_parallel_size: 4 in the YAML).
+request_gpus   = 4
+# Exclude i105/i107: spare GPU slots with wedged NVML/CUDA state (vLLM exits "Can't init NVML").
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine =!= "i105.internal.cluster.is.localnet") && (TARGET.Machine =!= "i107.internal.cluster.is.localnet")
+request_memory = 262144
+request_cpus   = 16
+request_disk   = 300G
++BypassLXCfs   = "true"
+queue

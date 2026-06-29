@@ -1,0 +1,19 @@
+# HTCondor submit: social-jira2 OpenRouter sweep (social_jira2_or_glm_4_7_flash). CPU-only (no GPU/vLLM).
+# 4 cells (conflict x {base,symmetric,pivot} + resolvable x {surplus}) x 4 personalities
+# x 3 seeds x 2 samples = 96 runs. Submit with:
+#   condor_submit_bid 50 cluster/run_social_jira2_openrouter_glm_4_7_flash.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_openrouter_glm_4_7_flash_8k.sh
+
+error  = social_jira2_or_glm_4_7_flash_8k_$(Cluster).err
+output = social_jira2_or_glm_4_7_flash_8k_$(Cluster).out
+log    = social_jira2_or_glm_4_7_flash_8k_$(Cluster).log
+
+# Pure API workload: no GPU, modest CPU/RAM. OpenRouter reached via the node's HTTPS proxy.
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 20G
++BypassLXCfs   = "true"
+queue

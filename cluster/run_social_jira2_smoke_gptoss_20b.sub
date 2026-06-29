@@ -1,0 +1,21 @@
+# HTCondor submit: gpt-oss-20b social-jira2 SMOKE (1 run, validates the pipeline). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira2_smoke_gptoss_20b.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_smoke_gptoss_20b.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_smoke_gptoss_20b_$(Cluster).err
+output = social_jira2_smoke_gptoss_20b_$(Cluster).out
+log    = social_jira2_smoke_gptoss_20b_$(Cluster).log
+
+# gpt-oss-20b MXFP4 ~13 GB -> 1x H100-80GB (tensor_parallel_size: 1 in the YAML).
+request_gpus   = 1
+# Exclude i105: its spare GPU slot has a wedged NVML/CUDA state (vLLM exits "Can't init NVML").
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine =!= "i105.internal.cluster.is.localnet") && (TARGET.Machine =!= "i107.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue
