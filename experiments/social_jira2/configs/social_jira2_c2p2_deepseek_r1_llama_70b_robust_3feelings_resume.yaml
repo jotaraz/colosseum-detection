@@ -1,0 +1,80 @@
+# RESUME re-run: fills the 6 combos that failed all attempts in the 20260630-015341 robust
+# 3feelings run (all clustered on conflict/base, seed 9). resume:true writes into the EXISTING
+# output dir and SKIPS the 174 runs that already have metrics.json, so only the missing ones run.
+# Narrowed sweep (seed 9, conflict/base, feelings {default, control-hard}, personality {none,
+# friendly}, 3 samples = 12 candidates; 6 are cached -> 6 actually run). run_attempts bumped to 6
+# since these are the persistently-hard cases. DeepSeek-R1-Distill-Llama-70B, robust prompt.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-deepseek-r1-distill-llama-70b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.6
+        models:
+          - checkpoint: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+            host: "127.0.0.1"
+            port: 8031
+            request_timeout: 600
+            tensor_parallel_size: 4
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000
+            trust_remote_code: true
+            tool_call_parser: "llama3_json"
+            reasoning_parser: "deepseek_r1"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "llama3_json"
+              - "--reasoning-parser"
+              - "deepseek_r1"
+
+experiment:
+  tag: social_jira2_c2p2_deepseek_r1_llama_70b_robust_3feelings
+  # RESUME into the EXISTING timestamped run dir (resume mode uses this dir verbatim, no timestamp).
+  output_dir: experiments/social_jira2/outputs/social_jira2_c2p2_deepseek_r1_llama_70b_robust_3feelings/20260630-015341
+  resume: true
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 6               # more attempts for the persistently-hard seed-9 conflict cell
+  robust_assignment: true
+  seeds: [9]
+
+  social_jira2:
+    feelings_variants: [default, control-hard]
+    personalities: [none, friendly]
+    decoys: ["off"]
+    samples_per_seed: 3
+    cells:
+      - {scenario_type: conflict, setup: base}

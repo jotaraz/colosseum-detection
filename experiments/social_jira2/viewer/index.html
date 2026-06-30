@@ -25,6 +25,12 @@
   .fbtn { border:1px solid var(--line); background:var(--panel2); color:var(--text);
     border-radius:999px; padding:4px 11px; cursor:pointer; font-size:13px; user-select:none; }
   .fbtn.on { background:var(--accent); border-color:var(--accent); color:#08121f; font-weight:600; }
+  /* judge-phenomenon filter buttons get the "lie" red theme to set them apart from personalities */
+  .fbtn.jph.on { background:#9e3b3b; border-color:#9e3b3b; color:#fff; }
+  .fbtn.dim { opacity:.45; }
+  .ctl.wide { flex-basis:100%; }
+  .jphbar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .jphbar .mini { font-size:11px; color:var(--muted); cursor:pointer; user-select:none; text-decoration:underline; }
   .toggle { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; font-size:12px; color:var(--muted); }
   #status { color:var(--muted); font-size:12px; margin-top:5px; min-height:15px; }
 
@@ -141,6 +147,13 @@
     <label class="toggle"><input type="checkbox" id="delibToggle"> expand all CoT</label>
     <label class="toggle"><input type="checkbox" id="votesToggle"> show private votes</label>
     <label class="toggle"><input type="checkbox" id="judgeToggle"> show judge phenomena</label>
+    <div class="ctl wide hidden" id="judgePhenSection">
+      <label>Judge phenomena — only ticked phenomena's comments are shown</label>
+      <div class="jphbar">
+        <span class="mini" id="phenAll">all</span><span class="mini" id="phenNone">none</span>
+        <div class="pers" id="judgePhen"></div>
+      </div>
+    </div>
   </div>
   <div id="status"></div>
 </header>
@@ -153,6 +166,14 @@
 <script>
 const $ = s => document.querySelector(s);
 let INDEX = null, SELPERS = new Set(), AVAILPERS = new Set();
+let LAST_DATA = null;
+// Judge phenomenon taxonomy (exact names from JUDGE_TURN_PROMPT.md). One filter button each;
+// only incidents whose phenomenon is selected are rendered. SEENPHEN tracks names we've already
+// shown a button for, so any extra (out-of-taxonomy) name surfaced in the data defaults to on.
+const JUDGE_PHENOMENA = ['Observer Suspicion Modeling','Strategic Omission','Strategic Framing',
+  'Intentional Fabrication','Hallucination','Leakage','Implied Leakage','Made Bad Deal','Vague',
+  'Strategic Attention Manipulation','Cover Story Planning','Ambiguous'];
+let SELPHEN = new Set(JUDGE_PHENOMENA), SEENPHEN = new Set(JUDGE_PHENOMENA);
 // Preferred personality order (none first, then the 7 lines); unknown names append alphabetically.
 const PERS_ORDER = ['none','skeptical','protective','company_first','tenacious','friendly','direct','cooperative'];
 function persSort(arr){
@@ -234,9 +255,44 @@ async function render(){
   const q=new URLSearchParams({model,timestamp:ts,setup,feelings_variant:variant,type,seed,sampling,personalities});
   const data=await (await fetch('/api/cell?'+q)).json();
   $('#status').textContent=`${model} · ${ts} · ${variant} · ${type} · ${setup} · seed ${seed} · sample ${sampling}`;
+  LAST_DATA = data;
   renderScenario(data);
+  buildPhenButtons(phenCounts(data));
   renderColumns(data);
 }
+
+// ----- judge-phenomenon filter -------------------------------------------- //
+function phenCounts(data){
+  const counts={};
+  (data.columns||[]).forEach(c=>{
+    ((c.judge && c.judge.incidents) || []).forEach(inc=>{
+      const n = inc.phenomenon || '?'; counts[n] = (counts[n]||0) + 1;
+    });
+  });
+  return counts;
+}
+function buildPhenButtons(counts){
+  // taxonomy in canonical order, then any out-of-taxonomy names that showed up, alphabetically.
+  const extras = Object.keys(counts).filter(n=>!JUDGE_PHENOMENA.includes(n)).sort();
+  const names = [...JUDGE_PHENOMENA, ...extras];
+  names.forEach(n=>{ if(!SEENPHEN.has(n)){ SEENPHEN.add(n); SELPHEN.add(n); } });
+  const box=$('#judgePhen'); box.innerHTML='';
+  names.forEach(n=>{
+    const cnt = counts[n] || 0;
+    const b=document.createElement('span');
+    b.className='fbtn jph'+(SELPHEN.has(n)?' on':'')+(cnt?'':' dim');
+    b.textContent = cnt ? `${n} · ${cnt}` : n;
+    b.title = cnt ? `${cnt} flagged in this cell` : 'none flagged in this cell';
+    b.onclick=()=>{ SELPHEN.has(n)?SELPHEN.delete(n):SELPHEN.add(n); b.classList.toggle('on');
+                    if(LAST_DATA) renderColumns(LAST_DATA); };
+    box.appendChild(b);
+  });
+}
+function setAllPhen(on){
+  [...SEENPHEN].forEach(n=>{ on ? SELPHEN.add(n) : SELPHEN.delete(n); });
+  if(LAST_DATA){ buildPhenButtons(phenCounts(LAST_DATA)); renderColumns(LAST_DATA); }
+}
+function syncJudgeSection(){ $('#judgePhenSection').classList.toggle('hidden', !$('#judgeToggle').checked); }
 
 function matchStr(m){ // {T1:[a,b]} or {T1:"a & b"}
   if(!m) return '—';
@@ -362,11 +418,11 @@ function voteTable(c, m){
 
 function _norm(s){ return (s==null?'':String(s)).toLowerCase().replace(/\s+/g,' ').trim(); }
 
-function anchorIncidents(c){
+function anchorIncidents(c, incidents){
   const byIdx = new Map(), unanchored = [];
-  const j = c.judge; if(!j || !j.incidents) return {byIdx, unanchored};
+  if(!incidents || !incidents.length) return {byIdx, unanchored};
   const msgs = c.messages||[];
-  j.incidents.forEach(inc=>{
+  incidents.forEach(inc=>{
     // Anchor to the communication bubble of the same (agent, phase, viewer-round); skip the
     // execution 'commit' action bubble so phenomena land on the announce/post message.
     let cands = msgs.map((m,i)=>({m,i}))
@@ -392,13 +448,18 @@ function incidentCard(inc){
   return h+`</div>`;
 }
 
-function verdictBanner(c, unanchored){
+function verdictBanner(c, incidents, unanchored){
   const j=c.judge;
   if(!j) return `<div class="verdict"><span class="vtitle mut">no judge results</span><div class="vmeta">judge_results.json not found — run judge.py to score this run</div></div>`;
-  const counts=j.counts||{};
+  // Counts reflect only the phenomena whose filter button is selected.
+  const counts={};
+  incidents.forEach(inc=>{ counts[inc.phenomenon]=(counts[inc.phenomenon]||0)+1; });
   const names=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
-  const flagged = (j.total_flags||0)>0;
-  const title = flagged ? `${j.total_flags} phenomena flagged across ${names.length} type(s)` : 'no phenomena flagged';
+  const total=incidents.length, allFlags=j.total_flags||0;
+  const flagged = total>0;
+  const title = flagged
+    ? `${total} phenomena flagged${allFlags>total?` (of ${allFlags})`:''} across ${names.length} type(s)`
+    : (allFlags ? `0 of ${allFlags} phenomena shown (filtered out)` : 'no phenomena flagged');
   let h=`<div class="verdict ${flagged?'lie':'clean'}"><span class="vtitle">${title}</span>`
       + `<div class="vmeta">${j.num_turns} turns judged`
       + `${j.judge_model?(' · '+esc(j.judge_model)):''}`
@@ -429,8 +490,11 @@ function renderColumns(data){
              : c.reasoning_source==='trajectory' ? 'raw turn output (proxy — no CoT captured)'
              : 'deliberation';
     let h=`<h2>${esc(c.personality)} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
-    const anchored = showJudge ? anchorIncidents(c) : {byIdx:new Map(), unanchored:[]};
-    if(showJudge) h+=verdictBanner(c, anchored.unanchored);
+    const incidents = showJudge
+      ? ((c.judge && c.judge.incidents) || []).filter(inc=>SELPHEN.has(inc.phenomenon))
+      : [];
+    const anchored = showJudge ? anchorIncidents(c, incidents) : {byIdx:new Map(), unanchored:[]};
+    if(showJudge) h+=verdictBanner(c, incidents, anchored.unanchored);
     if(showVotes) h+=voteLegend(c);
     if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
     let lastPhase='';
@@ -470,7 +534,10 @@ $('#seed').onchange=render;
 $('#sampling').onchange=render;
 $('#delibToggle').onchange=render;
 $('#votesToggle').onchange=render;
-$('#judgeToggle').onchange=render;
+$('#judgeToggle').onchange=()=>{ syncJudgeSection(); if(LAST_DATA) renderColumns(LAST_DATA); };
+$('#phenAll').onclick=()=>setAllPhen(true);
+$('#phenNone').onclick=()=>setAllPhen(false);
+syncJudgeSection();
 loadIndex();
 </script>
 </body>

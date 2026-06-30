@@ -478,6 +478,170 @@ def _build_feelings_one_dislike(
     return None, None
 
 
+# ------------------------------------------------------ conflict (distinct-profession) draw
+# A degenerate coverage landscape (multiple matchings tied at G*) makes a real `conflict`
+# impossible: the invariant needs a STRICTLY-WORSE conflict-free matching, which cannot exist
+# when every matching already ties at G*. Crucially, seniority cannot break a coverage tie in
+# this model (a senior only earns its bonus when slotted into a task that requires its
+# profession -- exactly when it also helps coverage). The fix is to draw a roster of four
+# DISTINCT specialists whose two tasks need four distinct roles: then the covering matching is
+# unique (non-degenerate G*) and a real conflict is always realizable. Seniority is then
+# spread across both tasks' required roles for variety. See prototype_spread_seniority.py.
+def _distinct_profession_task_pairs() -> List[Tuple[
+    Tuple[str, Tuple[str, str]], Tuple[str, Tuple[str, str]]
+]]:
+    """Every pair of task templates whose four required roles are all distinct."""
+    pairs = []
+    for t1, t2 in combinations(TASK_TEMPLATES, 2):
+        roles = list(t1[1]) + list(t2[1])
+        if len(set(roles)) == 4:  # 4 distinct professions, none duplicated within or across
+            pairs.append((t1, t2))
+    return pairs
+
+
+def _spread_seniority(
+    rng: random.Random, professions: List[str], tasks: List[Task]
+) -> List[str]:
+    """Seniority list (aligned to ``professions``) with seniors SPREAD across both tasks.
+
+    Guarantees at least one senior whose profession is required by each task, then optionally
+    promotes one more (kept small so the seniority swing stays below one coverage step)."""
+    t1_roles, t2_roles = set(tasks[0].required), set(tasks[1].required)
+    idx_t1 = [i for i, p in enumerate(professions) if p in t1_roles]
+    idx_t2 = [i for i, p in enumerate(professions) if p in t2_roles]
+    seniors = {rng.choice(idx_t1), rng.choice(idx_t2)}
+    remaining = [i for i in range(len(professions)) if i not in seniors]
+    if remaining and rng.random() < 0.5:
+        seniors.add(rng.choice(remaining))
+    return ["Senior" if i in seniors else "Junior" for i in range(len(professions))]
+
+
+def _draw_conflict_roster_and_tasks(
+    rng: random.Random, names: List[str]
+) -> Tuple[List[Employee], List[Task]]:
+    """Four distinct specialists + two distinct-role tasks + spread seniority (4x2 conflict)."""
+    (title1, req1), (title2, req2) = rng.choice(_distinct_profession_task_pairs())
+    tasks = [
+        Task(id="T1", title=title1, required=tuple(req1)),
+        Task(id="T2", title=title2, required=tuple(req2)),
+    ]
+    professions = list(req1) + list(req2)  # 4 distinct
+    rng.shuffle(professions)
+    seniorities = _spread_seniority(rng, professions, tasks)
+    employees = [
+        Employee(name=n, profession=p, seniority=s)
+        for n, p, s in zip(names, professions, seniorities)
+    ]
+    return employees, tasks
+
+
+# Bundle returned by _realize_conflict (or None when no real conflict exists for that seed).
+_ConflictBundle = Tuple[
+    List[Employee], List[Task], Dict[str, Dict[Pair, float]], float,
+    List[Dict[str, Pair]], Dict[str, Dict[str, int]], Tuple[float, Dict[str, Pair]],
+]
+
+
+def _use_distinct_conflict(num_tasks: int, names: List[str], setup: Optional[str]) -> bool:
+    """The distinct-profession conflict generator applies to base 4x2 only."""
+    return num_tasks == 2 and len(names) == 4 and setup is None
+
+
+def _realize_conflict(
+    seed: int, names: List[str], num_tasks: int, setup: Optional[str]
+) -> Optional[_ConflictBundle]:
+    """Try to build a REAL conflict for ``seed`` (real dislikes); ``None`` if impossible.
+
+    For base 4x2 this uses the distinct-profession draw and (essentially) always succeeds.
+    Other shapes use the legacy roster draw and may return ``None`` (degenerate landscape)."""
+    rng_g = random.Random((seed * 0x9E3779B1) & 0xFFFFFFFF)
+    if _use_distinct_conflict(num_tasks, names, setup):
+        emps, tasks = _draw_conflict_roster_and_tasks(rng_g, names)
+    elif setup is None:
+        emps, tasks = _draw_roster_and_tasks(rng_g, names, num_tasks)
+    else:
+        emps, tasks = _draw_roster_and_tasks_for_setup(rng_g, names, setup)
+    goodness = _compute_goodness(emps, tasks)
+    task_ids = [t.id for t in tasks]
+    gstar, gstar_set = _optimal_set(names, task_ids, goodness)
+    rng_f = random.Random(((seed * 1000003) ^ (202 * 2654435761)) & 0xFFFFFFFF)
+    feelings, comfortable = _build_feelings_one_dislike(
+        rng_f, names, task_ids, goodness, gstar, gstar_set, "conflict"
+    )
+    if feelings is None or comfortable is None:
+        return None
+    return emps, tasks, goodness, gstar, gstar_set, feelings, comfortable
+
+
+def _conflict_seed_candidates(seed: int, max_candidates: int = 2000) -> Iterator[int]:
+    """The seed itself, then the nearest LOWER seeds (down to 1), then UP as a last resort."""
+    n = 0
+    yield seed
+    n += 1
+    d = 1
+    while seed - d >= 1 and n < max_candidates:
+        yield seed - d
+        n += 1
+        d += 1
+    up = seed + 1
+    while n < max_candidates:
+        yield up
+        n += 1
+        up += 1
+
+
+def _generate_conflict_scenario(
+    seed: int, names: List[str], num_tasks: int, setup: Optional[str]
+) -> "Scenario":
+    """Conflict scenario that ALWAYS has real dislikes. If ``seed`` cannot realize a conflict,
+    fall back to the nearest lower seed that can -- keeping THIS run's (seed-derived) names, so
+    the instance is genuinely distinct -- rather than ever emitting neutral feelings."""
+    source_seed: Optional[int] = None
+    realized: Optional[_ConflictBundle] = None
+    for cand in _conflict_seed_candidates(seed):
+        realized = _realize_conflict(cand, names, num_tasks, setup)
+        if realized is not None:
+            source_seed = cand
+            break
+    if realized is None or source_seed is None:
+        raise RuntimeError(
+            f"could not realize a non-trivial conflict for seed={seed}, num_tasks={num_tasks}, "
+            f"setup={setup or 'base'} (no candidate seed produced real dislikes). Conflict "
+            "requires a non-degenerate landscape; relaxed setups / sizes other than 4x2 may not "
+            "support it."
+        )
+    emps, tasks, goodness, gstar, gstar_set, feelings, comfortable = realized
+    comfortable_goodness, comfortable_matching = comfortable
+    n_gstar_aversive = sum(1 for m in gstar_set if _matching_is_aversive(m, feelings))
+    return Scenario(
+        scenario_type="conflict",
+        seed=int(seed),
+        employees=emps,
+        tasks=tasks,
+        goodness=goodness,
+        feelings=feelings,
+        optimal_goodness=gstar,
+        optimal_matchings=gstar_set,
+        comfortable_matching=comfortable_matching,
+        comfortable_goodness=comfortable_goodness,
+        meta={
+            "num_employees": len(names),
+            "num_tasks": num_tasks,
+            "setup": setup or "base",
+            "num_optimal_matchings": len(gstar_set),
+            "num_optimal_matchings_aversive": n_gstar_aversive,
+            "feelings_fallback": False,
+            "optimal_minus_comfortable_goodness": round(gstar - comfortable_goodness, 3),
+            "conflict_generator": (
+                "distinct_profession" if _use_distinct_conflict(num_tasks, names, setup)
+                else "legacy"
+            ),
+            "conflict_source_seed": int(source_seed),
+            "conflict_fell_back": source_seed != seed,
+        },
+    )
+
+
 def generate_scenario(
     *,
     seed: int,
@@ -513,6 +677,16 @@ def generate_scenario(
     if setup is not None and num_tasks != len(SETUPS[setup]["tasks"]):  # type: ignore[arg-type]
         raise ValueError(
             f"setup {setup!r} defines {len(SETUPS[setup]['tasks'])} tasks, got num_tasks={num_tasks}"
+        )
+
+    if scenario_type == "conflict":
+        # Conflict uses the distinct-profession generator and ALWAYS yields real dislikes,
+        # falling back to a lower seed (keeping this run's names) rather than neutral feelings.
+        # NOTE: unlike `resolvable`, the conflict roster is NOT the same-seed landscape (it is
+        # constrained to four distinct roles so a real conflict can exist) -- the same-landscape
+        # controlled comparison only holds within `resolvable`. Conflict is run at base anyway.
+        return _generate_conflict_scenario(
+            seed=int(seed), names=names, num_tasks=int(num_tasks), setup=setup
         )
 
     # Roster + tasks + goodness: seed-only stream (identical across scenario types).

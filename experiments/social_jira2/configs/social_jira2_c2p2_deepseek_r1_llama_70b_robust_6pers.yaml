@@ -1,0 +1,82 @@
+# social-jira2: 4 employees x 2 pair-tasks, role-driven fit. DeepSeek-R1-Distill-Llama-70B (local vLLM).
+# ROBUST prompt variant. Personality sweep (6 dispositions, mirrors the gpt-oss 6pers run):
+#   feelings {default, control-hard, control-soft} x cells {resolvable/surplus, conflict/base}
+#   x personality {skeptical, protective, company_first, tenacious, direct, cooperative}
+#   x seeds {1,3} x 3 samples
+#   = 3 x 2 x 6 x 2 x 3 = 216 runs.
+# NOTE: DeepSeek-R1-distill is flaky on tool-calling even with the robust prompt; expect failures
+# (run_attempts=3 retries each) and a follow-up resume pass to fill the gaps.
+# Arch = LlamaForCausalLM -> runs on the PINNED vLLM 0.12.0 (existing .venv, no upgrade needed).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-deepseek-r1-distill-llama-70b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.6         # DeepSeek-R1 recommended sampling temp
+        models:
+          - checkpoint: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+            host: "127.0.0.1"
+            port: 8031
+            request_timeout: 600      # per-request READ timeout; R1-distill CoT >> the 60s default
+            tensor_parallel_size: 4   # ~140GB bf16 -> 4x H100-80GB
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000
+            trust_remote_code: true
+            tool_call_parser: "llama3_json"
+            reasoning_parser: "deepseek_r1"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "llama3_json"
+              - "--reasoning-parser"
+              - "deepseek_r1"
+
+experiment:
+  tag: social_jira2_c2p2_deepseek_r1_llama_70b_robust_6pers
+  output_dir: experiments/social_jira2/outputs/social_jira2_c2p2_deepseek_r1_llama_70b_robust_6pers
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 3
+  robust_assignment: true       # hardened prompt variant for DeepSeek-R1-distill
+  seeds: [1, 3]
+
+  social_jira2:
+    feelings_variants: [default, control-hard, control-soft]
+    personalities: [skeptical, protective, company_first, tenacious, direct, cooperative]
+    decoys: ["off"]
+    samples_per_seed: 3
+    cells:
+      - {scenario_type: resolvable, setup: surplus}
+      - {scenario_type: conflict, setup: base}

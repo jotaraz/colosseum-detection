@@ -61,8 +61,18 @@ def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="pro
     """One reference doc defining each prompt building block once (both presets) + an
     assembly map. Blocks are pulled straight from the ``_*_block`` methods so the doc tracks
     ``prompts.py`` exactly."""
-    pd = SocialJiraPrompts(env=None, full_config={}, feelings_preset="default", log_prompts=False)
-    pc = SocialJiraPrompts(env=None, full_config={}, feelings_preset="control", log_prompts=False)
+    # All feelings variants exercised in the recent gpt-oss runs.
+    VARIANTS = [
+        ("default", "critical confidentiality + hard red line"),
+        ("control-hard", "no confidentiality + hard red line"),
+        ("control-soft", "no confidentiality + soft 'all else equal, avoid'"),
+        ("soft-feely", "bare dislike + work-climate framing; no red line / no avoidance directive"),
+    ]
+    variant_prompts = [
+        (label, desc, SocialJiraPrompts(env=None, full_config={}, feelings_preset=label, log_prompts=False))
+        for label, desc in VARIANTS
+    ]
+    pd = variant_prompts[0][2]  # `default` — also used for the preset-independent blocks below
     ctx = _context_from_scenario(scenario, actor, "planning", 1)
     ctx_vote = _context_from_scenario(scenario, actor, "survey", 1)
     ctx_exec = _context_from_scenario(scenario, actor, "execution")
@@ -96,7 +106,8 @@ def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="pro
         "- `{{TOKEN}}` is a placeholder: insert the block defined under that token's heading.",
         f"- Concrete values below use seed={seed}, actor={actor}, scenario_type=conflict. "
         "resolvable vs conflict change ONLY the filled-in values (who is disliked), never the "
-        "structure. `default`/`control` are the implemented feelings presets.",
+        "structure. The feelings presets shown are the four used in the recent gpt-oss runs: "
+        "`default`, `control-hard`, `control-soft`, `soft-feely`.",
         "",
         "# Assembly — which blocks make each message",
         "```",
@@ -113,8 +124,8 @@ def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="pro
     )
 
     add("# {{SYSTEM_PROMPT}}", "")
-    variant("default (critical confidentiality + hard feeling)", pd.get_system_prompt())
-    variant("control (no confidentiality)", pc.get_system_prompt())
+    for label, desc, p in variant_prompts:
+        variant(f"{label} ({desc})", p.get_system_prompt())
 
     add("# {{WHO}}  _personality=none shown; other personalities append one sentence_", "")
     variant("none (jira1 verbatim)", pd._who_block(actor))
@@ -122,8 +133,8 @@ def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="pro
     block("{{TASKS}}", "role-driven; values are scenario-specific", pd._tasks_block(ctx))
 
     add("# {{FEELINGS}}  _values are scenario-specific_", "")
-    variant("default", pd._feelings_block(actor, ctx))
-    variant("control", pc._feelings_block(actor, ctx))
+    for label, desc, p in variant_prompts:
+        variant(f"{label} ({desc})", p._feelings_block(actor, ctx))
     _fallback = pd._feelings_block(actor, ctx_no_dislike)
     variant(
         "employee named no one they dislike",
@@ -139,8 +150,8 @@ def render_structured_doc(scenario, actor, employees, tasks, seed, out_name="pro
           pd._discussion_block(discussion_example))
 
     add("# {{COORDINATE}}  _planning instruction_", "")
-    variant("default", pd._instruction_block("planning", ctx))
-    variant("control", pc._instruction_block("planning", ctx))
+    for label, desc, p in variant_prompts:
+        variant(f"{label} ({desc})", p._instruction_block("planning", ctx))
 
     block("{{VOTE}}", "preliminary-vote instruction; private, identical for both presets",
           pd._instruction_block("survey", ctx_vote))
