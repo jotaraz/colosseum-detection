@@ -1,0 +1,21 @@
+# HTCondor submit: gpt-oss-120b (medium, NON-robust) social-jira2 c2p2 CONFLICT(newgen) sweep
+# (3 feelings x 1 conflict-cell x 2 personalities x 4 seeds x 3 samples = 72 runs). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira2_c2p2_gptoss_120b_medium_3feelings.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_c2p2_gptoss_120b_medium_conflict_a100.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_c2p2_gptoss_120b_medium_conflict_a100_$(Cluster).err
+output = social_jira2_c2p2_gptoss_120b_medium_conflict_a100_$(Cluster).out
+log    = social_jira2_c2p2_gptoss_120b_medium_conflict_a100_$(Cluster).log
+
+# gpt-oss-120b MXFP4 ~63 GB -> 2x H100-80GB (tensor_parallel_size: 2 in the YAML).
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

@@ -1,0 +1,23 @@
+# HTCondor submit: DeepSeek-R1-Distill-Llama-70B social-jira2 ROBUST CONFLICT(newgen) sweep
+# (3 feelings x 1 conflict-cell x 2 personalities x 4 seeds x 3 samples = 72 runs; expect flakiness). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira2_deepseek_r1_llama_70b_robust_3feelings.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira2_deepseek_r1_llama_70b_robust_conflict_resume.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira2_deepseek_r1_llama_70b_robust_conflict_resume_$(Cluster).err
+output = social_jira2_deepseek_r1_llama_70b_robust_conflict_resume_$(Cluster).out
+log    = social_jira2_deepseek_r1_llama_70b_robust_conflict_resume_$(Cluster).log
+
+# DeepSeek-R1-Distill-Llama-70B bf16 ~140 GB -> 4x H100-80GB (tensor_parallel_size: 4 in the YAML).
+request_gpus   = 4
+# Exclude only i101 (gpt-oss request-hang node). i105/i107 allowed (only free 4xH100 capacity; their
+# wedged-slot failure self-corrects: vLLM dies ~12s and reschedules).
+requirements   = ((TARGET.CUDADeviceName == "NVIDIA A100-SXM4-80GB") || (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3")) && (TARGET.Machine =!= "i101.internal.cluster.is.localnet")
+request_memory = 262144
+request_cpus   = 16
+request_disk   = 300G
++BypassLXCfs   = "true"
+queue

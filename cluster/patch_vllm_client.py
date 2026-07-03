@@ -60,6 +60,62 @@ if 'reasoning_content' not in src:
     src = src.replace(anchor2, inject2, 1)
     changed.append("strip reasoning_content from re-fed history")
 
+# --- Patch 3: retry the chat request on transient 5xx / connection errors ---
+# DeepSeek-R1 on hard scenarios intermittently returns HTTP 500 (Internal Server Error, no
+# server-side traceback) per request. A run makes ~15-20 sequential requests and run_attempts
+# retries the WHOLE run, so one transient 500 anywhere discards all progress -> near-zero run
+# completion. Retry the single failed request instead (5xx + connection errors only; 4xx is
+# deterministic and not retried). NOTE: a 500 fires after the (slow) generation, so each retry
+# re-generates — kept to a few attempts.
+if "_attempt in range(4)" not in src:
+    anchor3 = (
+        '        response = self.session.post(\n'
+        '            f"{self.base_url}/chat/completions",\n'
+        '            headers=self._build_headers(),\n'
+        '            data=json.dumps(payload),\n'
+        '            timeout=self.request_timeout,\n'
+        '        )\n'
+        '        if not response.ok:\n'
+        '            raise RuntimeError(\n'
+        '                f"vLLM chat request failed ({response.status_code}): {response.text}"\n'
+        '            )\n'
+    )
+    inject3 = (
+        '        import time as _time\n'
+        '        response = None\n'
+        '        _last_exc = None\n'
+        '        for _attempt in range(4):\n'
+        '            try:\n'
+        '                response = self.session.post(\n'
+        '                    f"{self.base_url}/chat/completions",\n'
+        '                    headers=self._build_headers(),\n'
+        '                    data=json.dumps(payload),\n'
+        '                    timeout=self.request_timeout,\n'
+        '                )\n'
+        '            except Exception as _exc:  # transient connection reset / read timeout -> retry\n'
+        '                _last_exc = _exc; response = None\n'
+        '                _time.sleep(2 * (_attempt + 1)); continue\n'
+        '            if response.ok:\n'
+        '                break\n'
+        '            if response.status_code >= 500:  # transient server-side hiccup -> retry\n'
+        '                _last_exc = RuntimeError(\n'
+        '                    f"vLLM chat request failed ({response.status_code}): {response.text}"\n'
+        '                )\n'
+        '                _time.sleep(2 * (_attempt + 1)); continue\n'
+        '            break  # 4xx -> deterministic, do not retry\n'
+        '        if response is None:\n'
+        '            raise _last_exc if _last_exc is not None else RuntimeError("vLLM chat request failed: no response")\n'
+        '        if not response.ok:\n'
+        '            raise RuntimeError(\n'
+        '                f"vLLM chat request failed ({response.status_code}): {response.text}"\n'
+        '            )\n'
+    )
+    if anchor3 not in src:
+        print("patch_vllm_client: PATCH3 ANCHOR NOT FOUND — client layout changed", file=sys.stderr)
+        sys.exit(1)
+    src = src.replace(anchor3, inject3, 1)
+    changed.append("retry chat request on transient 5xx/connection errors")
+
 if changed:
     open(path, "w", encoding="utf-8").write(src)
     print("patch_vllm_client: applied -> " + "; ".join(changed))

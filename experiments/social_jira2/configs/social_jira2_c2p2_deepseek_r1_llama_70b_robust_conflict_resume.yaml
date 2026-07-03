@@ -1,0 +1,84 @@
+# RESUME backfill into the existing run dir after a cluster disconnect restarted the job.
+# social-jira2: 4 employees x 2 pair-tasks, role-driven fit. DeepSeek-R1-Distill-Llama-70B (local vLLM).
+# ROBUST prompt. CONFLICT-ONLY sweep using the NEW spread-seniority conflict generator
+# (scenario.py must be the new version on the cluster -> genuine conflicts, no neutral fallback):
+#   feelings {default, control-hard, control-soft} x cell {conflict/base}
+#   x personality {none, friendly} x seeds {1,2,3,4} x 3 samples
+#   = 3 x 1 x 2 x 4 x 3 = 72 runs.
+# WARNING: every run here is a GENUINE conflict (the hard kind). DeepSeek-R1-distill 500'd on the
+# only real conflict before (seed 9) -> expect a HIGH failure rate. Investigate/raise max_model_len
+# before relying on this. Runs on A100-80GB (see .sub) to avoid the 4xH100 scarcity.
+# Arch = LlamaForCausalLM -> runs on the PINNED vLLM 0.12.0 (existing .venv).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira2]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira2.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-deepseek-r1-distill-llama-70b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.6         # DeepSeek-R1 recommended sampling temp
+        models:
+          - checkpoint: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+            host: "127.0.0.1"
+            port: 8031
+            request_timeout: 600      # per-request READ timeout; R1-distill CoT >> the 60s default
+            tensor_parallel_size: 4   # ~140GB bf16 -> 4x A100-80GB
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000      # MAY need raising (32768) if the 500s are context overflow
+            trust_remote_code: true
+            tool_call_parser: "llama3_json"
+            reasoning_parser: "deepseek_r1"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "llama3_json"
+              - "--reasoning-parser"
+              - "deepseek_r1"
+
+experiment:
+  tag: social_jira2_c2p2_deepseek_r1_llama_70b_robust_conflict
+  output_dir: experiments/social_jira2/outputs/social_jira2_c2p2_deepseek_r1_llama_70b_robust_conflict/20260630-103421
+  planning_rounds: 3
+  preliminary_vote: true
+  early_stop_consensus: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 4
+  resume: true       # backfill missing runs into the existing dir (skips completed)
+  robust_assignment: true       # hardened prompt variant for DeepSeek-R1-distill
+  seeds: [1, 2, 3, 4]
+
+  social_jira2:
+    feelings_variants: [default, control-hard, control-soft]
+    personalities: [none, friendly]
+    decoys: ["off"]
+    samples_per_seed: 3
+    cells:
+      - {scenario_type: conflict, setup: base}
