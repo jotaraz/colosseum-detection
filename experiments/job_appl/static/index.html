@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job_appl</title>
+<style>
+  :root {
+    --bg: #10141a; --panel: #181e27; --panel2: #1f2733; --border: #2b3545;
+    --text: #dce3ec; --muted: #8a97a8; --accent: #5aa9ff;
+    --good: #3ecf8e; --bad: #ff6b6b; --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  h2 { font-size: 15px; color: var(--muted); text-transform: uppercase;
+       letter-spacing: .06em; margin: 24px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px;
+          background: var(--panel); cursor: pointer; user-select: none; font-size: 13.5px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #0b1017; font-weight: 600; }
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 28px; }
+  input[type=number], input[type=text] { background: var(--panel); color: var(--text);
+          border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+  input[type=number] { width: 80px; }
+  button { background: var(--accent); color: #0b1017; border: 0; border-radius: 6px;
+           padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button:disabled { opacity: .45; cursor: default; }
+  .banner { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+  .banner.err { background: #3a1d1d; border: 1px solid #6e3030; color: #ffb4b4; }
+  .banner.ok { background: #16342a; border: 1px solid var(--good); }
+  .banner.warn { background: #37301a; border: 1px solid #6e5c26; }
+  .statusbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px;
+               position: sticky; top: 0; background: var(--bg); padding: 12px 0; z-index: 5; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+  .badge.running { background: #1c3250; color: var(--accent); }
+  .badge.awaiting_user { background: #443a17; color: var(--warn); }
+  .badge.success { background: #14382a; color: var(--good); }
+  .badge.failed { background: #3f2020; color: var(--bad); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; margin-bottom: 12px; }
+  .card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card .num { color: var(--muted); font-size: 13px; }
+  .card .co { font-weight: 700; }
+  .card .job { color: var(--muted); }
+  .decision { margin-left: auto; font-weight: 700; font-size: 13px; }
+  .decision.invite { color: var(--good); } .decision.reject { color: var(--bad); }
+  .reasoning { color: var(--muted); font-size: 13.5px; margin-top: 6px; font-style: italic; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13.5px; }
+  .letter { white-space: pre-wrap; background: var(--panel2); border-radius: 8px;
+            padding: 12px 14px; margin-top: 8px; font-size: 13.5px; }
+  .hr-reasons { margin-top: 10px; font-size: 14px; }
+  .hr-reasons b.invite { color: var(--good); } .hr-reasons b.reject { color: var(--bad); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
+             border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .chatpanel { background: var(--panel); border: 1px solid var(--warn); border-radius: 10px;
+               padding: 16px; margin-top: 20px; }
+  .chatpanel.done { border-color: var(--border); }
+  .msg { margin: 10px 0; max-width: 85%; padding: 10px 14px; border-radius: 10px;
+         white-space: pre-wrap; font-size: 14px; }
+  .msg.agent { background: var(--panel2); }
+  .msg.user { background: #1c3250; margin-left: auto; }
+  .chatrow { display: flex; gap: 8px; margin-top: 12px; }
+  .chatrow textarea { flex: 1; background: var(--panel2); color: var(--text); resize: vertical;
+          border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+          font: 14px/1.4 inherit; min-height: 44px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>job_appl</h1>
+  <div class="sub">Pick who you are; your agent hunts for the interview.</div>
+  <div id="error" class="banner err hidden"></div>
+
+  <!-- setup -->
+  <div id="setup">
+    <div id="worldloading"><span class="spinner"></span>Loading world&hellip;</div>
+    <div id="setupform" class="hidden">
+      <h2>Your name</h2>
+      <input id="name" type="text" placeholder="leave empty for a random name" style="width:280px">
+      <h2>Your traits <span id="traitcount"></span></h2>
+      <div id="traits" class="chips"></div>
+      <h2>Your skills <span id="skillcount"></span></h2>
+      <div id="skills" class="chips"></div>
+      <div id="skillexp"></div>
+      <div class="row">
+        <label>Max applications <input id="maxtries" type="number" value="30" min="1" max="200"></label>
+        <button id="start">Start job hunt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- run -->
+  <div id="runview" class="hidden">
+    <div class="statusbar">
+      <span id="statusbadge" class="badge"></span>
+      <span id="triesinfo" class="sub" style="margin:0"></span>
+      <button id="profiletoggle" class="ghost">Show profile</button>
+      <button id="retry" class="ghost hidden">Retry</button>
+      <button id="newrun" class="ghost hidden">New run</button>
+    </div>
+    <div id="profile" class="card hidden"></div>
+    <div id="apps"></div>
+    <div id="working" class="card hidden"><span class="spinner"></span><span id="workingtext">Your agent is writing an application&hellip;</span></div>
+    <div id="chatpanel" class="chatpanel hidden">
+      <div id="chatmsgs"></div>
+      <div id="chatinput" class="chatrow">
+        <textarea id="chattext" placeholder="Your advice to the agent&hellip;"></textarea>
+        <button id="send" class="ghost">Send</button>
+        <button id="resume">Continue applying</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let world = null, run = null, stepping = false;
+const picked = { traits: new Set(), skills: new Set() };
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+const post = (path, body) => api(path, {
+  method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: body ? JSON.stringify(body) : undefined });
+
+function showError(msg) { const e = $('error'); e.textContent = msg; e.classList.remove('hidden'); }
+function clearError() { $('error').classList.add('hidden'); }
+
+// ------------------------------------------------------------------ setup
+function chipList(el, items, set, countEl, onchange) {
+  el.innerHTML = '';
+  for (const item of items) {
+    const c = document.createElement('span');
+    c.className = 'chip'; c.textContent = item;
+    c.onclick = () => { set.has(item) ? set.delete(item) : set.add(item);
+      c.classList.toggle('on'); countEl.textContent = set.size ? `(${set.size} picked)` : '';
+      if (onchange) onchange(); };
+    el.appendChild(c);
+  }
+}
+
+function skillExperiences(names) {
+  const chosen = world.skills.filter(s => names.has(s.name));
+  return chosen.map(s => `
+    <div class="card" style="margin-top:10px">
+      <div class="head"><span class="co">${esc(s.name)}</span></div>
+      <ul style="margin:6px 0 0; padding-left:20px; font-size:13.5px">
+        ${s.experiences.map(e => `<li>${esc(e)}</li>`).join('')}
+      </ul>
+    </div>`).join('');
+}
+
+async function init() {
+  try {
+    world = await api('/api/world');
+  } catch (e) { showError('Could not load world: ' + e.message); return; }
+  $('worldloading').classList.add('hidden');
+  $('setupform').classList.remove('hidden');
+  chipList($('traits'), world.traits, picked.traits, $('traitcount'));
+  chipList($('skills'), world.skills.map(s => s.name), picked.skills, $('skillcount'),
+           () => { $('skillexp').innerHTML = skillExperiences(picked.skills); });
+}
+
+$('start').onclick = async () => {
+  clearError();
+  $('start').disabled = true;
+  try {
+    run = await post('/api/run', {
+      name: $('name').value.trim(),
+      traits: [...picked.traits], skills: [...picked.skills],
+      max_tries: parseInt($('maxtries').value) || 30 });
+  } catch (e) { showError(e.message); $('start').disabled = false; return; }
+  $('setup').classList.add('hidden');
+  $('runview').classList.remove('hidden');
+  render(); stepLoop();
+};
+
+// ------------------------------------------------------------------- run
+async function stepLoop() {
+  if (stepping) return;
+  stepping = true;
+  $('retry').classList.add('hidden');
+  while (run && run.status === 'running') {
+    $('working').classList.remove('hidden');
+    try { run = await post(`/api/run/${run.run_id}/step`); }
+    catch (e) {
+      showError('Step failed: ' + e.message);
+      $('retry').classList.remove('hidden');
+      break;
+    }
+    clearError(); render();
+  }
+  $('working').classList.add('hidden');
+  stepping = false; render();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function render() {
+  if (!run) return;
+  const badge = $('statusbadge');
+  badge.className = 'badge ' + run.status;
+  badge.textContent = { running: 'applying', awaiting_user: 'check-in',
+                        success: 'interview!', failed: 'gave up' }[run.status] || run.status;
+  $('triesinfo').textContent =
+    `${run.person.name} — ${run.applications.length} / ${run.max_tries} applications`;
+  $('newrun').classList.toggle('hidden', run.status !== 'success' && run.status !== 'failed');
+
+  const p = run.person;
+  $('profile').innerHTML = `
+    <div class="head"><span class="co">${esc(p.name)}</span></div>
+    <div class="hr-reasons"><b>Traits:</b> ${p.traits.length ? esc(p.traits.join(', ')) : '(none picked)'}</div>
+    <div class="hr-reasons"><b>Skills:</b>${p.skills.length ? '' : ' (none picked)'}</div>
+    ${p.skills.map(s => `
+      <div class="hr-reasons" style="margin-left:14px"><b>${esc(s.name)}</b></div>
+      <ul style="margin:2px 0 8px 14px; padding-left:20px; font-size:13.5px">
+        ${s.experiences.map(e => `<li>${esc(e)}</li>`).join('')}
+      </ul>`).join('')}`;
+
+  $('apps').innerHTML = run.applications.map(a => `
+    <div class="card">
+      <div class="head">
+        <span class="num">#${a.i}</span>
+        <span class="co">${esc(a.company_name)}</span>
+        <span class="job">${esc(a.job_title)}</span>
+        <span class="decision ${a.decision}">${a.decision === 'invite' ? 'INTERVIEW' : 'REJECTED'}</span>
+      </div>
+      ${a.agent_reasoning ? `<div class="reasoning">agent: ${esc(a.agent_reasoning)}</div>` : ''}
+      ${a.agent_cot ? `<details open><summary>agent chain-of-thought</summary><div class="letter">${esc(a.agent_cot)}</div></details>` : ''}
+      <details><summary>cover letter</summary><div class="letter">${esc(a.cover_letter)}</div></details>
+      <div class="hr-reasons"><b class="${a.decision}">HR:</b> ${esc(a.reasons)}</div>
+    </div>`).join('');
+
+  const chatOpen = run.status === 'awaiting_user';
+  const finished = run.status === 'success' || run.status === 'failed';
+  const panel = $('chatpanel');
+  panel.classList.toggle('hidden', !chatOpen && !finished);
+  panel.classList.toggle('done', finished);
+  $('chatinput').classList.toggle('hidden', !chatOpen);
+  if (chatOpen || finished) {
+    const msgs = finished
+      ? run.chat.filter(m => m.after_try === run.applications.length)
+      : run.chat.filter(m => m.after_try === run.applications.length);
+    $('chatmsgs').innerHTML = msgs.map(m =>
+      `<div class="msg ${m.role}">${esc(m.text)}</div>`).join('');
+  }
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+$('send').onclick = async () => {
+  const text = $('chattext').value.trim();
+  if (!text) return;
+  $('send').disabled = $('resume').disabled = true;
+  try { run = await post(`/api/run/${run.run_id}/chat`, { message: text }); $('chattext').value = ''; }
+  catch (e) { showError(e.message); }
+  $('send').disabled = $('resume').disabled = false;
+  render();
+};
+
+$('resume').onclick = async () => {
+  try { run = await post(`/api/run/${run.run_id}/resume`); }
+  catch (e) { showError(e.message); return; }
+  render(); stepLoop();
+};
+
+$('profiletoggle').onclick = () => {
+  const hidden = $('profile').classList.toggle('hidden');
+  $('profiletoggle').textContent = hidden ? 'Show profile' : 'Hide profile';
+};
+
+$('retry').onclick = () => { clearError(); stepLoop(); };
+$('newrun').onclick = () => location.reload();
+
+init();
+</script>
+</body>
+</html>
