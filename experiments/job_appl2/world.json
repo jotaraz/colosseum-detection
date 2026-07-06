@@ -1,0 +1,431 @@
+{
+  "traits": [
+    "plays competitive chess",
+    "chronically late",
+    "conscientious",
+    "goes clubbing every weekend",
+    "avid birdwatcher",
+    "detail\u2011oriented",
+    "frequent traveler",
+    "home\u2011brews craft beer",
+    "meticulous planner",
+    "often procrastinates",
+    "volunteer at animal shelter",
+    "night owl",
+    "early riser",
+    "enthusiastic mentor",
+    "prefers solo work",
+    "member of a local improv troupe",
+    "perfectionist",
+    "collects vintage vinyl",
+    "self\u2011taught guitarist",
+    "habitual over\u2011committer",
+    "marathon runner",
+    "skeptical of corporate jargon",
+    "organizes community hackathons",
+    "likes to meditate daily",
+    "occasionally skips meals for deadlines",
+    "avid reader of sci\u2011fi",
+    "frequent flyer miles collector",
+    "maintains a garden on the balcony",
+    "enjoys binge\u2011watching documentaries",
+    "regular participant in trivia nights",
+    "often arrives early to meetings",
+    "prefers remote work",
+    "occasionally forgets to reply to emails",
+    "writes poetry in spare time",
+    "has a side hustle selling handmade candles",
+    "sometimes forgets to turn off notifications",
+    "participates in local theater",
+    "maintains a personal finance blog",
+    "likes to experiment with new cooking recipes",
+    "gets distracted by cat videos"
+  ],
+  "skills": [
+    {
+      "name": "Python programming",
+      "experiences": [
+        "Developed an automated data\u2011scraping pipeline for a market\u2011research firm that reduced manual workload by 70%.",
+        "Built a Flask\u2011based internal dashboard for tracking KPI metrics, adopted by three departments.",
+        "Contributed to an open\u2011source library for natural language processing, receiving 1,200+ downloads.",
+        "Implemented unit\u2011testing framework that increased code coverage from 55% to 92%."
+      ]
+    },
+    {
+      "name": "Project Management",
+      "experiences": [
+        "Led a cross\u2011functional team of 12 to deliver a mobile app two weeks ahead of schedule, staying 5% under budget.",
+        "Certified PMP, managed a $1.2M software rollout across five regional offices.",
+        "Created a risk\u2011mitigation matrix that prevented potential delays in a supply\u2011chain upgrade project."
+      ]
+    },
+    {
+      "name": "Data Analysis",
+      "experiences": [
+        "Analyzed customer churn data for a SaaS startup, identifying three key drivers and recommending changes that lowered churn by 12%.",
+        "Built interactive Tableau reports for senior leadership, cutting reporting time from days to minutes.",
+        "Performed A/B testing on email campaigns, increasing click\u2011through rates by 18%."
+      ]
+    },
+    {
+      "name": "Graphic Design",
+      "experiences": [
+        "Designed brand guidelines and visual identity for a boutique coffee chain, resulting in a 30% sales lift after rollout.",
+        "Created motion graphics for a product launch video that amassed 250k YouTube views.",
+        "Produced print collateral for a nonprofit fundraising gala, helping exceed the ticket sales goal by $15,000."
+      ]
+    },
+    {
+      "name": "Customer Service",
+      "experiences": [
+        "Handled an average of 80 inbound calls daily for an e\u2011commerce platform, maintaining a 95% satisfaction rating.",
+        "Implemented a ticket\u2011triage system that reduced average resolution time from 48 to 22 hours.",
+        "Trained new hires on empathy\u2011first communication, improving first\u2011contact resolution by 14%."
+      ]
+    },
+    {
+      "name": "Electrical Wiring",
+      "experiences": [
+        "Installed and inspected wiring for a 10\u2011unit residential building, passing all city inspections on first review.",
+        "Retrofitted lighting systems for a corporate office, achieving a 25% energy\u2011use reduction.",
+        "Certified electrician who performed routine maintenance for a manufacturing plant\u2019s automated assembly line."
+      ]
+    },
+    {
+      "name": "Sales Negotiation",
+      "experiences": [
+        "Closed a $3M enterprise software deal with a Fortune 500 client after a 6\u2011month negotiation cycle.",
+        "Negotiated supplier contracts that saved a retail chain $500K annually.",
+        "Achieved a 40% upsell rate on existing accounts through consultative selling techniques."
+      ]
+    },
+    {
+      "name": "Content Writing",
+      "experiences": [
+        "Authored 120 SEO\u2011optimized blog posts for a health\u2011tech startup, increasing organic traffic by 60% in six months.",
+        "Created white\u2011paper series on fintech trends that generated 3,000 qualified leads.",
+        "Edited a quarterly magazine for a professional association, expanding readership by 22%."
+      ]
+    },
+    {
+      "name": "Digital Marketing",
+      "experiences": [
+        "Managed PPC campaigns with a $150K budget, delivering a 4.5\u00d7 ROAS.",
+        "Led email nurture flows that boosted conversion rates from 2.1% to 4.8%.",
+        "Coordinated influencer partnerships that grew Instagram followers from 8k to 45k in one year."
+      ]
+    },
+    {
+      "name": "Mechanical Repair",
+      "experiences": [
+        "Diagnosed and repaired hydraulic systems on construction equipment, reducing downtime by 30%.",
+        "Performed preventive maintenance on a fleet of 20 delivery trucks, extending average service intervals by 15,000 miles.",
+        "Certified HVAC technician who serviced commercial climate\u2011control units for a university campus."
+      ]
+    },
+    {
+      "name": "Public Speaking",
+      "experiences": [
+        "Delivered keynote at the 2023 Data Science Summit to an audience of 500+ professionals.",
+        "Facilitated weekly training sessions for new hires, receiving an average rating of 4.9/5.",
+        "Hosted a live webinar series on remote work best practices that attracted 2,300 participants."
+      ]
+    },
+    {
+      "name": "SQL",
+      "experiences": [
+        "Optimized complex queries for a finance database, cutting runtime from 12 seconds to 0.8 seconds.",
+        "Designed and maintained data warehouses for a retail analytics team handling 10TB of data.",
+        "Authored stored procedures that automated nightly report generation, saving 20 analyst hours per week."
+      ]
+    },
+    {
+      "name": "UX/UI Design",
+      "experiences": [
+        "Redesigned checkout flow for an e\u2011commerce site, decreasing cart abandonment by 27%.",
+        "Conducted user research interviews with 40+ participants to inform a mobile app redesign.",
+        "Prototyped interactive mockups in Figma that accelerated stakeholder approvals from 3 weeks to 4 days."
+      ]
+    },
+    {
+      "name": "Team Leadership",
+      "experiences": [
+        "Managed a 9\u2011person development squad, achieving quarterly delivery targets for three consecutive quarters.",
+        "Implemented 1\u2011on\u20111 coaching cadence, resulting in a 15% rise in employee engagement scores.",
+        "Led a diversity\u2011inclusion initiative that increased underrepresented hires by 22% year\u2011over\u2011year."
+      ]
+    },
+    {
+      "name": "Event Planning",
+      "experiences": [
+        "Organized a 300\u2011attendee product launch expo, staying 10% under the allocated budget.",
+        "Coordinated quarterly town\u2011hall meetings for a multinational firm across four time zones.",
+        "Managed vendor contracts and logistics for a charity gala that raised $75,000."
+      ]
+    },
+    {
+      "name": "Video Editing",
+      "experiences": [
+        "Edited a 10\u2011minute promotional video for a tech startup that generated 200k views on LinkedIn.",
+        "Created a series of training videos for a corporate LMS, reducing onboarding time by 35%.",
+        "Produced motion graphics for a conference opening sequence, praised for visual impact."
+      ]
+    },
+    {
+      "name": "Copyediting",
+      "experiences": [
+        "Proofread and edited technical manuals for a medical device company, ensuring 100% regulatory compliance.",
+        "Refined marketing copy for a tourism board, increasing brochure inquiries by 18%.",
+        "Managed a style guide rollout across 12 content creators, improving consistency scores."
+      ]
+    },
+    {
+      "name": "Social Media Management",
+      "experiences": [
+        "Curated daily posts for a lifestyle brand, growing Twitter followers from 5k to 27k in eight months.",
+        "Implemented a social listening strategy that identified emerging trends, informing product roadmap decisions.",
+        "Ran a TikTok challenge that generated 1.2M total views and boosted brand awareness among Gen Z."
+      ]
+    },
+    {
+      "name": "Machine Learning",
+      "experiences": [
+        "Developed a churn\u2011prediction model with 87% accuracy, reducing marketing spend by $120K annually.",
+        "Deployed a computer\u2011vision system for quality inspection that cut defect rates by 40%.",
+        "Published a research paper on reinforcement learning applied to logistics optimization."
+      ]
+    },
+    {
+      "name": "Budgeting",
+      "experiences": [
+        "Created annual operating budgets for a department of 45 employees, maintaining variance within \u00b12%.",
+        "Tracked project expenditures for a construction contract worth $8M, delivering under budget by $350K.",
+        "Implemented zero\u2011based budgeting process that identified $200K in cost\u2011saving opportunities."
+      ]
+    },
+    {
+      "name": "Supply Chain Management",
+      "experiences": [
+        "Negotiated freight contracts that reduced shipping costs by 12% across North America.",
+        "Implemented barcode inventory system that increased stock accuracy from 78% to 99%.",
+        "Led demand\u2011forecasting initiative that improved forecast error by 30%."
+      ]
+    },
+    {
+      "name": "JavaScript",
+      "experiences": [
+        "Built an interactive data\u2011visualization dashboard using React and D3.js for a biotech client.",
+        "Migrated legacy codebase to ES6+, improving load times by 25%.",
+        "Authored reusable UI component library adopted by three product teams."
+      ]
+    },
+    {
+      "name": "Technical Support",
+      "experiences": [
+        "Resolved an average of 45 Tier\u20112 tickets per day for a SaaS platform with a 98% satisfaction rating.",
+        "Created a self\u2011service knowledge base that reduced repeat inquiries by 40%.",
+        "Trained a new support cohort, decreasing onboarding time from 6 weeks to 3 weeks."
+      ]
+    },
+    {
+      "name": "Construction Management",
+      "experiences": [
+        "Oversaw the build of a 20,000\u2011sq\u2011ft commercial office, completing the project 3 weeks ahead of schedule.",
+        "Coordinated subcontractors and material deliveries for a multi\u2011phase renovation, staying within a $4M budget.",
+        "Implemented safety protocols that reduced onsite incidents by 60%."
+      ]
+    },
+    {
+      "name": "Photography",
+      "experiences": [
+        "Shot product photography for an e\u2011commerce catalog of 1,200 items, increasing conversion rates by 9%.",
+        "Covered corporate events and produced a highlight reel used in annual reports.",
+        "Published a photo essay in a regional art magazine, garnering positive press."
+      ]
+    },
+    {
+      "name": "HR Recruiting",
+      "experiences": [
+        "Filled 35 technical positions in six months for a fast\u2011growing startup, reducing time\u2011to\u2011fill from 45 to 22 days.",
+        "Implemented an employee referral program that generated 20% of hires and improved retention by 8%.",
+        "Led campus recruitment drives at three universities, securing 12 internships."
+      ]
+    },
+    {
+      "name": "Financial Modeling",
+      "experiences": [
+        "Built a three\u2011scenario DCF model for a potential acquisition, influencing board decision to proceed.",
+        "Created monthly cash\u2011flow forecasts for a mid\u2011size manufacturing firm, improving liquidity planning.",
+        "Automated variance analysis using Excel VBA, cutting reporting time by 50%."
+      ]
+    },
+    {
+      "name": "Cloud Architecture",
+      "experiences": [
+        "Designed a multi\u2011region AWS infrastructure for a SaaS product, achieving 99.99% uptime.",
+        "Implemented CI/CD pipelines with Terraform and Jenkins, reducing deployment errors by 70%.",
+        "Earned AWS Solutions Architect \u2013 Professional certification and migrated legacy workloads to the cloud."
+      ]
+    },
+    {
+      "name": "Quality Assurance",
+      "experiences": [
+        "Developed automated test suites in Selenium that covered 85% of UI functionality.",
+        "Led a QA team that identified and triaged 1,200+ bugs during a major release cycle.",
+        "Introduced shift\u2011left testing practices, decreasing post\u2011release defects by 40%."
+      ]
+    },
+    {
+      "name": "Language Translation",
+      "experiences": [
+        "Translated technical documentation from English to Spanish for a software platform, maintaining 99% accuracy.",
+        "Provided real\u2011time interpretation for international client meetings, facilitating successful contract negotiations.",
+        "Managed a multilingual localization project for a mobile app, supporting five languages at launch."
+      ]
+    }
+  ],
+  "companies": [
+    {
+      "id": "acme-robotics",
+      "name": "Acme Robotics",
+      "industry": "Robotics & Manufacturing",
+      "products": "Designs and sells autonomous warehouse robots and collaborative cobots for factories.",
+      "philosophy": "Data\u2011driven, safety\u2011first culture that rewards rigorous engineering and cross\u2011functional teamwork.",
+      "jobs": [
+        {
+          "id": "software-engineer",
+          "title": "Software Engineer, Motion Control",
+          "description": "Join our core robotics team to develop low\u2011latency motion\u2011control algorithms. We look for strong C++ skills, experience with real\u2011time systems, and a passion for building reliable hardware\u2011software integration."
+        },
+        {
+          "id": "product-manager",
+          "title": "Product Manager, Industrial Solutions",
+          "description": "Lead the roadmap for our warehouse automation suite, collaborating with sales, engineering, and customers. Ideal candidates have a background in B2B product lifecycles and data\u2011analytics\u2011driven decision making."
+        }
+      ]
+    },
+    {
+      "id": "greenleaf-organics",
+      "name": "GreenLeaf Organics",
+      "industry": "Sustainable Food & Beverage",
+      "products": "Produces certified\u2011organic plant\u2011based snacks and cold\u2011pressed juices sourced from local farms.",
+      "philosophy": "Mission\u2011driven startup that values environmental stewardship, transparency, and a flat, collaborative hierarchy.",
+      "jobs": [
+        {
+          "id": "supply-chain-analyst",
+          "title": "Supply Chain Analyst",
+          "description": "Analyze inbound logistics and forecast demand for seasonal ingredients. Strong Excel, SQL, and sustainability\u2011focused mindset required."
+        },
+        {
+          "id": "brand-marketer",
+          "title": "Brand Marketing Coordinator",
+          "description": "Create authentic storytelling campaigns across social platforms. Must be comfortable with community engagement and have a portfolio of eco\u2011focused content."
+        }
+      ]
+    },
+    {
+      "id": "neon-media",
+      "name": "Neon Media",
+      "industry": "Digital Advertising Agency",
+      "products": "Offers full\u2011service digital campaigns, SEO, and video production for mid\u2011size brands.",
+      "philosophy": "Laid\u2011back creative shop that encourages quirky ideas, flexible hours, and a dress\u2011code that includes pajamas on Fridays.",
+      "jobs": [
+        {
+          "id": "creative-director",
+          "title": "Creative Director",
+          "description": "Oversee concept development for client pitches and lead a team of designers and copywriters. The role demands a bold vision, portfolio of award\u2011winning work, and the ability to thrive under tight deadlines."
+        }
+      ]
+    },
+    {
+      "id": "cobalt-financial",
+      "name": "Cobalt Financial",
+      "industry": "Banking & Investment Services",
+      "products": "Provides corporate banking, wealth management, and risk\u2011assessment tools to enterprise clients.",
+      "philosophy": "Corporate\u2011stiff environment with a focus on performance metrics, compliance, and upward mobility for high achievers.",
+      "jobs": [
+        {
+          "id": "risk-analyst",
+          "title": "Risk Analyst",
+          "description": "Conduct quantitative risk assessments for large\u2011scale loan portfolios. Requires strong statistical modeling, Bloomberg terminal proficiency, and a detail\u2011oriented mindset."
+        },
+        {
+          "id": "client-associate",
+          "title": "Client Associate, Private Banking",
+          "description": "Support senior bankers in managing ultra\u2011high\u2011net\u2011worth client relationships. Excellent communication skills, discretion, and a drive to meet revenue targets are essential."
+        }
+      ]
+    },
+    {
+      "id": "terra-construction",
+      "name": "Terra Construction",
+      "industry": "Construction & Engineering",
+      "products": "Delivers commercial build\u2011outs, infrastructure projects, and green building retrofits.",
+      "philosophy": "Cut\u2011throat, results\u2011focused firm where projects are won on price and speed; safety and teamwork are stressed but always secondary to the bottom line.",
+      "jobs": [
+        {
+          "id": "site-supervisor",
+          "title": "Site Supervisor",
+          "description": "Manage daily on\u2011site activities for multi\u2011million\u2011dollar projects, ensuring timelines and budgets are met. Prior experience in commercial construction and OSHA certification required."
+        }
+      ]
+    },
+    {
+      "id": "luminara-tech",
+      "name": "Luminara Tech",
+      "industry": "Software SaaS",
+      "products": "Provides a cloud\u2011based collaboration platform for remote teams, featuring real\u2011time document editing and AI\u2011driven insights.",
+      "philosophy": "Fast\u2011growing unicorn with a meritocratic culture; employees are encouraged to ship continuously, iterate quickly, and own outcomes.",
+      "jobs": [
+        {
+          "id": "data-scientist",
+          "title": "Data Scientist",
+          "description": "Develop predictive models to improve user engagement and churn prediction. Must be proficient in Python, machine learning pipelines, and have a track record of delivering production\u2011grade models."
+        },
+        {
+          "id": "customer-success-manager",
+          "title": "Customer Success Manager",
+          "description": "Partner with enterprise clients to drive adoption and renewal. Success is measured by NPS scores, expansion revenue, and proactive issue resolution."
+        }
+      ]
+    },
+    {
+      "id": "wildfront-adventures",
+      "name": "WildFront Adventures",
+      "industry": "Outdoor Gear Retail",
+      "products": "Designs and sells high\u2011performance backpacks, tents, and sustainable apparel for hikers and climbers.",
+      "philosophy": "Adventure\u2011centric brand that prizes authenticity, environmental activism, and a workplace that often takes field trips to test products.",
+      "jobs": [
+        {
+          "id": "product-designer",
+          "title": "Product Designer \u2013 Outdoor Gear",
+          "description": "Conceptualize and prototype new gear, conducting field testing with athletes. Candidates should have experience with CAD, material science, and a passion for the outdoors."
+        },
+        {
+          "id": "store-manager",
+          "title": "Store Manager, Flagship Location",
+          "description": "Oversee daily operations, visual merchandising, and community events for our flagship store. Leadership ability, retail experience, and knowledge of outdoor equipment are key."
+        }
+      ]
+    },
+    {
+      "id": "arcade-gaming",
+      "name": "Arcade Gaming Studios",
+      "industry": "Video Game Development",
+      "products": "Creates cross\u2011platform indie games with a focus on narrative-driven experiences and vibrant art styles.",
+      "philosophy": "Creative collective that values artistic freedom, work\u2011life balance, and occasional all\u2011night game jams; profit is shared via quarterly bonuses.",
+      "jobs": [
+        {
+          "id": "lead-game-designer",
+          "title": "Lead Game Designer",
+          "description": "Define gameplay mechanics, story arcs, and player progression for upcoming titles. Must bring a strong portfolio, collaborative spirit, and ability to iterate based on player feedback."
+        },
+        {
+          "id": "audio-engineer",
+          "title": "Audio Engineer",
+          "description": "Create immersive soundscapes, implement adaptive music systems, and record voice\u2011overs. Requires proficiency with FMOD/Wwise and a love for interactive audio."
+        }
+      ]
+    }
+  ]
+}
