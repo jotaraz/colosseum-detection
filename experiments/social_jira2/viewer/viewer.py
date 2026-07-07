@@ -30,10 +30,32 @@ turn it was found in. Until that file exists the overlay shows "no judge results
 import argparse
 import glob
 import json
+import os
 import re
+import sys
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+# Run under whatever interpreter has Flask. When launched with a bare `python`
+# that lacks Flask (e.g. a system/pyenv shim), re-exec into the repo's `.venv`
+# if one is found by walking up from this file. Keeps `python viewer.py` working
+# regardless of which machine / interpreter it's started with.
+try:
+    from flask import Flask, jsonify, request, send_from_directory
+except ModuleNotFoundError:
+    _here = Path(__file__).resolve()
+    _venv_py = next(
+        (p / ".venv" / "bin" / "python"
+         for p in _here.parents
+         if (p / ".venv" / "bin" / "python").exists()),
+        None,
+    )
+    if _venv_py is None or Path(sys.executable).resolve() == _venv_py.resolve():
+        raise SystemExit(
+            "Flask is not installed for this interpreter and no repo .venv with "
+            "Flask was found.\nInstall it (e.g. `pip install flask`) or run with the "
+            "repo venv: `<repo>/.venv/bin/python viewer.py`."
+        )
+    os.execv(str(_venv_py), [str(_venv_py), *sys.argv])
 
 HERE = Path(__file__).resolve().parent
 OUTPUTS = (HERE / ".." / "outputs").resolve()

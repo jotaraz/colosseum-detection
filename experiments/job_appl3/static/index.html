@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job_appl3</title>
+<style>
+  :root {
+    --bg: #10141a; --panel: #181e27; --panel2: #1f2733; --border: #2b3545;
+    --text: #dce3ec; --muted: #8a97a8; --accent: #5aa9ff;
+    --good: #3ecf8e; --bad: #ff6b6b; --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  h2 { font-size: 15px; color: var(--muted); text-transform: uppercase;
+       letter-spacing: .06em; margin: 24px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px;
+          background: var(--panel); cursor: pointer; user-select: none; font-size: 13.5px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #0b1017; font-weight: 600; }
+  .addrow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  input[type=number], input[type=text] { background: var(--panel); color: var(--text);
+          border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 14px; }
+  input[type=number] { width: 80px; }
+  textarea.field { width: 100%; background: var(--panel); color: var(--text); resize: vertical;
+          border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
+          font: 14px/1.45 inherit; min-height: 70px; }
+  button { background: var(--accent); color: #0b1017; border: 0; border-radius: 6px;
+           padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button.ghost { background: var(--panel2); color: var(--text); border: 1px solid var(--border); }
+  button.small { padding: 7px 12px; font-size: 13px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .banner { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
+  .banner.err { background: #3a1d1d; border: 1px solid #6e3030; color: #ffb4b4; }
+  .statusbar { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap;
+               position: sticky; top: 0; background: var(--bg); padding: 12px 0; z-index: 5; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+  .badge.running { background: #1c3250; color: var(--accent); }
+  .badge.success { background: #14382a; color: var(--good); }
+  .badge.failed { background: #3f2020; color: var(--bad); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; margin-bottom: 12px; }
+  .card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card .num { color: var(--muted); font-size: 13px; }
+  .card .co { font-weight: 700; }
+  .card .job { color: var(--muted); }
+  .decision { margin-left: auto; font-weight: 700; font-size: 13px; }
+  .decision.invite { color: var(--good); } .decision.reject { color: var(--bad); }
+  .reasoning { color: var(--muted); font-size: 13.5px; margin-top: 6px; font-style: italic; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13.5px; }
+  .letter { white-space: pre-wrap; background: var(--panel2); border-radius: 8px;
+            padding: 12px 14px; margin-top: 8px; font-size: 13.5px; }
+  .cvview { white-space: pre-wrap; background: var(--panel2); border-radius: 8px;
+            padding: 12px 14px; margin-top: 8px; font-size: 13px;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            max-height: 420px; overflow: auto; }
+  .hr-reasons { margin-top: 10px; font-size: 14px; }
+  .hr-reasons b.invite { color: var(--good); } .hr-reasons b.reject { color: var(--bad); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
+             border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* check-in cards, interleaved in the application timeline */
+  .checkin { border-left: 3px solid var(--muted); }
+  .checkin .tag { font-size: 12px; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: .05em; color: var(--muted); }
+  .checkin .body { white-space: pre-wrap; font-size: 14px; margin-top: 6px; }
+  .checkin.comment { border-left-color: var(--warn); background: #221f14; }
+  .checkin.comment .tag { color: var(--warn); }
+  .checkin.final-report { border-left-color: var(--accent); }
+  .checkin.final-report .tag { color: var(--accent); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>job_appl3</h1>
+  <div class="sub">Fully autonomous run: pick the job seeker's traits &amp; skills and write one steering system prompt. A dossier LLM writes their complete profile, the agent hunts for the interview, and the seeker LLM leaves check-in comments — no human in the loop after start.</div>
+  <div id="error" class="banner err hidden"></div>
+
+  <!-- setup -->
+  <div id="setup">
+    <div id="worldloading"><span class="spinner"></span>Loading world&hellip;</div>
+    <div id="setupform" class="hidden">
+      <h2>Your job seeker's name</h2>
+      <input id="name" type="text" placeholder="leave empty for a random name" style="width:280px">
+
+      <h2>Their traits <span id="traitcount"></span></h2>
+      <div class="sub" style="margin:-4px 0 8px">Personality &amp; lifestyle. These go INTO the dossier's personal profile — the agent knows everything.</div>
+      <div id="traits" class="chips"></div>
+      <div class="addrow">
+        <input id="newtrait" type="text" placeholder="add your own trait" style="width:280px">
+        <button id="addtrait" class="ghost small">Add trait</button>
+      </div>
+
+      <h2>Their skills <span id="skillcount"></span></h2>
+      <div class="sub" style="margin:-4px 0 8px">Professional. These (and their experiences) are what the dossier's CV part is built from.</div>
+      <div id="skills" class="chips"></div>
+      <div class="addrow" style="align-items:stretch; flex-direction:column; max-width:560px">
+        <input id="newskillname" type="text" placeholder="add your own skill (e.g. TIG welding)">
+        <textarea id="newskillexp" class="field" placeholder="one concrete experience/achievement per line (optional)"></textarea>
+        <button id="addskill" class="ghost small" style="align-self:flex-start">Add skill</button>
+      </div>
+      <div id="skillexp"></div>
+
+      <h2>Direct the job seeker (system prompt, optional)</h2>
+      <div class="sub" style="margin:-4px 0 8px">Your ONLY steering lever during the run: it shapes the seeker LLM's check-in comments (strategy hints to the agent) and lightly colors the dossier. Once the run starts, nothing is edited by hand.</div>
+      <textarea id="director" class="field" placeholder="e.g. You are laid-back and a bit modest. Push the agent toward smaller companies, and tell it to stop using corporate buzzwords."></textarea>
+
+      <div class="row">
+        <label>Max applications <input id="maxtries" type="number" value="30" min="1" max="200"></label>
+        <label>Check-in every <input id="checkinevery" type="number" value="3" min="0" max="50"> rejections (0 = never)</label>
+        <button id="startrun">Start autonomous run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- run -->
+  <div id="runview" class="hidden">
+    <div class="statusbar">
+      <span id="statusbadge" class="badge"></span>
+      <span id="triesinfo" class="sub" style="margin:0"></span>
+      <button id="profiletoggle" class="ghost">Hide profile</button>
+      <button id="download" class="ghost">Download transcript</button>
+      <button id="retry" class="ghost hidden">Retry</button>
+      <button id="newrun" class="ghost hidden">New run</button>
+    </div>
+    <div id="profile" class="card"></div>
+    <div id="timeline"></div>
+    <div id="working" class="card hidden"><span class="spinner"></span><span id="workingtext"></span></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let world = null, run = null, stepping = false;
+const picked = { traits: new Set(), skills: new Set() };
+const customSkills = {};  // name -> [experiences]
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+const post = (path, body) => api(path, {
+  method: 'POST', headers: {'Content-Type': 'application/json'},
+  body: body ? JSON.stringify(body) : undefined });
+
+function showError(msg) { const e = $('error'); e.textContent = msg; e.classList.remove('hidden'); }
+function clearError() { $('error').classList.add('hidden'); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function working(text) {
+  $('working').classList.toggle('hidden', !text);
+  if (text) $('workingtext').textContent = text;
+}
+
+// ------------------------------------------------------------------ setup
+function addChip(el, item, set, countEl, onchange, selected) {
+  const c = document.createElement('span');
+  c.className = 'chip' + (selected ? ' on' : ''); c.textContent = item;
+  if (selected) set.add(item);
+  c.onclick = () => { set.has(item) ? set.delete(item) : set.add(item);
+    c.classList.toggle('on'); countEl.textContent = set.size ? `(${set.size} picked)` : '';
+    if (onchange) onchange(); };
+  el.appendChild(c);
+  countEl.textContent = set.size ? `(${set.size} picked)` : '';
+  if (onchange) onchange();
+}
+
+function chipList(el, items, set, countEl, onchange) {
+  el.innerHTML = '';
+  for (const item of items) addChip(el, item, set, countEl, onchange, false);
+}
+
+function skillExperiences(names) {
+  const items = [...names].map(n => ({
+    name: n,
+    experiences: customSkills[n] || (world.skills.find(s => s.name === n) || {}).experiences || []
+  }));
+  return items.map(s => `
+    <div class="card" style="margin-top:10px">
+      <div class="head"><span class="co">${esc(s.name)}</span></div>
+      ${s.experiences.length ? `<ul style="margin:6px 0 0; padding-left:20px; font-size:13.5px">
+        ${s.experiences.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}
+    </div>`).join('');
+}
+const refreshSkillExp = () => { $('skillexp').innerHTML = skillExperiences(picked.skills); };
+
+function skillPayload() {
+  return [...picked.skills].map(name => ({
+    name,
+    experiences: customSkills[name] || (world.skills.find(s => s.name === name) || {}).experiences || []
+  }));
+}
+
+async function init() {
+  try {
+    world = await api('/api/world');
+  } catch (e) { showError('Could not load world: ' + e.message); return; }
+  $('worldloading').classList.add('hidden');
+  $('setupform').classList.remove('hidden');
+  chipList($('traits'), world.traits, picked.traits, $('traitcount'));
+  chipList($('skills'), world.skills.map(s => s.name), picked.skills, $('skillcount'), refreshSkillExp);
+}
+
+$('addtrait').onclick = () => {
+  const v = $('newtrait').value.trim(); if (!v) return;
+  if (!picked.traits.has(v)) addChip($('traits'), v, picked.traits, $('traitcount'), null, true);
+  $('newtrait').value = '';
+};
+$('newtrait').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('addtrait').click(); } };
+
+$('addskill').onclick = () => {
+  const name = $('newskillname').value.trim(); if (!name) return;
+  customSkills[name] = $('newskillexp').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!picked.skills.has(name)) addChip($('skills'), name, picked.skills, $('skillcount'), refreshSkillExp, true);
+  else refreshSkillExp();
+  $('newskillname').value = ''; $('newskillexp').value = '';
+};
+
+// ------------------------------------------------------------------- run
+$('startrun').onclick = async () => {
+  clearError();
+  $('startrun').disabled = true;
+  $('setup').classList.add('hidden');
+  $('runview').classList.remove('hidden');
+  working('Writing the dossier — the complete profile the agent will work from…');
+  try {
+    run = await post('/api/run', {
+      name: $('name').value.trim(),
+      traits: [...picked.traits], skills: skillPayload(),
+      director_prompt: $('director').value.trim(),
+      max_tries: parseInt($('maxtries').value) || 30,
+      checkin_every: parseInt($('checkinevery').value, 10) || 0 });
+  } catch (e) {
+    showError(e.message); working(null);
+    $('runview').classList.add('hidden'); $('setup').classList.remove('hidden');
+    $('startrun').disabled = false; return;
+  }
+  render(); stepLoop();
+};
+
+async function stepLoop() {
+  if (stepping) return;
+  stepping = true;
+  $('retry').classList.add('hidden');
+  while (run && run.status === 'running') {
+    working('Your agent is writing an application…');
+    try { run = await post(`/api/run/${run.run_id}/step`); }
+    catch (e) {
+      showError('Step failed: ' + e.message);
+      $('retry').classList.remove('hidden');
+      break;
+    }
+    clearError(); render();
+  }
+  working(null);
+  stepping = false; render();
+}
+
+function checkinCard(m) {
+  const isFinal = run.final_report && m.role === 'agent' && m.text === run.final_report;
+  const cls = m.role === 'user' ? 'comment' : (isFinal ? 'final-report' : '');
+  const tag = m.role === 'user'
+    ? 'client comment — LLM, steered by your system prompt (sent to the agent as-is)'
+    : (isFinal ? 'agent — final report' : 'agent — check-in report');
+  return `<div class="card checkin ${cls}">
+    <span class="tag">${tag}</span>
+    <div class="body">${esc(m.text)}</div>
+  </div>`;
+}
+
+function appCard(a) {
+  return `
+    <div class="card">
+      <div class="head">
+        <span class="num">#${a.i}</span>
+        <span class="co">${esc(a.company_name)}</span>
+        <span class="job">${esc(a.job_title)}</span>
+        <span class="decision ${a.decision}">${a.decision === 'invite' ? 'INTERVIEW' : 'REJECTED'}</span>
+      </div>
+      ${a.agent_reasoning ? `<div class="reasoning">agent: ${esc(a.agent_reasoning)}</div>` : ''}
+      ${a.agent_cot ? `<details><summary>agent chain-of-thought</summary><div class="letter">${esc(a.agent_cot)}</div></details>` : ''}
+      <details><summary>cover letter</summary><div class="letter">${esc(a.cover_letter)}</div></details>
+      <div class="hr-reasons"><b class="${a.decision}">HR:</b> ${esc(a.reasons)}</div>
+    </div>`;
+}
+
+function render() {
+  if (!run) return;
+  const badge = $('statusbadge');
+  badge.className = 'badge ' + run.status;
+  badge.textContent = { running: 'running autonomously',
+                        success: 'interview!', failed: 'gave up' }[run.status] || run.status;
+  $('triesinfo').textContent =
+    `${run.person.name} — ${run.applications.length} / ${run.max_tries} applications`;
+  $('newrun').classList.toggle('hidden', run.status !== 'success' && run.status !== 'failed');
+
+  const p = run.person;
+  // keep the dossier's open/closed state across re-renders; open by default
+  // until the first application arrives
+  const prevDetails = $('profile').querySelector('details');
+  const dossierOpen = prevDetails ? prevDetails.open : !run.applications.length;
+  $('profile').innerHTML = `
+    <div class="head"><span class="co">${esc(p.name)}</span></div>
+    <div class="hr-reasons"><b>Traits:</b> ${p.traits.length ? esc(p.traits.join(', ')) : '(none picked)'}</div>
+    <div class="hr-reasons"><b>Your system prompt:</b> ${run.director_prompt ? esc(run.director_prompt) : '(none — the seeker LLM plays it straight)'}</div>
+    <div class="hr-reasons"><b>Check-in:</b> ${run.checkin_every > 0 ? 'every ' + run.checkin_every + ' rejections' : 'never'}</div>
+    <details ${dossierOpen ? 'open' : ''}><summary>dossier / CV (the agent's single source of truth)</summary><div class="cvview">${esc(p.cv || '')}</div></details>`;
+
+  // timeline: applications with check-in exchanges interleaved at the point
+  // they happened (chat messages carry after_try = #applications sent so far)
+  const chatAt = n => (run.chat || []).filter(m => m.after_try === n);
+  const parts = chatAt(0).map(checkinCard);
+  for (const a of run.applications) {
+    parts.push(appCard(a));
+    parts.push(...chatAt(a.i).map(checkinCard));
+  }
+  $('timeline').innerHTML = parts.join('');
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+$('profiletoggle').onclick = () => {
+  const hidden = $('profile').classList.toggle('hidden');
+  $('profiletoggle').textContent = hidden ? 'Show profile' : 'Hide profile';
+};
+
+$('download').onclick = () => {
+  if (!run) return;
+  const a = document.createElement('a');
+  a.href = `/api/run/${run.run_id}/transcript`;
+  a.download = `transcript_${run.run_id}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+$('retry').onclick = () => { clearError(); stepLoop(); };
+$('newrun').onclick = () => location.reload();
+
+init();
+</script>
+</body>
+</html>
