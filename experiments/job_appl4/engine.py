@@ -1,19 +1,19 @@
-"""Run engine for the job_appl3 MVP.
+"""Run engine for the job_appl4 MVP.
 
-Third MVP: once set up, the run is fully autonomous. Versus job_appl2:
+Fourth MVP, successor of job_appl3 (fully autonomous after setup). Versus
+job_appl3:
 
-  1. The CV becomes a complete DOSSIER — a detailed professional CV plus a
-     personal profile (every trait, lifestyle detail) plus practical details.
-     It is generated at run creation (no human review/edit stage) and contains
-     everything that exists about the person, so the agent never needs to ask.
-  2. The every-n-th-rejection check-in still happens, but without any human
-     gate: the agent reports, the client LLM (steered only by the human's
-     one-off director system prompt) leaves a comment, the comment is folded
-     into the agent's feedback, and applications continue immediately.
-
-The human's controls are all at setup time: name, traits, skills, the director
-system prompt, the check-in interval, and max tries. After "start" the
-environment runs by itself.
+  1. The client system prompt (job_appl3's "director prompt") steers ONLY the
+     client LLM's check-in comments. It no longer colors the dossier, so the
+     person is a pure function of (name, traits, skills) and the prompt is an
+     isolated experimental lever.
+  2. Individual check-ins can be SCRIPTED at setup: ``scripted_messages`` maps
+     a 1-based check-in index to a fixed message. When that check-in is
+     reached, the message is sent as the client's comment verbatim — the
+     client LLM is not queried. (The motivating use case: fixing the 5th
+     check-in message across a sweep.)
+  3. The world is larger (20 companies, 2-3 jobs each — see world.py) and
+     batch sweeps are first-class via run_batch.py.
 
 A run is a plain dict (JSON-serializable). Every LLM call and event is appended
 to ``outputs/runs/<run_id>/events.jsonl`` and the current state is mirrored to
@@ -28,7 +28,7 @@ import random
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import openrouter
 import prompts
@@ -98,6 +98,12 @@ def _llm_json(
         obj = openrouter.extract_json(content)
         if isinstance(obj, dict) and all(k in obj for k in required_keys):
             return obj, reasoning
+        if not content.strip():
+            # Reasoning models (glm-4.7-flash) sometimes burn the whole
+            # completion budget on runaway CoT and return EMPTY content.
+            # Appending an empty assistant turn + nudge just replays the same
+            # degenerate context — re-sample the original prompt instead.
+            continue
         convo = convo + [
             {"role": "assistant", "content": content},
             {"role": "user", "content":
@@ -120,7 +126,7 @@ def _user_llm(
     user_content: str,
 ) -> str:
     """A call to the client / user-LLM that role-plays the job seeker."""
-    system = prompts.user_llm_system(state["person"], state["director_prompt"])
+    system = prompts.user_llm_system(state["person"], state["client_prompt"])
     content, _ = _llm(state, role, [
         {"role": "system", "content": system},
         {"role": "user", "content": user_content},
@@ -136,59 +142,86 @@ LAST_NAMES = ["Berger", "Okafor", "Lindqvist", "Marino", "Novak", "Tanaka",
               "Whitfield", "Osei", "Kaur", "Fischer", "Delgado", "Petrov"]
 
 
+def _clean_scripted(scripted_messages: Optional[Mapping[Any, Any]]) -> Dict[str, str]:
+    """Normalize {checkin_index: message} to string keys (JSON round-trip
+    safe), dropping empty messages and invalid indices."""
+    out: Dict[str, str] = {}
+    for k, v in (scripted_messages or {}).items():
+        try:
+            idx = int(k)
+        except (TypeError, ValueError):
+            raise ValueError(f"scripted_messages key {k!r} is not an integer")
+        if idx < 1:
+            raise ValueError(f"scripted_messages index {idx} must be >= 1 (1-based)")
+        msg = str(v).strip()
+        if msg:
+            out[str(idx)] = msg
+    return out
+
+
 def new_run(
     traits: List[str],
     skills: List[Dict[str, Any]],
     max_tries: int = DEFAULT_MAX_TRIES,
     name: str = "",
-    director_prompt: str = "",
+    client_prompt: str = "",
+    scripted_messages: Optional[Mapping[Any, Any]] = None,
     checkin_every: int = DEFAULT_CHECKIN_EVERY,
     agent_model: str = "",
     hr_model: str = "",
     client_model: str = "",
+    cv_model: str = "",
 ) -> Dict[str, Any]:
     """Create a run and generate the person's complete dossier. The dossier
     LLM call is part of the run and lands in its event log.
 
-    Three models are chosen at setup: ``agent_model`` (the applying agent),
-    ``hr_model`` (the company HR reviewer), and ``client_model`` (the job
-    seeker / client — role-plays check-in comments and also writes the initial
-    dossier). Any left empty fall back to the per-role env-var defaults."""
+    Four models are chosen at setup: ``agent_model`` (the applying agent),
+    ``hr_model`` (the company HR reviewer), ``client_model`` (the job seeker /
+    client — role-plays check-in comments), and ``cv_model`` (the dossier
+    writer — unlike job_appl3 it does NOT follow the client model, so dossiers
+    stay comparable when the client model is varied across runs). Any left
+    empty fall back to the per-role env-var defaults (gpt-oss-120b).
+
+    ``client_prompt`` steers the client LLM's check-in comments only — the
+    dossier is generated purely from (name, traits, skills).
+    ``scripted_messages`` maps 1-based check-in indices to fixed client
+    messages that replace the client-LLM call at that check-in."""
     name = name.strip() or f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
-    client_model = client_model.strip()
     models = {
         "agent": agent_model.strip() or AGENT_MODEL,
         "hr": hr_model.strip() or HR_MODEL,
-        "user": client_model or USER_MODEL,
-        "cv": client_model or CV_MODEL,
+        "user": client_model.strip() or USER_MODEL,
+        "cv": cv_model.strip() or CV_MODEL,
     }
     state: Dict[str, Any] = {
         "run_id": datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6],
         "created_at": _now(),
         "status": "running",
         "person": {"name": name, "traits": traits, "skills": skills, "cv": ""},
-        "director_prompt": director_prompt.strip(),
+        "client_prompt": client_prompt.strip(),
+        "scripted_messages": _clean_scripted(scripted_messages),
         "max_tries": int(max_tries),
         "checkin_every": max(0, int(checkin_every)),
         "models": models,
         "applications": [],
         "rejections": 0,
+        "checkins": 0,
         "feedback": [],
         "chat": [],
         "final_report": None,
         "error": None,
     }
     _log(state, "run_created", person={k: v for k, v in state["person"].items() if k != "cv"},
-         director_prompt=state["director_prompt"], max_tries=state["max_tries"],
-         checkin_every=state["checkin_every"],
+         client_prompt=state["client_prompt"],
+         scripted_messages=state["scripted_messages"],
+         max_tries=state["max_tries"], checkin_every=state["checkin_every"],
          agent_model=models["agent"], hr_model=models["hr"], user_model=models["user"],
          cv_model=models["cv"])
 
     dossier, _ = _llm(state, "dossier_writer", [
         {"role": "system", "content": prompts.CV_GEN_SYSTEM},
         {"role": "user", "content": prompts.cv_gen_user(
-            name, traits, skills, state["director_prompt"],
-            datetime.now().year)},
+            name, traits, skills, datetime.now().year)},
     ], models["cv"])
     state["person"]["cv"] = dossier.strip()
     _log(state, "dossier", dossier=state["person"]["cv"])
@@ -280,10 +313,14 @@ def step(state: Dict[str, Any], world: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _checkin(state: Dict[str, Any]) -> None:
-    """Agent reports to the client; the client LLM leaves a comment (steered
-    only by the director prompt) that goes straight into the agent's feedback.
-    No human gate — the run keeps running."""
+    """Agent reports to the client; the client responds. Normally the client
+    LLM (steered only by the client system prompt) writes the comment; if this
+    check-in's 1-based index has a scripted message, that message is sent
+    verbatim instead and the client LLM is not queried. Either way the comment
+    goes straight into the agent's feedback — no human gate, the run keeps
+    running."""
     every = state.get("checkin_every", DEFAULT_CHECKIN_EVERY)
+    idx = state.get("checkins", len(state["feedback"])) + 1
     report, _ = _llm(state, "agent_checkin", [
         {"role": "system", "content": prompts.AGENT_SYSTEM},
         {"role": "user", "content": prompts.agent_checkin_user(
@@ -293,11 +330,18 @@ def _checkin(state: Dict[str, Any]) -> None:
     state["chat"].append({"role": "agent", "text": report,
                           "after_try": len(state["applications"])})
 
-    comment = _user_llm(state, "user_checkin", prompts.user_llm_checkin_user(report))
+    scripted = (state.get("scripted_messages") or {}).get(str(idx))
+    if scripted is not None:
+        comment = scripted
+    else:
+        comment = _user_llm(state, "user_checkin", prompts.user_llm_checkin_user(report))
+    state["checkins"] = idx
     state["chat"].append({"role": "user", "text": comment,
-                          "after_try": len(state["applications"])})
+                          "after_try": len(state["applications"]),
+                          "scripted": scripted is not None})
     state["feedback"].append(comment)
-    _log(state, "checkin", report=report, comment=comment)
+    _log(state, "checkin", index=idx, report=report, comment=comment,
+         scripted=scripted is not None)
 
 
 def _final_report(state: Dict[str, Any], success: bool) -> None:
@@ -326,9 +370,14 @@ def _indent(text: str, pad: str = "    ") -> str:
     return "\n".join(pad + ln for ln in text.splitlines()) or (pad + "(empty)")
 
 
-def transcript_text(state: Dict[str, Any]) -> str:
+def transcript_text(state: Dict[str, Any], include_cot: bool = True) -> str:
     """Render a human-readable transcript of the whole run from its event log
-    (falls back to the in-memory state if the log is missing)."""
+    (falls back to the in-memory state if the log is missing).
+
+    ``include_cot`` toggles the agent's private chain-of-thought blocks — set it
+    False to judge/read on visible behavior alone (cheaper prompts, and an
+    ablation on whether the verdict changes without the agent's private
+    reasoning)."""
     run_id = state["run_id"]
     events: List[Dict[str, Any]] = []
     events_path = RUNS_DIR / run_id / "events.jsonl"
@@ -345,7 +394,7 @@ def transcript_text(state: Dict[str, Any]) -> str:
     W = lines.append
     sep = "=" * 70
     W(sep)
-    W(f"job_appl3 transcript — run {run_id}")
+    W(f"job_appl4 transcript — run {run_id}")
     W(f"created: {state.get('created_at', '')}")
     W(f"status:  {state.get('status', '')}")
     W(sep)
@@ -360,8 +409,13 @@ def transcript_text(state: Dict[str, Any]) -> str:
             W(f"Traits: {', '.join(p.get('traits') or []) or '(none)'}")
             skills = p.get("skills") or []
             W("Skills: " + (", ".join(s.get("name", "") for s in skills) or "(none)"))
-            W(f"Director prompt (the human's only steering during the run): "
-              f"{e.get('director_prompt') or '(none)'}")
+            W(f"Client system prompt (steers the client LLM's comments only): "
+              f"{e.get('client_prompt') or '(none)'}")
+            scripted = e.get("scripted_messages") or {}
+            if scripted:
+                W("Scripted check-in messages (sent verbatim instead of the client LLM):")
+                for k in sorted(scripted, key=int):
+                    W(f"  - check-in #{k}: {scripted[k]}")
             W(f"Max applications: {e.get('max_tries')}, "
               f"check-in every {e.get('checkin_every')} rejection(s)")
             W(f"Models — agent: {e.get('agent_model')}, seeker: {e.get('user_model')}, "
@@ -377,7 +431,7 @@ def transcript_text(state: Dict[str, Any]) -> str:
             W(sep)
             if e.get("agent_reasoning"):
                 W(f"Agent reasoning: {e['agent_reasoning']}")
-            if e.get("agent_cot"):
+            if include_cot and e.get("agent_cot"):
                 W("")
                 W("Agent chain-of-thought:")
                 W(_indent(e["agent_cot"]))
@@ -390,12 +444,16 @@ def transcript_text(state: Dict[str, Any]) -> str:
         elif t == "checkin":
             W("")
             W(sep)
-            W("CHECK-IN (autonomous — no human sign-off)")
+            idx = e.get("index")
+            W(f"CHECK-IN{f' #{idx}' if idx else ''} (autonomous — no human sign-off)")
             W(sep)
             W("Agent → client (report):")
             W(_indent(e.get("report", "")))
             W("")
-            W("Client comment (LLM, steered by the director prompt):")
+            if e.get("scripted"):
+                W("Client comment (SCRIPTED — fixed at setup, sent verbatim):")
+            else:
+                W("Client comment (LLM, steered by the client system prompt):")
             W(_indent(e.get("comment", "")))
         elif t == "final":
             W("")

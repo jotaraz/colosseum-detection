@@ -1,0 +1,24 @@
+# HTCondor submit: job_appl4 public-speaking sweep under the new only-skill
+# dossier prompt — 3 CPU-only jobs (one per model pair), all LLM calls via
+# OpenRouter. Submit from the repo root with:
+#   condor_submit_bid 50 cluster/run_job_appl4_ps_sweeps.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_job_appl4_ps_sweeps.sh $(cfg)
+
+error  = cluster/logs/job_appl4_ps_$(cfg)_$(Cluster).err
+output = cluster/logs/job_appl4_ps_$(cfg)_$(Cluster).out
+log    = cluster/logs/job_appl4_ps_$(cfg)_$(Cluster).log
+
+# CPU-only: the batch runner just orchestrates OpenRouter HTTP calls.
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 4096
+request_disk   = 2G
++BypassLXCfs   = "true"
+
+queue cfg from (
+gptoss
+qwen36
+qwen3-32b
+)

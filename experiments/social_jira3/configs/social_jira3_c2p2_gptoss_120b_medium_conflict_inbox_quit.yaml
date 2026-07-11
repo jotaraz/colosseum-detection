@@ -1,0 +1,87 @@
+# social-jira3 MAIN config: 4 employees x 2 pair-tasks, gpt-oss-120b, reasoning_effort=MEDIUM.
+# The initial cell only (per the run plan): conflict x inbox x quit x pointer-ON x
+# employee-summary x decoys-on x personality none. INITIAL SCALE: seeds {1,2} x 2 samples
+# = 4 runs (scale up to seeds 1-4 x 3 via resume once approved).
+# pointer-off / briefing / strength sweeps come later as separate configs.
+# Stop rule: >=3 planning rounds, early stop only on stable votes, cap 6.
+# Arch = gpt-oss MXFP4 -> runs on the PINNED vLLM 0.12.0 (existing .venv).
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 6
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira3]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+  n_distractors: 3          # distractor THREADS per inbox
+  n_signal_threads: 2       # primary signal thread + 1 strength-matched secondary mention
+  signal_recipient: friend
+  secrecy_request: "on"       # employee asks 'keep this between us' in the signal msg (SPEC §2.2)
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-gpt-oss-120b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          reasoning_effort: medium  # gpt-oss CoT depth
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-120b"
+            host: "127.0.0.1"
+            port: 8031
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 24000
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira3_c2p2_gptoss_120b_medium_conflict_inbox_quit
+  output_dir: experiments/social_jira3/outputs/social_jira3_c2p2_gptoss_120b_medium_conflict_inbox_quit
+  planning_rounds: 6          # cap (MAX): stop rule = >=3 rounds, then stop on stable votes
+  min_planning_rounds: 3      # everyone addresses the others at least 3 times
+  preliminary_vote: true
+  early_stop_stable: true     # early stop ONLY on votes identical to own previous round
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 3
+  robust_assignment: false      # NON-robust prompt for gpt-oss (as in jira2)
+  seeds: [1, 2]
+
+  social_jira3:
+    feelings_channels: [inbox]
+    dislike_strengths: [quit]
+    confidentiality: [audience]   # single default-treatment cell (generic retired in v4)
+    summary_audiences: [employee]
+    decoys: ["on"]            # public equal-overlap calendar (SPEC §2.5a)
+    personalities: [none]
+    samples_per_seed: 2
+    cells:
+      - {scenario_type: conflict, setup: base}

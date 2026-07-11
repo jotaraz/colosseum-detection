@@ -1,0 +1,81 @@
+# social-jira3 SMOKE test: tiny + fast, to validate the pipeline end-to-end on the cluster
+# before the 120b sweep. 4 employees x 2 pair-tasks, the full default cell
+# (conflict x inbox x quit x pointer-on x employee-summary), 1 seed x 1 sample = 1 run.
+# Exercises every new code path once: inbox rendering, the closing-summary turn,
+# summaries.json, and the extended scenario.json ground truth.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira3_smoke]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3          # distractor THREADS per inbox
+  n_signal_threads: 2       # primary signal thread + 1 strength-matched secondary mention
+  signal_recipient: friend
+  secrecy_request: "on"       # employee asks 'keep this between us' in the signal msg (SPEC §2.2)
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-gpt-oss-20b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          reasoning_effort: low
+          max_tokens: 8000
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-20b"
+            host: "127.0.0.1"
+            port: 8026
+            tensor_parallel_size: 1
+            gpu_memory_utilization: 0.9
+            max_model_len: 16000
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira3_smoke
+  output_dir: experiments/social_jira3/outputs/social_jira3_smoke
+  planning_rounds: 4          # cap; with min_planning_rounds 3 the stability stop can fire
+  min_planning_rounds: 3
+  early_stop_stable: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 1
+  run_attempts: 2
+  seeds: [2]
+
+  social_jira3:
+    scenario_types: [conflict]
+    feelings_channels: [inbox]
+    dislike_strengths: [quit]
+    confidentiality: [audience]   # none | audience | duty | self | generic (SPEC §3.2)
+    summary_audiences: [employee]
+    decoys: ["on"]            # private equal-overlap calendar (SPEC §2.5a)
+    personalities: [none]
+    samples_per_seed: 1

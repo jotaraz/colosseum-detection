@@ -1,14 +1,19 @@
-"""Web server for the job_appl3 MVP.
+"""Web server for the job_appl4 MVP.
 
-Run with:  uv run uvicorn server:app --reload --port 8644
-(from experiments/job_appl3; needs OPENROUTER_API_KEY in env or repo-root .env)
+Run with:  uv run uvicorn server:app --reload --port 8645
+(from experiments/job_appl4; needs OPENROUTER_API_KEY in env or repo-root .env)
 
-Setup flow: the human picks/free-texts traits + skills and writes an optional
-director system prompt, then starts the run (POST /api/run) — which generates
-the person's complete dossier and returns. From there the environment runs by
+Setup flow: the human picks/free-texts traits + skills, writes an optional
+client system prompt (steers the client LLM's comments only), and can script
+individual check-in messages (a fixed message keyed by 1-based check-in index,
+e.g. the 5th) — then starts the run (POST /api/run), which generates the
+person's complete dossier and returns. From there the environment runs by
 itself: the frontend POSTs /api/run/<id>/step in a loop while the run is
-"running"; every n-th rejection the agent reports and the client LLM leaves a
-comment inline (no human gate, no pause).
+"running"; every n-th rejection the agent reports and the client (LLM or
+script) comments inline (no human gate, no pause).
+
+For batch sweeps over (skill, client prompt, scripted message) triples use
+run_batch.py instead — same engine, no server needed.
 """
 
 from __future__ import annotations
@@ -25,7 +30,7 @@ import engine
 import openrouter
 import world as world_module
 
-app = FastAPI(title="job_appl3")
+app = FastAPI(title="job_appl4")
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -81,12 +86,15 @@ class NewRun(BaseModel):
     name: str = ""
     traits: List[str] = Field(default_factory=list)
     skills: List[Skill] = Field(default_factory=list)
-    director_prompt: str = ""
+    client_prompt: str = ""
+    # 1-based check-in index -> fixed client message (JSON keys are strings)
+    scripted_messages: Dict[str, str] = Field(default_factory=dict)
     max_tries: int = engine.DEFAULT_MAX_TRIES
     checkin_every: int = engine.DEFAULT_CHECKIN_EVERY
     agent_model: str = ""
     hr_model: str = ""
     client_model: str = ""
+    cv_model: str = ""  # dossier writer; "" = env default (gpt-oss-120b)
 
 
 @app.get("/")
@@ -105,7 +113,7 @@ def api_world() -> Dict[str, Any]:
 @app.get("/api/models")
 def api_models() -> Dict[str, Any]:
     """OpenRouter's model catalog, plus the default model, for the setup
-    dropdown that picks the single LLM used for the whole run."""
+    dropdowns that pick each role's LLM."""
     try:
         return {"models": openrouter.list_models(), "default": engine.DEFAULT_MODEL}
     except Exception as exc:
@@ -118,10 +126,13 @@ def api_new_run(body: NewRun) -> Dict[str, Any]:
         state = engine.new_run(
             _clean_traits(body.traits), _clean_skills(body.skills),
             max_tries=body.max_tries, name=body.name,
-            director_prompt=body.director_prompt,
+            client_prompt=body.client_prompt,
+            scripted_messages=body.scripted_messages,
             checkin_every=body.checkin_every,
             agent_model=body.agent_model, hr_model=body.hr_model,
-            client_model=body.client_model)
+            client_model=body.client_model, cv_model=body.cv_model)
+    except ValueError as exc:  # bad scripted_messages keys
+        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:  # dossier generation failure, missing API key, ...
         raise HTTPException(status_code=503, detail=str(exc))
     _runs[state["run_id"]] = state

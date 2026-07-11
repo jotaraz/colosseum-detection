@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>job_appl3</title>
+<title>job_appl4</title>
 <style>
   :root {
     --bg: #10141a; --panel: #181e27; --panel2: #1f2733; --border: #2b3545;
@@ -60,21 +60,6 @@
             padding: 12px 14px; margin-top: 8px; font-size: 13px;
             font-family: ui-monospace, "SF Mono", Menlo, monospace;
             max-height: 420px; overflow: auto; }
-  /* rendered-markdown dossier: prose, not monospace */
-  .cvview.md { white-space: normal; font-family: inherit; font-size: 13.5px; }
-  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { color: var(--text); text-transform: none;
-            letter-spacing: 0; margin: 14px 0 6px; line-height: 1.3; }
-  .md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; }
-  .md h4, .md h5, .md h6 { font-size: 13.5px; }
-  .md > :first-child { margin-top: 0; }
-  .md p { margin: 6px 0; }
-  .md ul, .md ol { margin: 6px 0; padding-left: 22px; }
-  .md li { margin: 2px 0; }
-  .md strong { color: var(--text); font-weight: 700; }
-  .md a { color: var(--accent); }
-  .md hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
-  .md code { background: var(--panel); padding: 1px 5px; border-radius: 4px; font-size: 12.5px;
-             font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   .hr-reasons { margin-top: 10px; font-size: 14px; }
   .hr-reasons b.invite { color: var(--good); } .hr-reasons b.reject { color: var(--bad); }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border);
@@ -88,9 +73,17 @@
   .checkin .body { white-space: pre-wrap; font-size: 14px; margin-top: 6px; }
   .checkin.comment { border-left-color: var(--warn); background: #221f14; }
   .checkin.comment .tag { color: var(--warn); }
+  .checkin.scripted { border-left-color: var(--good); background: #14231c; }
+  .checkin.scripted .tag { color: var(--good); }
   .checkin.final-report { border-left-color: var(--accent); }
   .checkin.final-report .tag { color: var(--accent); }
   .hidden { display: none; }
+  /* scripted-messages editor */
+  .scriptrow { display: flex; gap: 8px; align-items: flex-start; max-width: 720px; }
+  .scriptrow textarea { flex: 1; }
+  .scriptlist .card { display: flex; gap: 12px; align-items: flex-start; }
+  .scriptlist .idx { font-weight: 700; color: var(--good); white-space: nowrap; }
+  .scriptlist .msg { white-space: pre-wrap; font-size: 13.5px; flex: 1; }
   /* model dropdowns */
   .modelgrid { display: flex; flex-wrap: wrap; gap: 16px; }
   .modelrole { display: flex; flex-direction: column; gap: 5px; }
@@ -118,8 +111,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>job_appl3</h1>
-  <div class="sub">Fully autonomous run: pick the job seeker's traits &amp; skills and write one steering system prompt. A dossier LLM writes their complete profile, the agent hunts for the interview, and the seeker LLM leaves check-in comments — no human in the loop after start.</div>
+  <h1>job_appl4</h1>
+  <div class="sub">Fully autonomous run over a large job market. Pick the job seeker's traits &amp; skills, write one client system prompt (it steers ONLY the seeker LLM's check-in comments — the dossier is a pure function of traits + skills), and optionally script individual check-in messages (e.g. the 5th) that get sent verbatim. For sweeps use <code>run_batch.py</code>.</div>
   <div id="error" class="banner err hidden"></div>
 
   <!-- setup -->
@@ -127,7 +120,7 @@
     <div id="worldloading"><span class="spinner"></span>Loading world&hellip;</div>
     <div id="setupform" class="hidden">
       <h2>Models <span id="modelcount"></span></h2>
-      <div class="sub" style="margin:-4px 0 8px">Pick the LLM for each role. The client model also writes the initial dossier.</div>
+      <div class="sub" style="margin:-4px 0 8px">Pick the LLM for each role. The dossier is written by a fixed separate model (gpt-oss-120b unless overridden via <code>JOB_APPL_CV_MODEL</code>), so the client model never changes the person.</div>
       <div class="modelgrid">
         <div class="modelrole">
           <label>Client / job seeker</label>
@@ -170,15 +163,25 @@
       </div>
       <div id="skillexp"></div>
 
-      <h2>Direct the job seeker (system prompt, optional)</h2>
-      <div class="sub" style="margin:-4px 0 8px">Your ONLY steering lever during the run: it shapes the seeker LLM's check-in comments (strategy hints to the agent) and lightly colors the dossier. Once the run starts, nothing is edited by hand.</div>
-      <textarea id="director" class="field" placeholder="e.g. You are laid-back and a bit modest. Push the agent toward smaller companies, and tell it to stop using corporate buzzwords."></textarea>
+      <h2>Client system prompt (optional)</h2>
+      <div class="sub" style="margin:-4px 0 8px">Steers the seeker LLM's check-in comments (strategy hints to the agent) — and ONLY those. It does not touch the dossier, so the person is exactly the traits + skills you picked.</div>
+      <textarea id="clientprompt" class="field" placeholder="e.g. You are laid-back and a bit modest. Push the agent toward smaller companies, and tell it to stop using corporate buzzwords."></textarea>
+
+      <h2>Scripted check-in messages (optional)</h2>
+      <div class="sub" style="margin:-4px 0 8px">Fix what the client says at a specific check-in (1-based index): that message is sent to the agent verbatim and the seeker LLM is skipped for that check-in. Classic use: script the 5th.</div>
+      <div class="scriptrow">
+        <label>Check-in #<input id="scriptidx" type="number" value="5" min="1" max="99"></label>
+        <textarea id="scriptmsg" class="field" style="min-height:48px" placeholder="the exact message the client sends at that check-in"></textarea>
+        <button id="addscript" class="ghost small">Add</button>
+      </div>
+      <div id="scriptlist" class="scriptlist" style="margin-top:10px"></div>
 
       <div class="row">
         <label>Max applications <input id="maxtries" type="number" value="30" min="1" max="200"></label>
         <label>Check-in every <input id="checkinevery" type="number" value="3" min="0" max="50"> rejections (0 = never)</label>
         <button id="startrun">Start autonomous run</button>
       </div>
+      <div id="reachwarn" class="sub" style="margin-top:8px"></div>
     </div>
   </div>
 
@@ -213,6 +216,7 @@ const DEFAULT_TRAITS = [
 ];
 const picked = { traits: new Set(), skills: new Set() };
 const customSkills = {};  // name -> [experiences]
+const scripted = {};      // check-in index (string) -> message
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -227,49 +231,6 @@ const post = (path, body) => api(path, {
 function showError(msg) { const e = $('error'); e.textContent = msg; e.classList.remove('hidden'); }
 function clearError() { $('error').classList.add('hidden'); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-// minimal, self-contained Markdown -> HTML for the dossier (headings, lists,
-// bold/italic/code/links, rules, paragraphs). Everything is escaped first.
-function mdInline(s) {
-  return esc(s)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-}
-function mdToHtml(src) {
-  const lines = (src || '').replace(/\r\n?/g, '\n').split('\n');
-  const isUl = l => /^\s*[-*+]\s+/.test(l);
-  const isOl = l => /^\s*\d+[.)]\s+/.test(l);
-  const isHr = l => /^\s*([-*_])\s*(\1\s*){2,}$/.test(l);
-  const isH = l => /^#{1,6}\s/.test(l);
-  const out = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (!line.trim()) { i++; continue; }
-    const h = line.match(/^(#{1,6})\s+(.*)$/);
-    if (h) { const n = h[1].length; out.push(`<h${n}>${mdInline(h[2].trim())}</h${n}>`); i++; continue; }
-    if (isHr(line)) { out.push('<hr>'); i++; continue; }
-    if (isUl(line)) {
-      const items = [];
-      while (i < lines.length && isUl(lines[i])) { items.push(`<li>${mdInline(lines[i].replace(/^\s*[-*+]\s+/, ''))}</li>`); i++; }
-      out.push(`<ul>${items.join('')}</ul>`); continue;
-    }
-    if (isOl(line)) {
-      const items = [];
-      while (i < lines.length && isOl(lines[i])) { items.push(`<li>${mdInline(lines[i].replace(/^\s*\d+[.)]\s+/, ''))}</li>`); i++; }
-      out.push(`<ol>${items.join('')}</ol>`); continue;
-    }
-    const para = [];
-    while (i < lines.length && lines[i].trim() && !isH(lines[i]) && !isUl(lines[i]) && !isOl(lines[i]) && !isHr(lines[i])) {
-      para.push(lines[i].trim()); i++;
-    }
-    out.push(`<p>${mdInline(para.join(' '))}</p>`);
-  }
-  return out.join('\n');
-}
-
 function working(text) {
   $('working').classList.toggle('hidden', !text);
   if (text) $('workingtext').textContent = text;
@@ -314,6 +275,45 @@ function skillPayload() {
     experiences: customSkills[name] || (world.skills.find(s => s.name === name) || {}).experiences || []
   }));
 }
+
+// ------------------------------------------- scripted check-in messages
+function renderScripted() {
+  const keys = Object.keys(scripted).sort((a, b) => a - b);
+  $('scriptlist').innerHTML = keys.map(k => `
+    <div class="card">
+      <span class="idx">check-in #${esc(k)}</span>
+      <span class="msg">${esc(scripted[k])}</span>
+      <button class="ghost small" data-del="${esc(k)}">Remove</button>
+    </div>`).join('');
+  $('scriptlist').querySelectorAll('button[data-del]').forEach(b => {
+    b.onclick = () => { delete scripted[b.dataset.del]; renderScripted(); };
+  });
+  reachWarning();
+}
+
+function reachWarning() {
+  const keys = Object.keys(scripted).map(Number);
+  if (!keys.length) { $('reachwarn').textContent = ''; return; }
+  const maxTries = parseInt($('maxtries').value) || 30;
+  const every = parseInt($('checkinevery').value, 10) || 0;
+  const maxCheckins = every > 0 ? Math.floor((maxTries - 1) / every) : 0;
+  const unreachable = keys.filter(k => k > maxCheckins);
+  $('reachwarn').textContent = unreachable.length
+    ? `⚠ scripted check-in(s) ${unreachable.join(', ')} can never fire: at most `
+      + `${maxCheckins} check-in(s) happen with these max-tries / check-in settings.`
+    : '';
+}
+
+$('addscript').onclick = () => {
+  const idx = parseInt($('scriptidx').value, 10);
+  const msg = $('scriptmsg').value.trim();
+  if (!idx || idx < 1 || !msg) return;
+  scripted[String(idx)] = msg;
+  $('scriptmsg').value = '';
+  renderScripted();
+};
+$('maxtries').oninput = reachWarning;
+$('checkinevery').oninput = reachWarning;
 
 // -------------------------------------------------------- model dropdown
 function fmtPrice(p) {
@@ -436,7 +436,8 @@ $('startrun').onclick = async () => {
     run = await post('/api/run', {
       name: $('name').value.trim(),
       traits: [...picked.traits], skills: skillPayload(),
-      director_prompt: $('director').value.trim(),
+      client_prompt: $('clientprompt').value.trim(),
+      scripted_messages: scripted,
       max_tries: parseInt($('maxtries').value) || 30,
       checkin_every: parseInt($('checkinevery').value, 10) || 0,
       client_model: selected.client, agent_model: selected.agent, hr_model: selected.hr });
@@ -468,9 +469,12 @@ async function stepLoop() {
 
 function checkinCard(m) {
   const isFinal = run.final_report && m.role === 'agent' && m.text === run.final_report;
-  const cls = m.role === 'user' ? 'comment' : (isFinal ? 'final-report' : '');
+  const cls = m.role === 'user' ? (m.scripted ? 'comment scripted' : 'comment')
+                                : (isFinal ? 'final-report' : '');
   const tag = m.role === 'user'
-    ? 'client comment — LLM, steered by your system prompt (sent to the agent as-is)'
+    ? (m.scripted
+        ? 'client comment — SCRIPTED at setup, sent to the agent verbatim'
+        : 'client comment — LLM, steered by your system prompt (sent to the agent as-is)')
     : (isFinal ? 'agent — final report' : 'agent — check-in report');
   return `<div class="card checkin ${cls}">
     <span class="tag">${tag}</span>
@@ -509,15 +513,19 @@ function render() {
   // until the first application arrives
   const prevDetails = $('profile').querySelector('details');
   const dossierOpen = prevDetails ? prevDetails.open : !run.applications.length;
+  const scriptedKeys = Object.keys(run.scripted_messages || {}).sort((a, b) => a - b);
   $('profile').innerHTML = `
     <div class="head"><span class="co">${esc(p.name)}</span></div>
     <div class="hr-reasons"><b>Models:</b> ${run.models
       ? esc(`client ${run.models.user} · agent ${run.models.agent} · HR ${run.models.hr}`)
       : 'server defaults'}</div>
     <div class="hr-reasons"><b>Traits:</b> ${p.traits.length ? esc(p.traits.join(', ')) : '(none picked)'}</div>
-    <div class="hr-reasons"><b>Your system prompt:</b> ${run.director_prompt ? esc(run.director_prompt) : '(none — the seeker LLM plays it straight)'}</div>
+    <div class="hr-reasons"><b>Client system prompt:</b> ${run.client_prompt ? esc(run.client_prompt) : '(none — the seeker LLM plays it straight)'}</div>
+    <div class="hr-reasons"><b>Scripted check-ins:</b> ${scriptedKeys.length
+      ? scriptedKeys.map(k => `#${esc(k)}: ${esc(run.scripted_messages[k])}`).join(' · ')
+      : '(none)'}</div>
     <div class="hr-reasons"><b>Check-in:</b> ${run.checkin_every > 0 ? 'every ' + run.checkin_every + ' rejections' : 'never'}</div>
-    <details ${dossierOpen ? 'open' : ''}><summary>dossier / CV (the agent's single source of truth)</summary><div class="cvview md">${mdToHtml(p.cv || '')}</div></details>`;
+    <details ${dossierOpen ? 'open' : ''}><summary>dossier / CV (the agent's single source of truth)</summary><div class="cvview">${esc(p.cv || '')}</div></details>`;
 
   // timeline: applications with check-in exchanges interleaved at the point
   // they happened (chat messages carry after_try = #applications sent so far)

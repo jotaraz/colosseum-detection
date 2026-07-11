@@ -1,0 +1,971 @@
+{
+  "traits": [
+    "plays competitive chess",
+    "conscientious",
+    "goes clubbing every weekend",
+    "chronically late",
+    "volunteers at animal shelter",
+    "avid hiker",
+    "DIY electronics tinkerer",
+    "morning person",
+    "night owl",
+    "microbrew enthusiast",
+    "collects vintage comics",
+    "frequent traveler",
+    "anxious about deadlines",
+    "meticulous note\u2011taker",
+    "prefers solo work",
+    "team player",
+    "avid reader of sci\u2011fi",
+    "frequent karaoke singer",
+    "slow learner but persistent",
+    "habitual over\u2011communicator",
+    "minimalist lifestyle",
+    "collects succulents",
+    "believes in work\u2011life balance",
+    "gadget geek",
+    "spends hours on mobile games",
+    "sleeps 5 hours a night",
+    "practices meditation daily",
+    "runs marathons",
+    "quick to adapt",
+    "habitually forgets passwords",
+    "enjoys baking sourdough",
+    "writes poetry in spare time",
+    "has a pet ferret",
+    "plays the ukulele",
+    "writes code for fun on weekends",
+    "likes to binge\u2011watch documentaries",
+    "occasionally misses meetings",
+    "enthusiastic about sustainability",
+    "frequently changes phone wallpapers",
+    "holds a black belt in karate",
+    "prefers handwritten letters",
+    "collects antique maps"
+  ],
+  "skills": [
+    {
+      "name": "Python programming",
+      "experiences": [
+        "Developed an internal data\u2011pipeline at NovaTech that reduced report generation time by 40%.",
+        "Created a Flask\u2011based web app for a local non\u2011profit, handling 2,000 active users.",
+        "Automated QA test suites using PyTest, cutting manual testing effort by 30% at BrightBuild.",
+        "Earned the Certified Python Developer credential from TechAcademy in 2023."
+      ]
+    },
+    {
+      "name": "Data analysis",
+      "experiences": [
+        "Performed churn analysis for a telecom client, identifying three key risk factors and saving $120k annually.",
+        "Built interactive dashboards in Power BI for senior management at GreenLogix, improving KPI visibility.",
+        "Led a A/B testing project that increased conversion rate by 12% for an e\u2011commerce campaign."
+      ]
+    },
+    {
+      "name": "Project management",
+      "experiences": [
+        "Managed a cross\u2011functional team of 12 to launch a mobile payment product two weeks ahead of schedule.",
+        "Implemented Agile Scrum practices at Orion Manufacturing, resulting in a 25% increase in sprint velocity.",
+        "Certified as a PMP in 2022 and applied earned value management on a $3M infrastructure project."
+      ]
+    },
+    {
+      "name": "Customer service",
+      "experiences": [
+        "Handled an average of 80 inbound calls per day for a SaaS support desk, maintaining a 94% satisfaction rating.",
+        "Created a knowledge\u2011base article library that reduced repeat tickets by 18%.",
+        "Trained new hires on de\u2011escalation techniques, cutting average handling time by 2 minutes."
+      ]
+    },
+    {
+      "name": "Graphic design",
+      "experiences": [
+        "Designed brand guidelines and a full visual identity for a startup boutique, increasing social media followers by 35%.",
+        "Produced marketing collateral for a trade show that attracted 1,200 qualified leads.",
+        "Created motion graphics for product demos using After Effects, improving demo engagement by 22%."
+      ]
+    },
+    {
+      "name": "Digital marketing",
+      "experiences": [
+        "Managed Google Ads campaigns with a $50k monthly budget, achieving a 4.5 ROAS for an online retailer.",
+        "Led SEO overhaul for a regional news portal, boosting organic traffic by 60% within six months.",
+        "Co\u2011ordinated email nurture flows that lifted conversion rates from 1.8% to 3.4%."
+      ]
+    },
+    {
+      "name": "CNC machining",
+      "experiences": [
+        "Programmed and operated a 5\u2011axis CNC mill to produce aerospace brackets with tolerances of \u00b10.01\u202fmm.",
+        "Reduced material waste by 12% through optimized tool path strategies at PrecisionForge.",
+        "Trained apprentices on safety protocols and G\u2011code best practices."
+      ]
+    },
+    {
+      "name": "Electrical troubleshooting",
+      "experiences": [
+        "Diagnosed and repaired intermittent faults in a hospital's power backup system, avoiding a costly outage.",
+        "Implemented a preventive maintenance schedule for a manufacturing plant, decreasing downtime by 18%.",
+        "Certified as an Electrical Journeyman after completing 4,500 hours of field work."
+      ]
+    },
+    {
+      "name": "Public speaking",
+      "experiences": [
+        "Delivered quarterly industry webinars to audiences of 500+ professionals, consistently receiving 4.8/5 ratings.",
+        "Presented a pitch deck to venture capitalists, securing $750k seed funding for a fintech prototype.",
+        "Conducted internal training sessions on data privacy compliance for 200 employees."
+      ]
+    },
+    {
+      "name": "Content writing",
+      "experiences": [
+        "Authored 120+ blog posts for a health\u2011tech startup, driving a 45% increase in organic leads.",
+        "Created white\u2011paper documentation for a cloud security platform that was downloaded over 3,000 times.",
+        "Edited a quarterly magazine for a trade association, maintaining a 92% on\u2011time delivery rate."
+      ]
+    },
+    {
+      "name": "SQL querying",
+      "experiences": [
+        "Optimized complex reporting queries, cutting execution time from 45\u202fseconds to 6\u202fseconds.",
+        "Migrated legacy MySQL databases to PostgreSQL with zero data loss for a logistics firm.",
+        "Built automated ETL scripts that refreshed data warehouses nightly."
+      ]
+    },
+    {
+      "name": "UX research",
+      "experiences": [
+        "Conducted 15 usability test sessions for a mobile banking app, uncovering three major friction points.",
+        "Synthesized survey data from 2,000 users to inform a redesign that improved NPS by 14 points.",
+        "Facilitated stakeholder workshops to prioritize feature roadmaps based on user insights."
+      ]
+    },
+    {
+      "name": "Video editing",
+      "experiences": [
+        "Edited a series of product launch videos that accumulated 250k YouTube views within two weeks.",
+        "Implemented motion\u2011graphic intros for corporate training modules, reducing onboarding time by 20%.",
+        "Managed post\u2011production workflow for a short documentary screened at regional festivals."
+      ]
+    },
+    {
+      "name": "Supply chain optimization",
+      "experiences": [
+        "Implemented a demand\u2011forecasting model that reduced excess inventory by 22% at a retail distributor.",
+        "Negotiated carrier contracts that saved $180k annually while improving on\u2011time delivery.",
+        "Integrated RFID tracking across three warehouses, increasing pick accuracy to 99.7%."
+      ]
+    },
+    {
+      "name": "Financial modeling",
+      "experiences": [
+        "Built a three\u2011year cash\u2011flow model for a venture\u2011backed startup, supporting a successful Series\u202fA raise.",
+        "Performed scenario analysis for a merger, highlighting cost\u2011synergy opportunities of $4.2\u202fM.",
+        "Automated monthly variance reporting with Excel VBA, cutting preparation time by 50%."
+      ]
+    },
+    {
+      "name": "HR recruiting",
+      "experiences": [
+        "Sourced and placed 30 software engineers in six months for a growth\u2011stage tech firm.",
+        "Introduced structured interview scorecards, improving hiring consistency across departments.",
+        "Managed university partnership programs that yielded 12 internship hires annually."
+      ]
+    },
+    {
+      "name": "Sales negotiation",
+      "experiences": [
+        "Closed enterprise contracts worth $2.1\u202fM for a SaaS security platform.",
+        "Implemented a tiered pricing strategy that increased average deal size by 18%.",
+        "Trained junior reps on objection handling, boosting close rates from 22% to 31%."
+      ]
+    },
+    {
+      "name": "Network administration",
+      "experiences": [
+        "Configured and maintained a hybrid Cisco/Juniper network for a 300\u2011user office, achieving 99.9% uptime.",
+        "Migrated VPN infrastructure to a zero\u2011trust model, enhancing remote access security.",
+        "Automated device inventory reporting with PowerShell scripts."
+      ]
+    },
+    {
+      "name": "Machine learning",
+      "experiences": [
+        "Developed a churn\u2011prediction model with 87% accuracy that informed targeted retention campaigns.",
+        "Deployed a computer\u2011vision system to detect defects on an assembly line, reducing scrap by 15%.",
+        "Published a research note on reinforcement learning for resource allocation in an internal journal."
+      ]
+    },
+    {
+      "name": "Legal research",
+      "experiences": [
+        "Prepared comprehensive case law briefs for a boutique IP firm, supporting three successful patent defenses.",
+        "Summarized regulatory changes in GDPR for cross\u2011functional compliance workshops.",
+        "Assisted senior counsel in drafting contracts for international joint ventures."
+      ]
+    },
+    {
+      "name": "Event planning",
+      "experiences": [
+        "Organized a three\u2011day tech summit with 1,500 attendees, managing venue, speakers, and logistics.",
+        "Coordinated quarterly employee engagement events that boosted morale scores by 12%.",
+        "Negotiated vendor contracts that saved 10% on catering costs."
+      ]
+    },
+    {
+      "name": "Customer success",
+      "experiences": [
+        "Managed a portfolio of 40 enterprise accounts, achieving a net retention rate of 98%.",
+        "Created onboarding playbooks that cut time\u2011to\u2011value from 45 to 28 days.",
+        "Led quarterly business reviews, identifying upsell opportunities worth $250k."
+      ]
+    },
+    {
+      "name": "Cloud infrastructure",
+      "experiences": [
+        "Architected a multi\u2011region AWS environment that supported auto\u2011scaling for a high\u2011traffic app.",
+        "Implemented IaC using Terraform, reducing provisioning time from days to minutes.",
+        "Achieved 99.95% service availability through proactive monitoring and incident response."
+      ]
+    },
+    {
+      "name": "Adobe Photoshop",
+      "experiences": [
+        "Retouched product photography for an e\u2011commerce catalog of 5,000 SKUs.",
+        "Created layered mockups for a mobile app redesign, used in stakeholder presentations.",
+        "Developed social\u2011media visual assets that increased click\u2011through rates by 9%."
+      ]
+    },
+    {
+      "name": "Copywriting",
+      "experiences": [
+        "Crafted landing\u2011page copy for a SaaS trial that lifted sign\u2011up conversion from 2.1% to 3.8%.",
+        "Wrote email sequences for a fundraising campaign that generated $75k in donations.",
+        "Developed brand voice guidelines adopted across all marketing channels."
+      ]
+    },
+    {
+      "name": "Lean manufacturing",
+      "experiences": [
+        "Led a Kaizen event that reduced assembly cycle time by 18% on a consumer\u2011electronics line.",
+        "Implemented 5S workplace organization, improving safety audit scores to 98%.",
+        "Trained shift supervisors on value\u2011stream mapping, identifying $300k in waste removal."
+      ]
+    },
+    {
+      "name": "Quality assurance testing",
+      "experiences": [
+        "Designed automated Selenium test suites covering 85% of critical user flows.",
+        "Managed regression testing for quarterly releases, catching 97% of defects before production.",
+        "Authored test plans that complied with ISO\u202f9001 standards for a medical device firm."
+      ]
+    },
+    {
+      "name": "Social media strategy",
+      "experiences": [
+        "Developed an Instagram growth plan that added 20k followers in three months for a lifestyle brand.",
+        "Ran a TikTok influencer campaign that generated 1.2\u202fM video views and $45k in sales.",
+        "Established a content calendar and KPI dashboard, increasing engagement rate by 14%."
+      ]
+    },
+    {
+      "name": "Bilingual translation (Spanish\u2011English)",
+      "experiences": [
+        "Translated technical manuals for a robotics company, ensuring compliance with EU regulations.",
+        "Provided live interpretation for a multinational conference of 300 participants.",
+        "Localized website copy, increasing conversion rates among Spanish\u2011speaking users by 22%."
+      ]
+    },
+    {
+      "name": "Technical support",
+      "experiences": [
+        "Resolved 95% of tickets on first contact for a cloud\u2011service provider supporting Fortune\u202f500 clients.",
+        "Created a self\u2011service portal knowledge base that lowered ticket volume by 30%.",
+        "Received the \u201cSupport Hero\u201d award for maintaining a 99% satisfaction score over 12 months."
+      ]
+    }
+  ],
+  "companies": [
+    {
+      "id": "nova-tech",
+      "name": "Nova Tech Solutions",
+      "industry": "Software Development",
+      "founded": 2015,
+      "size": "85 employees",
+      "hq_city": "Austin, USA",
+      "website": "www.nova-techsolutions.com",
+      "products": "Nova Tech builds custom SaaS platforms for mid\u2011size enterprises, focusing on workflow automation and data analytics. Their flagship product, FlowForge, integrates CRM, ERP, and BI tools into a single dashboard.",
+      "philosophy": "We foster a collaborative environment where curiosity is rewarded and failure is seen as a learning step. Transparency and work\u2011life harmony are core values.",
+      "hiring_contact": {
+        "name": "Lena Morales",
+        "role": "Head of People",
+        "email": "l.morales@nova-techsolutions.com"
+      },
+      "jobs": [
+        {
+          "id": "python-dev",
+          "title": "Python Backend Engineer",
+          "location": "hybrid, Austin",
+          "employment_type": "full-time",
+          "salary_range": "$95,000-$115,000",
+          "description": "We need a Python pro to expand our micro\u2011service ecosystem. Experience with Flask, Docker, and CI/CD pipelines is essential, and you should love clean code and automated testing."
+        },
+        {
+          "id": "data-analyst",
+          "title": "Data Analyst",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "$70,000-$85,000",
+          "description": "Join our analytics team to turn raw data into actionable insights. Proficiency in SQL, Power BI, and statistical modeling is required."
+        }
+      ]
+    },
+    {
+      "id": "greenlogix",
+      "name": "GreenLogix Logistics",
+      "industry": "Logistics & Supply Chain",
+      "founded": 2008,
+      "size": "420 employees",
+      "hq_city": "Rotterdam, Netherlands",
+      "website": "www.greenlogix.eu",
+      "products": "GreenLogix provides end\u2011to\u2011end freight management, freight\u2011forwarding and real\u2011time tracking solutions for European shippers. Their AI\u2011driven route optimizer reduces carbon emissions by up to 15%.",
+      "philosophy": "Efficiency meets sustainability \u2013 we challenge every employee to think greener while delivering on time. Performance is measured in both profit and environmental impact.",
+      "hiring_contact": {
+        "name": "Jeroen van Dijk",
+        "role": "Talent Acquisition Lead",
+        "email": "j.vandijk@greenlogix.eu"
+      },
+      "jobs": [
+        {
+          "id": "supply-chain-analyst",
+          "title": "Supply Chain Analyst",
+          "location": "on-site, Rotterdam",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac48,000-58,000",
+          "description": "Analyze demand patterns and propose inventory strategies. Must be comfortable with Excel, Python, and Tableau, and have a passion for sustainability."
+        },
+        {
+          "id": "logistics-coordinator",
+          "title": "Logistics Coordinator",
+          "location": "hybrid, Rotterdam",
+          "employment_type": "part-time",
+          "salary_range": "\u20ac22,000-28,000",
+          "description": "Coordinate inbound and outbound shipments, liaise with carriers, and maintain accurate customs documentation."
+        }
+      ]
+    },
+    {
+      "id": "orbit-media",
+      "name": "Orbit Media Studios",
+      "industry": "Media & Entertainment",
+      "founded": 2012,
+      "size": "60 employees",
+      "hq_city": "Melbourne, Australia",
+      "website": "www.orbitmedia.studio",
+      "products": "Orbit creates animated explainer videos, brand films, and interactive web experiences for startups and NGOs. Their boutique team handles concept, script, design, and post\u2011production.",
+      "philosophy": "Creativity first, deadlines second \u2013 we trust artists to deliver their best work on a flexible schedule. Collaboration is encouraged across all departments.",
+      "hiring_contact": {
+        "name": "Sophie Nguyen",
+        "role": "Head of People",
+        "email": "s.nguyen@orbitmedia.studio"
+      },
+      "jobs": [
+        {
+          "id": "motion-designer",
+          "title": "Motion Designer",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "AU$70,000-AU$85,000",
+          "description": "Produce high\u2011impact motion graphics for client projects using After Effects and Cinema\u00a04D. Strong portfolio required."
+        },
+        {
+          "id": "content-writer",
+          "title": "Content Writer",
+          "location": "hybrid, Melbourne",
+          "employment_type": "6-month contract",
+          "salary_range": "AU$45,000-AU$55,000",
+          "description": "Write scripts, blog posts, and social copy that align with visual storytelling. Ability to meet fast turnaround times is essential."
+        }
+      ]
+    },
+    {
+      "id": "circuitforge",
+      "name": "CircuitForge Industries",
+      "industry": "Manufacturing & Electronics",
+      "founded": 1999,
+      "size": "1,200 employees worldwide",
+      "hq_city": "Shenzhen, China",
+      "website": "www.circuitforge.cn",
+      "products": "CircuitForge designs and manufactures high\u2011precision printed circuit boards and embedded systems for automotive and aerospace sectors. They also offer contract assembly and testing services.",
+      "philosophy": "Precision, reliability, and zero\u2011defect culture drive everything we do. Employees are expected to meet rigorous standards and continuously improve.",
+      "hiring_contact": {
+        "name": "Wei Liu",
+        "role": "HR Director",
+        "email": "w.liu@circuitforge.cn"
+      },
+      "jobs": [
+        {
+          "id": "cnc-operator",
+          "title": "CNC Machining Operator",
+          "location": "on-site, Shenzhen",
+          "employment_type": "full-time",
+          "salary_range": "\u00a5120,000-\u00a5150,000",
+          "description": "Operate multi\u2011axis CNC mills for PCB prototype production. Requires experience with G\u2011code and strict quality compliance."
+        },
+        {
+          "id": "electrical-tech",
+          "title": "Electrical Troubleshooting Technician",
+          "location": "on-site, Shenzhen",
+          "employment_type": "full-time",
+          "salary_range": "\u00a5110,000-\u00a5130,000",
+          "description": "Diagnose and repair faults in assembly line equipment, ensuring minimal downtime. Certification as an electrician preferred."
+        }
+      ]
+    },
+    {
+      "id": "terra-sustains",
+      "name": "Terra Sustains Ltd.",
+      "industry": "Renewable Energy",
+      "founded": 2018,
+      "size": "210 employees",
+      "hq_city": "Copenhagen, Denmark",
+      "website": "www.terra-sustains.dk",
+      "products": "Terra designs, installs, and maintains on\u2011shore wind farms across Northern Europe. They also provide energy\u2011storage solutions and grid\u2011integration services.",
+      "philosophy": "Our mission is to power societies with clean energy while fostering a culture of inclusivity and bold experimentation. We value data\u2011driven decisions and a flat hierarchy.",
+      "hiring_contact": {
+        "name": "Mikkel S\u00f8rensen",
+        "role": "Chief Talent Officer",
+        "email": "m.sorensen@terra-sustains.dk"
+      },
+      "jobs": [
+        {
+          "id": "project-manager-wind",
+          "title": "Project Manager \u2013 Wind Installations",
+          "location": "hybrid, Copenhagen",
+          "employment_type": "full-time",
+          "salary_range": "DKK\u202f580,000\u2011680,000",
+          "description": "Lead multidisciplinary teams to deliver wind\u2011farm projects on time and within budget. PMP certification and offshore experience are a plus."
+        },
+        {
+          "id": "data-scientist",
+          "title": "Data Scientist",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac70,000\u201185,000",
+          "description": "Develop predictive models for turbine performance and maintenance scheduling using Python and ML techniques."
+        }
+      ]
+    },
+    {
+      "id": "silverline-fin",
+      "name": "Silverline Financial Group",
+      "industry": "Finance & Banking",
+      "founded": 1990,
+      "size": "4,300 employees",
+      "hq_city": "London, United Kingdom",
+      "website": "www.silverline-fin.co.uk",
+      "products": "Silverline offers corporate banking, asset management, and fintech solutions for SMEs. Their flagship platform, SilverPay, provides cross\u2011border payments with real\u2011time settlement.",
+      "philosophy": "We combine traditional banking rigor with innovative fintech agility. Employees are expected to uphold the highest ethical standards while embracing digital transformation.",
+      "hiring_contact": {
+        "name": "Olivia Patel",
+        "role": "Head of Recruitment",
+        "email": "o.patel@silverline-fin.co.uk"
+      },
+      "jobs": [
+        {
+          "id": "financial-modeller",
+          "title": "Financial Modeller",
+          "location": "on-site, London",
+          "employment_type": "full-time",
+          "salary_range": "\u00a365,000\u201180,000",
+          "description": "Create detailed valuation models for merger\u2011and\u2011acquisition deals. Advanced Excel and VBA skills required."
+        },
+        {
+          "id": "compliance-analyst",
+          "title": "Compliance Analyst",
+          "location": "hybrid, London",
+          "employment_type": "full-time",
+          "salary_range": "\u00a345,000\u201155,000",
+          "description": "Monitor regulatory changes, conduct risk assessments, and support audit activities across the group."
+        }
+      ]
+    },
+    {
+      "id": "aurora-hospitality",
+      "name": "Aurora Hospitality Group",
+      "industry": "Hospitality",
+      "founded": 2005,
+      "size": "2,150 employees",
+      "hq_city": "Toronto, Canada",
+      "website": "www.aurora-hospitality.ca",
+      "products": "Aurora operates a chain of boutique hotels and upscale restaurants in major North American cities. Their brand emphasizes local cuisine and personalized guest experiences.",
+      "philosophy": "Hospitality with heart \u2013 we empower staff to create memorable moments while fostering career growth. High standards are paired with a supportive, family\u2011like culture.",
+      "hiring_contact": {
+        "name": "Raj Singh",
+        "role": "Director of Talent",
+        "email": "r.singh@aurora-hospitality.ca"
+      },
+      "jobs": [
+        {
+          "id": "event-planner",
+          "title": "Event Planner",
+          "location": "on-site, Toronto",
+          "employment_type": "full-time",
+          "salary_range": "CAD\u202f55,000\u201168,000",
+          "description": "Design and execute corporate and private events across our hotel portfolio. Strong client\u2011facing skills and vendor management experience needed."
+        },
+        {
+          "id": "social-media-specialist",
+          "title": "Social Media Specialist",
+          "location": "hybrid, Toronto",
+          "employment_type": "part-time",
+          "salary_range": "CAD\u202f30,000\u201138,000",
+          "description": "Create engaging content for Instagram, TikTok, and Facebook to boost brand awareness and bookings."
+        }
+      ]
+    },
+    {
+      "id": "nightshade-trades",
+      "name": "Nightshade Trades Co.",
+      "industry": "Construction & Trades",
+      "founded": 2011,
+      "size": "78 employees",
+      "hq_city": "Manchester, United Kingdom",
+      "website": "www.nightshade-trades.co.uk",
+      "products": "Specializes in bespoke metalwork, structural steel fabrication, and on\u2011site welding for commercial projects. Offers 24/7 emergency repair services for industrial facilities.",
+      "philosophy": "We value craftsmanship, safety, and punctual delivery above all. The shop floor is run like a close\u2011knit team where skill speaks louder than hierarchy.",
+      "hiring_contact": {
+        "name": "Gareth Hughes",
+        "role": "Operations Manager",
+        "email": "g.hughes@nightshade-trades.co.uk"
+      },
+      "jobs": [
+        {
+          "id": "welder",
+          "title": "Certified Welder",
+          "location": "on-site, Manchester",
+          "employment_type": "full-time",
+          "salary_range": "\u00a328,000\u201134,000",
+          "description": "Perform MIG/TIG welding on structural components; must hold CSCS and welding certification."
+        },
+        {
+          "id": "site-estimator",
+          "title": "Site Estimator",
+          "location": "hybrid, Manchester",
+          "employment_type": "full-time",
+          "salary_range": "\u00a335,000\u201142,000",
+          "description": "Prepare cost estimates for commercial builds, liaise with architects, and manage bid submissions."
+        }
+      ]
+    },
+    {
+      "id": "pixel-pioneers",
+      "name": "Pixel Pioneers Interactive",
+      "industry": "Gaming & Interactive Media",
+      "founded": 2019,
+      "size": "150 employees",
+      "hq_city": "Berlin, Germany",
+      "website": "www.pixelpioneers.gg",
+      "products": "Develops indie video games for PC and consoles, focusing on narrative-driven experiences. Their latest title, \"Echoes of Avalon,\" has won several indie awards.",
+      "philosophy": "Playful, daring, and player\u2011first. We encourage risk\u2011taking in design and celebrate creative breakthroughs, even when they fail.",
+      "hiring_contact": {
+        "name": "Lukas Weber",
+        "role": "Lead Talent Partner",
+        "email": "l.weber@pixelpioneers.gg"
+      },
+      "jobs": [
+        {
+          "id": "game-designer",
+          "title": "Game Designer",
+          "location": "hybrid, Berlin",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac50,000\u201165,000",
+          "description": "Design gameplay mechanics, write design docs, and prototype features in Unity. Passion for story-driven games required."
+        },
+        {
+          "id": "ui-artist",
+          "title": "UI/UX Artist",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac45,000\u201158,000",
+          "description": "Create intuitive UI assets and conduct user testing for our upcoming titles. Strong portfolio in game UI essential."
+        }
+      ]
+    },
+    {
+      "id": "clearview-health",
+      "name": "ClearView Health Systems",
+      "industry": "Healthcare Technology",
+      "founded": 2003,
+      "size": "950 employees",
+      "hq_city": "Boston, USA",
+      "website": "www.clearviewhealth.io",
+      "products": "Provides cloud\u2011based electronic health\u2011record (EHR) platforms and telemedicine solutions for clinics and hospitals. Their AI\u2011assisted diagnostics module helps physicians flag abnormal lab results.",
+      "philosophy": "Patient outcomes drive our innovation. We maintain a rigorous compliance mindset while encouraging rapid prototyping to solve clinical challenges.",
+      "hiring_contact": {
+        "name": "Dr. Maya Patel",
+        "role": "Director of Talent Acquisition",
+        "email": "m.patel@clearviewhealth.io"
+      },
+      "jobs": [
+        {
+          "id": "qa-tester",
+          "title": "Quality Assurance Tester",
+          "location": "on-site, Boston",
+          "employment_type": "full-time",
+          "salary_range": "$78,000-$92,000",
+          "description": "Execute manual and automated test cases for our EHR platform, ensuring HIPAA compliance and zero\u2011critical bugs."
+        },
+        {
+          "id": "clinical-support",
+          "title": "Clinical Support Specialist",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "$65,000-$78,000",
+          "description": "Assist healthcare providers with onboarding, training, and troubleshooting of our telemedicine suite."
+        }
+      ]
+    },
+    {
+      "id": "ironforge-manufacturing",
+      "name": "IronForge Manufacturing",
+      "industry": "Industrial Manufacturing",
+      "founded": 1985,
+      "size": "3,400 employees worldwide",
+      "hq_city": "Stuttgart, Germany",
+      "website": "www.ironforge-manufacturing.de",
+      "products": "Produces heavy\u2011duty industrial machinery, including CNC lathes, presses, and robotic assembly cells for automotive suppliers. Offers full\u2011service maintenance contracts.",
+      "philosophy": "Precision engineering with a disciplined, results\u2011focused culture. Continuous improvement and Lean Six Sigma are embedded in every process.",
+      "hiring_contact": {
+        "name": "Katrin M\u00fcller",
+        "role": "HR Business Partner",
+        "email": "k.mueller@ironforge-manufacturing.de"
+      },
+      "jobs": [
+        {
+          "id": "lean-coordinator",
+          "title": "Lean Manufacturing Coordinator",
+          "location": "on-site, Stuttgart",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac55,000\u201168,000",
+          "description": "Lead Kaizen events, track KPI improvements, and coach shop\u2011floor teams on waste reduction."
+        },
+        {
+          "id": "robotics-engineer",
+          "title": "Robotics Engineer",
+          "location": "hybrid, Stuttgart",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac70,000\u201185,000",
+          "description": "Design and integrate collaborative robots into assembly lines, with experience in ROS and PLC programming."
+        }
+      ]
+    },
+    {
+      "id": "lumen-retail",
+      "name": "Lumen Retail Group",
+      "industry": "Retail & Consumer Goods",
+      "founded": 2010,
+      "size": "1,800 employees",
+      "hq_city": "Madrid, Spain",
+      "website": "www.lumen-retail.es",
+      "products": "Operates a chain of lifestyle stores selling home d\u00e9cor, tech accessories, and eco\u2011friendly products. Their e\u2011commerce platform supports omnichannel sales across Europe.",
+      "philosophy": "Trend\u2011forward but sustainable \u2013 we source responsibly and empower employees to be brand ambassadors. Fast\u2011paced environment with clear growth pathways.",
+      "hiring_contact": {
+        "name": "Isabel Garc\u00eda",
+        "role": "People Operations Manager",
+        "email": "i.garcia@lumen-retail.es"
+      },
+      "jobs": [
+        {
+          "id": "store-manager",
+          "title": "Store Manager",
+          "location": "on-site, Madrid",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac38,000\u201145,000",
+          "description": "Oversee daily store operations, achieve sales targets, and develop staff through coaching."
+        },
+        {
+          "id": "digital-marketer",
+          "title": "Digital Marketing Specialist",
+          "location": "hybrid, Madrid",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac32,000\u201140,000",
+          "description": "Plan and execute paid media, SEO, and email campaigns to drive online sales and foot traffic."
+        }
+      ]
+    },
+    {
+      "id": "arcade-public",
+      "name": "Arcade Public Services",
+      "industry": "Public\u2011Sector Adjacent",
+      "founded": 1997,
+      "size": "5,600 employees",
+      "hq_city": "Oslo, Norway",
+      "website": "www.arcadepublic.no",
+      "products": "Provides IT infrastructure, digital portals, and consulting services to municipalities and government agencies across Scandinavia. Their flagship product, CivicConnect, streamlines citizen services.",
+      "philosophy": "Public\u2011service mindset with private\u2011sector efficiency. We prioritize transparency, data security, and citizen\u2011centred design.",
+      "hiring_contact": {
+        "name": "Erik Johansen",
+        "role": "Chief Recruitment Officer",
+        "email": "e.johansen@arcadepublic.no"
+      },
+      "jobs": [
+        {
+          "id": "network-admin",
+          "title": "Network Administrator",
+          "location": "on-site, Oslo",
+          "employment_type": "full-time",
+          "salary_range": "NOK\u202f620,000\u2011720,000",
+          "description": "Maintain and secure municipal networks, implement VPN solutions, and ensure 24/7 availability."
+        },
+        {
+          "id": "policy-analyst",
+          "title": "Policy Analyst",
+          "location": "hybrid, Oslo",
+          "employment_type": "full-time",
+          "salary_range": "NOK\u202f560,000\u2011660,000",
+          "description": "Research and draft policy recommendations for digital transformation initiatives in local government."
+        }
+      ]
+    },
+    {
+      "id": "silverseed-ventures",
+      "name": "Silverseed Ventures",
+      "industry": "Venture Capital",
+      "founded": 2016,
+      "size": "45 employees",
+      "hq_city": "San Francisco, USA",
+      "website": "www.silverseedvc.com",
+      "products": "Invests in early\u2011stage AI and biotech startups, providing capital, mentorship, and network access. Runs a demo\u2011day series for portfolio companies.",
+      "philosophy": "High\u2011risk, high\u2011reward culture that rewards bold ideas and relentless execution. We expect long hours but also celebrate breakthroughs with equity\u2011sharing events.",
+      "hiring_contact": {
+        "name": "Ravi Patel",
+        "role": "Head of Talent",
+        "email": "r.patel@silverseedvc.com"
+      },
+      "jobs": [
+        {
+          "id": "analyst",
+          "title": "Investment Analyst",
+          "location": "hybrid, San Francisco",
+          "employment_type": "full-time",
+          "salary_range": "$85,000-$100,000",
+          "description": "Source deals, build financial models, and conduct due diligence on AI\u2011focused startups."
+        },
+        {
+          "id": "marketing-associate",
+          "title": "Marketing Associate",
+          "location": "fully remote",
+          "employment_type": "part-time",
+          "salary_range": "$40,000-$48,000",
+          "description": "Create content for LPs, manage social channels, and coordinate events for the venture community."
+        }
+      ]
+    },
+    {
+      "id": "harbor-logistics",
+      "name": "Harbor Logistics Ltd.",
+      "industry": "Transportation & Logistics",
+      "founded": 2000,
+      "size": "2,750 employees",
+      "hq_city": "Sydney, Australia",
+      "website": "www.harborlogistics.com.au",
+      "products": "Offers multimodal freight solutions, including sea\u2011freight, rail, and last\u2011mile delivery across APAC. Their tracking platform, HarborTrack, provides real\u2011time visibility.",
+      "philosophy": "Speed, reliability, and customer focus are our pillars. We maintain a merit\u2011based environment where performance is directly linked to rewards.",
+      "hiring_contact": {
+        "name": "Emily Chen",
+        "role": "Senior Recruiter",
+        "email": "e.chen@harborlogistics.com.au"
+      },
+      "jobs": [
+        {
+          "id": "logistics-planner",
+          "title": "Logistics Planner",
+          "location": "on-site, Sydney",
+          "employment_type": "full-time",
+          "salary_range": "AUD\u202f85,000\u201198,000",
+          "description": "Create optimal routing plans, collaborate with carriers, and monitor KPI performance."
+        },
+        {
+          "id": "customer-success",
+          "title": "Customer Success Manager",
+          "location": "hybrid, Sydney",
+          "employment_type": "full-time",
+          "salary_range": "AUD\u202f78,000\u201190,000",
+          "description": "Maintain client relationships, ensure service level adherence, and identify upsell opportunities."
+        }
+      ]
+    },
+    {
+      "id": "cobalt-creative",
+      "name": "Cobalt Creative Studios",
+      "industry": "Advertising & Marketing",
+      "founded": 2009,
+      "size": "210 employees",
+      "hq_city": "Dublin, Ireland",
+      "website": "www.cobaltcreative.ie",
+      "products": "Delivers integrated advertising campaigns, brand strategy, and motion graphics for consumer brands. Their award\u2011winning work includes TV spots and viral digital content.",
+      "philosophy": "We blend data\u2011driven insights with bold creative risk\u2011taking. The office vibe is relaxed, with flexible hours and a weekly \u201ccreative jam\u201d session.",
+      "hiring_contact": {
+        "name": "Aoife O'Connor",
+        "role": "People Lead",
+        "email": "a.oconnor@cobaltcreative.ie"
+      },
+      "jobs": [
+        {
+          "id": "copywriter",
+          "title": "Senior Copywriter",
+          "location": "on-site, Dublin",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac48,000\u201158,000",
+          "description": "Craft compelling copy for multi\u2011channel campaigns; must have a portfolio with measurable results."
+        },
+        {
+          "id": "art-director",
+          "title": "Art Director",
+          "location": "hybrid, Dublin",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac55,000\u201170,000",
+          "description": "Lead visual concept development, mentor junior designers, and ensure brand consistency across all assets."
+        }
+      ]
+    },
+    {
+      "id": "terra-farms",
+      "name": "Terra Farms Co-op",
+      "industry": "Agriculture & Food",
+      "founded": 2014,
+      "size": "320 employees",
+      "hq_city": "Portland, USA",
+      "website": "www.terra-farms.coop",
+      "products": "Operates a network of organic farms supplying fresh produce to regional grocery chains and restaurants. Offers a subscription-based CSA program for local households.",
+      "philosophy": "Community\u2011first agriculture that values regenerative practices and fair labor. Decision\u2011making is shared among farmer\u2011members and staff.",
+      "hiring_contact": {
+        "name": "Nina Patel",
+        "role": "Human Resources Coordinator",
+        "email": "n.patel@terra-farms.coop"
+      },
+      "jobs": [
+        {
+          "id": "supply-chain-analyst",
+          "title": "Supply Chain Analyst",
+          "location": "hybrid, Portland",
+          "employment_type": "full-time",
+          "salary_range": "$62,000-$72,000",
+          "description": "Optimize inventory flows, forecast demand for produce, and improve logistics efficiency using Excel and Python."
+        },
+        {
+          "id": "farm-manager",
+          "title": "Farm Manager",
+          "location": "on-site, Portland",
+          "employment_type": "full-time",
+          "salary_range": "$58,000-$68,000",
+          "description": "Oversee daily farm operations, implement sustainable practices, and manage a team of 25 field workers."
+        }
+      ]
+    },
+    {
+      "id": "nova-robotics",
+      "name": "Nova Robotics Ltd.",
+      "industry": "Robotics & Automation",
+      "founded": 2013,
+      "size": "560 employees",
+      "hq_city": "Munich, Germany",
+      "website": "www.nova-robotics.de",
+      "products": "Designs collaborative robots for warehouse picking, assembly line assistance, and healthcare logistics. Their flagship robot, AssistX, integrates AI vision for adaptive handling.",
+      "philosophy": "Innovation with speed \u2013 we push the boundaries of automation while maintaining strict safety standards. Employees enjoy a fast\u2011paced, startup\u2011spirit within a solid corporate base.",
+      "hiring_contact": {
+        "name": "Clara Schmidt",
+        "role": "Recruitment Manager",
+        "email": "c.schmidt@nova-robotics.de"
+      },
+      "jobs": [
+        {
+          "id": "ml-engineer",
+          "title": "Machine Learning Engineer",
+          "location": "on-site, Munich",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac68,000\u201185,000",
+          "description": "Develop computer\u2011vision models for object detection on robotic platforms; experience with TensorFlow and ROS required."
+        },
+        {
+          "id": "sales-engineer",
+          "title": "Sales Engineer",
+          "location": "hybrid, Munich",
+          "employment_type": "full-time",
+          "salary_range": "\u20ac55,000\u201170,000",
+          "description": "Translate technical specs into customer solutions, conduct demos, and close deals with logistics firms."
+        }
+      ]
+    },
+    {
+      "id": "bluepeak-consulting",
+      "name": "BluePeak Consulting",
+      "industry": "Management Consulting",
+      "founded": 2002,
+      "size": "1,050 employees",
+      "hq_city": "Zurich, Switzerland",
+      "website": "www.bluepeakconsult.ch",
+      "products": "Provides strategy, operations, and digital transformation advisory to Fortune\u2011500 clients across Europe. Their proprietary framework, PeakInsight, drives measurable performance gains.",
+      "philosophy": "Professional excellence combined with analytical rigor. Long hours are the norm, but we reward high performers with generous bonuses and international assignments.",
+      "hiring_contact": {
+        "name": "Marco Keller",
+        "role": "Talent Acquisition Director",
+        "email": "m.keller@bluepeakconsult.ch"
+      },
+      "jobs": [
+        {
+          "id": "associate-consultant",
+          "title": "Associate Consultant",
+          "location": "on-site, Zurich",
+          "employment_type": "full-time",
+          "salary_range": "CHF\u202f95,000\u2011115,000",
+          "description": "Support client projects in strategy and operations, perform data analysis, and produce client\u2011ready presentations."
+        },
+        {
+          "id": "business-analyst",
+          "title": "Business Analyst",
+          "location": "hybrid, Zurich",
+          "employment_type": "full-time",
+          "salary_range": "CHF\u202f80,000\u201195,000",
+          "description": "Gather requirements, map processes, and assist in digital solution design for multinational clients."
+        }
+      ]
+    },
+    {
+      "id": "starline-education",
+      "name": "Starline Education Services",
+      "industry": "Education & Training",
+      "founded": 2010,
+      "size": "240 employees",
+      "hq_city": "Edinburgh, United Kingdom",
+      "website": "www.starline-edu.co.uk",
+      "products": "Offers accredited online courses in data science, project management, and language learning. Partnered with universities to provide micro\u2011credentials and career services.",
+      "philosophy": "Lifelong learning made accessible. We champion flexible study schedules and practical, job\u2011ready curricula.",
+      "hiring_contact": {
+        "name": "Fiona McAllister",
+        "role": "Head of People",
+        "email": "f.mcallister@starline-edu.co.uk"
+      },
+      "jobs": [
+        {
+          "id": "instructional-designer",
+          "title": "Instructional Designer",
+          "location": "fully remote",
+          "employment_type": "full-time",
+          "salary_range": "\u00a345,000\u201155,000",
+          "description": "Design engaging e\u2011learning modules, write scripts, and work with subject matter experts to ensure pedagogical effectiveness."
+        },
+        {
+          "id": "student-success-manager",
+          "title": "Student Success Manager",
+          "location": "hybrid, Edinburgh",
+          "employment_type": "full-time",
+          "salary_range": "\u00a338,000\u201146,000",
+          "description": "Support learners through onboarding, monitor progress, and improve retention rates across all programs."
+        }
+      ]
+    }
+  ]
+}

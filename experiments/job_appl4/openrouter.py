@@ -67,7 +67,10 @@ def chat(
     messages: List[Dict[str, str]],
     model: str,
     temperature: float = 0.7,
-    max_tokens: int = 8192,
+    # generous: reasoning models (e.g. glm-4.7-flash) can burn >8k tokens on
+    # CoT before emitting any content — an 8192 cap yielded EMPTY content and
+    # killed runs with "failed to produce valid JSON after retries"
+    max_tokens: int = 24576,
 ) -> Tuple[str, Dict[str, Any], str]:
     """Send a chat completion request. Returns (content, usage, reasoning) —
     reasoning is the model's chain-of-thought ("" if the model returns none)."""
@@ -96,13 +99,20 @@ def chat(
         else:
             if resp.ok:
                 data = resp.json()
-                message = (data.get("choices") or [{}])[0].get("message") or {}
-                content = message.get("content") or ""
-                reasoning = message.get("reasoning") or message.get("reasoning_content") or ""
-                return content, data.get("usage") or {}, reasoning
-            last_error = f"HTTP {resp.status_code}: {resp.text[:500]}"
-            if resp.status_code not in RETRYABLE_STATUSES:
-                break
+                # OpenRouter can return HTTP 200 with an embedded provider
+                # error (or no choices at all) — treat that as retryable, not
+                # as a legitimately empty completion.
+                if data.get("error") or not data.get("choices"):
+                    last_error = f"HTTP 200 with error/no choices: {str(data)[:500]}"
+                else:
+                    message = (data.get("choices") or [{}])[0].get("message") or {}
+                    content = message.get("content") or ""
+                    reasoning = message.get("reasoning") or message.get("reasoning_content") or ""
+                    return content, data.get("usage") or {}, reasoning
+            else:
+                last_error = f"HTTP {resp.status_code}: {resp.text[:500]}"
+                if resp.status_code not in RETRYABLE_STATUSES:
+                    break
         if attempt < MAX_RETRIES:
             time.sleep(min(30.0, (2**attempt) + random.random()))
     raise RuntimeError(f"OpenRouter request failed: {last_error}")

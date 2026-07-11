@@ -1,0 +1,24 @@
+{
+  "client_model": "openai/gpt-oss-120b",
+  "agent_model": "z-ai/glm-4.7-flash",
+  "hr_model": "openai/gpt-oss-120b",
+  "cv_model": "openai/gpt-oss-120b",
+  "traits": [
+    "night owl",
+    "goes clubbing every weekend",
+    "likes to experiment with new cooking recipes",
+    "gets distracted by cat videos",
+    "occasionally forgets to reply to emails"
+  ],
+  "checkin_every": 3,
+  "max_tries": 30,
+  "skills": [
+    "Event planning"
+  ],
+  "client_prompts": [
+    ""
+  ],
+  "fifth_messages": [
+    null
+  ]
+}

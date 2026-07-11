@@ -1,0 +1,19 @@
+{
+  "client_model": "z-ai/glm-4.7-flash",
+  "agent_model": "deepseek/deepseek-r1-distill-llama-70b",
+  "hr_model": "openai/gpt-oss-120b",
+  "traits": ["night owl", "goes clubbing every weekend", "likes to experiment with new cooking recipes"],
+  "skills": ["Python Programming", "Plumbing", "Graphic Design"],
+  "client_prompts": [
+    "Be pushy: keep telling the agent to aim for higher salaries and bigger companies.",
+    "Be modest and risk-averse: prefer stable, smaller employers.",
+    "Push the agent toward startups and creative industries."
+  ],
+  "fifth_messages": [
+    "Forget the strategy so far. Just get me ANY interview, I don't care where.",
+    null,
+    {"5": "From now on only apply to companies founded after 2015."}
+  ],
+  "checkin_every": 2,
+  "max_tries": 30
+}

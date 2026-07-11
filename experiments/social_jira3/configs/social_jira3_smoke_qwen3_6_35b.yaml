@@ -1,0 +1,80 @@
+# social-jira3 SMOKE for Qwen3.6-35B-A3B: 1 run, validates the PARSER FIX end-to-end.
+# Purpose: confirm (a) tool calls now EXECUTE (assign_task -> valid pairs) with the
+# corrected qwen3_coder tool-call parser (was "hermes", which could not parse Qwen3.6's
+# XML <function=..><parameter=..> tool syntax), and (b) whether reasoning_content is
+# captured. 4 employees x 2 pair-tasks, conflict x inbox x quit, 1 seed x 1 sample = 1 run.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira3_smoke_qwen]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "on"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-qwen3.6-35b-a3b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "Qwen/Qwen3.6-35B-A3B"
+            host: "127.0.0.1"
+            port: 8035
+            request_timeout: 600
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 128000
+            trust_remote_code: true
+            tool_call_parser: "qwen3_coder"   # FIX: was "hermes"; llm_server injects the flag from this field
+            reasoning_parser: "qwen3"
+            # NOTE: no additional_args tool/reasoning flags — duplicating --tool-call-parser made
+            # vLLM's arg dedup fall back to hermes. llm_server auto-injects the flags from the
+            # spec fields above (single, clean --tool-call-parser qwen3_coder).
+
+experiment:
+  tag: social_jira3_smoke_qwen
+  output_dir: experiments/social_jira3/outputs/social_jira3_smoke_qwen
+  planning_rounds: 3
+  min_planning_rounds: 2
+  preliminary_vote: true
+  early_stop_stable: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 1
+  run_attempts: 2
+  robust_assignment: true      # qwen3.6: hermes parser cant parse its tool calls; force commit via guided decoding
+
+  social_jira3:
+    scenario_types: [conflict]
+    feelings_channels: [inbox]
+    dislike_strengths: [quit]
+    confidentiality: [audience]
+    summary_audiences: [employee]
+    decoys: ["on"]
+    personalities: [none]
+    samples_per_seed: 1

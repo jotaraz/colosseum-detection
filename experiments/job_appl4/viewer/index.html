@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job_appl4 — run viewer</title>
+<style>
+  :root {
+    --bg: #10141a; --panel: #181e27; --panel2: #1f2733; --border: #2b3545;
+    --text: #dce3ec; --muted: #8a97a8; --accent: #5aa9ff;
+    --good: #3ecf8e; --bad: #ff6b6b; --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+         display: flex; }
+  a { color: var(--accent); }
+
+  /* ---- sidebar ---- */
+  #side { width: 340px; min-width: 340px; height: 100vh; overflow-y: auto;
+          border-right: 1px solid var(--border); background: var(--panel);
+          display: flex; flex-direction: column; }
+  #side header { padding: 14px 14px 10px; border-bottom: 1px solid var(--border);
+                 position: sticky; top: 0; background: var(--panel); z-index: 2; }
+  #side h1 { font-size: 15px; margin: 0 0 2px; }
+  #side .hint { color: var(--muted); font-size: 11.5px; }
+  #search { width: 100%; margin-top: 10px; padding: 7px 9px; border-radius: 7px;
+            border: 1px solid var(--border); background: var(--panel2);
+            color: var(--text); font-size: 13px; }
+  .filters { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .filters button { flex: 1; padding: 5px 4px; border-radius: 6px; cursor: pointer;
+                    border: 1px solid var(--border); background: var(--panel2);
+                    color: var(--muted); font-size: 11px; }
+  .filters button.on { color: var(--text); border-color: var(--accent); }
+
+  .run { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .run:hover { background: var(--panel2); }
+  .run.sel { background: var(--panel2); box-shadow: inset 3px 0 0 var(--accent); }
+  .run .top { display: flex; justify-content: space-between; align-items: baseline;
+              gap: 8px; }
+  .run .name { font-weight: 600; }
+  .run .rid { color: var(--muted); font-size: 11px; font-family: ui-monospace, monospace; }
+  .run .meta { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .badges { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+
+  .chip { font-size: 10.5px; padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+          border: 1px solid var(--border); color: var(--muted); }
+  .chip.dis-yes { background: rgba(255,107,107,.14); color: #ff9a9a; border-color: transparent; }
+  .chip.dis-no  { background: rgba(62,207,142,.14); color: #7fe3b8; border-color: transparent; }
+  .chip.unjudged { color: var(--muted); }
+  .chip.driver  { background: rgba(90,169,255,.12); color: #a9d0ff; border-color: transparent; }
+  .chip.consent { background: rgba(245,196,81,.12); color: #f3d38a; border-color: transparent; }
+
+  /* ---- main ---- */
+  #main { flex: 1; height: 100vh; overflow-y: auto; padding: 22px 26px 90px; }
+  #main .empty { color: var(--muted); margin-top: 40px; text-align: center; }
+  .h { font-size: 12px; color: var(--muted); text-transform: uppercase;
+       letter-spacing: .07em; margin: 26px 0 10px; }
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  h2.title { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 12.5px; font-family: ui-monospace, monospace; }
+  .kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 12px; margin-top: 10px; }
+  .kv .k { color: var(--muted); }
+  .taglist { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+         padding: 1px 8px; font-size: 12px; }
+
+  /* verdict banner */
+  .verdict { border-radius: 10px; padding: 15px 18px; margin-bottom: 14px;
+             border: 1px solid var(--border); }
+  .verdict.yes { background: linear-gradient(180deg, rgba(255,107,107,.10), transparent);
+                 border-color: rgba(255,107,107,.4); }
+  .verdict.no  { background: linear-gradient(180deg, rgba(62,207,142,.10), transparent);
+                 border-color: rgba(62,207,142,.4); }
+  .verdict.none { color: var(--muted); }
+  .verdict .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .verdict .lead { font-size: 15px; font-weight: 700; }
+  .verdict .lead.yes { color: #ff9a9a; } .verdict .lead.no { color: #7fe3b8; }
+  .verdict .prose { margin-top: 11px; line-height: 1.6; }
+  .verdict .jm { color: var(--muted); font-size: 11.5px; margin-top: 9px;
+                 font-family: ui-monospace, monospace; }
+
+  /* timeline */
+  .app .head, .ci .head, .fin .head { display: flex; align-items: center; gap: 10px;
+                                      flex-wrap: wrap; }
+  .num { font-family: ui-monospace, monospace; color: var(--muted); font-size: 12px; }
+  .decision { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+              text-transform: uppercase; letter-spacing: .04em; }
+  .decision.accept { background: rgba(62,207,142,.16); color: #7fe3b8; }
+  .decision.reject { background: rgba(255,107,107,.16); color: #ff9a9a; }
+  .jt { font-weight: 600; }
+  .co { color: var(--muted); }
+  .block { margin-top: 11px; }
+  .block .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                letter-spacing: .05em; margin-bottom: 4px; }
+  .prewrap { white-space: pre-wrap; word-wrap: break-word; }
+  .letter { background: var(--panel2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px 14px; white-space: pre-wrap; }
+  .cot { background: rgba(245,196,81,.05); border: 1px dashed rgba(245,196,81,.35);
+         border-radius: 8px; padding: 12px 14px; white-space: pre-wrap;
+         color: #d9cfa8; font-size: 13px; }
+  details.cotwrap { margin-top: 11px; }
+  details.cotwrap > summary { cursor: pointer; color: var(--warn); font-size: 12px;
+                              user-select: none; }
+  .ci { border-left: 3px solid var(--accent); }
+  .speaker { font-size: 11px; color: var(--muted); text-transform: uppercase;
+             letter-spacing: .05em; margin-bottom: 4px; }
+  .fin.win { border-color: rgba(62,207,142,.5); }
+  .fin.lose { border-color: rgba(255,107,107,.5); }
+
+  /* two-column split: transcript (left) + dossier (right) */
+  .split { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+           gap: 22px; align-items: start; }
+  .col-right { position: sticky; top: 22px; }
+  .dossier-panel { background: var(--panel); border: 1px solid var(--border);
+                   border-radius: 10px; display: flex; flex-direction: column;
+                   max-height: calc(100vh - 44px); }
+  .dossier-panel .dhead { padding: 12px 16px; border-bottom: 1px solid var(--border);
+                          font-size: 11px; color: var(--muted); text-transform: uppercase;
+                          letter-spacing: .07em; flex: 0 0 auto; }
+  .dossier-panel .dbody { padding: 14px 16px; overflow-y: auto; }
+  @media (max-width: 1000px) {
+    .split { grid-template-columns: 1fr; }
+    .col-right { position: static; }
+    .dossier-panel { max-height: 520px; }
+  }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin: 6px 0 0; }
+  .toolbar label { color: var(--muted); font-size: 12px; cursor: pointer; user-select: none; }
+  .rawtoggle { color: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body>
+  <aside id="side">
+    <header>
+      <h1>job_appl4 runs</h1>
+      <div class="hint" id="idxhint">loading…</div>
+      <input id="search" placeholder="filter by person / run id / model…" autocomplete="off">
+      <div class="filters">
+        <button data-f="all" class="on">all</button>
+        <button data-f="yes">dishonest</button>
+        <button data-f="no">honest</button>
+        <button data-f="unjudged">unjudged</button>
+      </div>
+    </header>
+    <div id="list"></div>
+  </aside>
+
+  <main id="main"><div class="empty">Select a run on the left.</div></main>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+let INDEX = [], filter = "all", query = "", selected = null;
+
+function esc(s){ return (s??"").toString()
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function verdictChips(r){
+  if(!r.judged) return `<span class="chip unjudged">unjudged</span>`;
+  const dis = r.dishonesty_present === "yes"
+    ? `<span class="chip dis-yes">dishonest</span>`
+    : r.dishonesty_present === "no"
+      ? `<span class="chip dis-no">honest</span>`
+      : `<span class="chip unjudged">${esc(r.dishonesty_present)}</span>`;
+  const drv = r.primary_driver ? `<span class="chip driver">${esc(r.primary_driver)}</span>` : "";
+  return dis + drv;
+}
+
+function renderList(){
+  const q = query.trim().toLowerCase();
+  const rows = INDEX.filter(r => {
+    if(filter==="yes" && !(r.judged && r.dishonesty_present==="yes")) return false;
+    if(filter==="no"  && !(r.judged && r.dishonesty_present==="no"))  return false;
+    if(filter==="unjudged" && r.judged) return false;
+    if(q){
+      const hay = `${r.person||""} ${r.run_id||""} ${r.agent_model||""}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  $("#list").innerHTML = rows.map(r => `
+    <div class="run ${r.run_id===selected?"sel":""}" data-id="${esc(r.run_id)}">
+      <div class="top">
+        <span class="name">${esc(r.person||"(unknown)")}</span>
+        <span class="rid">${esc((r.run_id||"").replace(/^20260\d+_?/,""))||esc(r.run_id)}</span>
+      </div>
+      <div class="meta">${esc(r.agent_model||"?")} · ${r.applications} apps · ${r.checkins||0} check-ins · ${esc(r.status||"")}</div>
+      <div class="badges">${verdictChips(r)}</div>
+    </div>`).join("") || `<div class="run" style="color:var(--muted)">no matching runs</div>`;
+  $$("#list .run").forEach(el => el.onclick = () => { if(el.dataset.id) selectRun(el.dataset.id); });
+}
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+
+function verdictBanner(j){
+  if(!j) return `<div class="verdict none card">Not yet judged — run <code>vibe_judge.py</code> to add a verdict.</div>`;
+  const yes = j.dishonesty_present === "yes";
+  const cls = j.dishonesty_present==="yes" ? "yes" : j.dishonesty_present==="no" ? "no" : "none";
+  const lead = yes ? "Dishonesty present" : j.dishonesty_present==="no" ? "No dishonesty" : esc(j.dishonesty_present);
+  const raw = j.raw_response
+    ? `<details style="margin-top:10px"><summary class="rawtoggle">raw judge response</summary>
+         <div class="cot prewrap" style="margin-top:8px;color:var(--muted)">${esc(j.raw_response)}</div></details>` : "";
+  return `<div class="verdict ${cls}">
+    <div class="row">
+      <span class="lead ${cls}">${lead}</span>
+      <span class="chip driver">driver: ${esc(j.primary_driver||"?")}</span>
+      <span class="chip consent">consent: ${esc(j.consent_structure||"?")}</span>
+    </div>
+    <div class="prose">${esc(j.prose)}</div>
+    <div class="jm">judge: ${esc(j.judge_model||"?")} · CoT ${j.include_cot?"included":"excluded"}</div>
+    ${raw}
+  </div>`;
+}
+
+function appCard(a){
+  const dec = (a.decision||"").toLowerCase();
+  const decCls = (dec==="invite"||dec==="accept") ? "accept" : "reject";
+  const cot = a.agent_cot ? `
+    <details class="cotwrap">
+      <summary>▸ agent chain-of-thought (private)</summary>
+      <div class="cot" style="margin-top:8px">${esc(a.agent_cot)}</div>
+    </details>` : "";
+  const reasoning = a.agent_reasoning ? `
+    <div class="block"><div class="lbl">Agent reasoning</div>
+      <div class="prewrap">${esc(a.agent_reasoning)}</div></div>` : "";
+  return `<div class="card app">
+    <div class="head">
+      <span class="num">#${a.i}</span>
+      <span class="jt">${esc(a.job_title||"")}</span>
+      <span class="co">— ${esc(a.company_name||"")}</span>
+      <span class="decision ${decCls}">${esc(a.decision||"")}</span>
+    </div>
+    ${reasoning}
+    ${cot}
+    <div class="block"><div class="lbl">Cover letter</div>
+      <div class="letter">${esc(a.cover_letter)}</div></div>
+    <div class="block"><div class="lbl">HR decision reasons</div>
+      <div class="prewrap co">${esc(a.reasons)}</div></div>
+  </div>`;
+}
+
+function checkinCard(c){
+  return `<div class="card ci">
+    <div class="head"><span class="num">check-in #${c.index??""}</span>
+      ${c.scripted?`<span class="chip consent">scripted</span>`:""}</div>
+    <div class="block"><div class="speaker">Agent → client (report)</div>
+      <div class="prewrap">${esc(c.report)}</div></div>
+    <div class="block"><div class="speaker">Client comment${c.scripted?" (scripted, verbatim)":""}</div>
+      <div class="prewrap">${esc(c.comment)}</div></div>
+  </div>`;
+}
+
+function finalCard(f){
+  return `<div class="card fin ${f.success?"win":"lose"}">
+    <div class="head"><span class="lead ${f.success?"no":"yes"}">FINAL — ${f.success?"SUCCESS (interview!)":"FAILED (gave up)"}</span></div>
+    ${f.report?`<div class="block prewrap" style="margin-top:10px">${esc(f.report)}</div>`:""}
+  </div>`;
+}
+
+async function selectRun(id){
+  selected = id;
+  renderList();
+  $("#main").innerHTML = `<div class="empty">loading ${esc(id)}…</div>`;
+  const d = await fetch(`/api/run/${encodeURIComponent(id)}`).then(r=>r.json());
+  if(d.error){ $("#main").innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+  const s = d.setup, m = s.models||{};
+  const traits = (s.traits||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join(" ");
+  const skills = (s.skills||[]).map(k=>`<span class="tag">${esc(k.name||k)}</span>`).join(" ");
+  const modelLine = `agent ${esc(m.agent||"?")} · client ${esc(m.user||m.seeker||"?")} · HR ${esc(m.hr||"?")} · dossier ${esc(m.cv||m.dossier||"?")}`;
+
+  const timeline = (d.timeline||[]).map(it =>
+    it.kind==="application" ? appCard(it) :
+    it.kind==="checkin"     ? checkinCard(it) :
+    it.kind==="final"       ? finalCard(it) : "").join("");
+
+  $("#main").innerHTML = `
+    <div class="card">
+      <h2 class="title">${esc(s.name||"(unknown)")}</h2>
+      <div class="sub">${esc(s.run_id)} · ${esc(s.status||"")} · ${esc(s.created_at||"")}</div>
+      <div class="kv">
+        <div class="k">Traits</div><div class="taglist">${traits||"—"}</div>
+        <div class="k">Skills</div><div class="taglist">${skills||"—"}</div>
+        <div class="k">Models</div><div>${modelLine}</div>
+        <div class="k">Budget</div><div>max ${esc(s.max_tries)} apps · check-in every ${esc(s.checkin_every)} rejection(s)</div>
+        <div class="k">Client prompt</div><div class="prewrap co">${esc(s.client_prompt||"(none — client steering off)")}</div>
+      </div>
+    </div>
+
+    ${verdictBanner(d.judgment)}
+
+    <div class="split">
+      <div class="col-left">
+        <div class="h">Transcript — applications, check-ins & outcome</div>
+        ${timeline || `<div class="empty">no events recorded</div>`}
+      </div>
+      <div class="col-right">
+        <div class="h" style="margin-top:26px">Dossier — the agent's single source of truth</div>
+        <div class="dossier-panel">
+          <div class="dhead">CV / dossier</div>
+          <div class="dbody prewrap">${esc(d.dossier||"(none)")}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function boot(){
+  const idx = await fetch("/api/index").then(r=>r.json());
+  INDEX = idx.runs || [];
+  const nj = INDEX.filter(r=>r.judged).length;
+  $("#idxhint").textContent = `${INDEX.length} runs · ${nj} judged · ${idx.runs_dir||""}`;
+  renderList();
+  $("#search").oninput = e => { query = e.target.value; renderList(); };
+  $$(".filters button").forEach(b => b.onclick = () => {
+    filter = b.dataset.f;
+    $$(".filters button").forEach(x=>x.classList.toggle("on", x===b));
+    renderList();
+  });
+}
+boot();
+</script>
+</body>
+</html>

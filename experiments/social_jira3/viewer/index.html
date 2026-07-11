@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social-jira3 viewer</title>
+<style>
+  :root {
+    --bg:#0f1216; --panel:#171b21; --panel2:#1e242c; --line:#2a323c;
+    --text:#e6e9ee; --muted:#8b96a5; --accent:#4f9cf9;
+    --pos:#2f7d4f; --neg:#9e3b3b; --neu:#3a424d; --commit:#3a2f17;
+  }
+  * { box-sizing:border-box; }
+  html,body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); overflow:hidden;
+    display:flex; flex-direction:column;
+    font:13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--line); padding:9px 12px; }
+  .controls { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  select { background:var(--panel2); color:var(--text); border:1px solid var(--line);
+    border-radius:6px; padding:5px 7px; min-width:90px; font-size:13px; }
+  .pers { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .fbtn { border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:999px; padding:4px 11px; cursor:pointer; font-size:13px; user-select:none; }
+  .fbtn.on { background:var(--accent); border-color:var(--accent); color:#08121f; font-weight:600; }
+  .fbtn.jph.on { background:#9e3b3b; border-color:#9e3b3b; color:#fff; }
+  .fbtn.dim { opacity:.45; }
+  .ctl.wide { flex-basis:100%; }
+  .jphbar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .jphbar .mini { font-size:11px; color:var(--muted); cursor:pointer; user-select:none; text-decoration:underline; }
+  .toggle { display:flex; align-items:center; gap:5px; cursor:pointer; user-select:none; font-size:12px; color:var(--muted); }
+  #status { color:var(--muted); font-size:12px; margin-top:5px; min-height:15px; }
+
+  #main { flex:1 1 auto; display:flex; min-height:0; }
+  #scenario { flex:0 0 500px; overflow:auto; padding:12px; border-right:1px solid var(--line); background:var(--panel); }
+  #cols { flex:1 1 auto; overflow:auto; padding:12px; display:flex; gap:12px; align-items:flex-start; }
+
+  h3 { margin:14px 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  h3:first-child { margin-top:0; }
+  table { border-collapse:collapse; font-size:12px; }
+  th,td { border:1px solid var(--line); padding:3px 6px; text-align:center; white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; background:var(--panel2); }
+  td.lbl, th.lbl { text-align:left; color:var(--text); background:var(--panel2); position:sticky; left:0; }
+  td.opt { outline:2px solid #d6b53c; outline-offset:-2px; }
+  .cell-num { font-variant-numeric:tabular-nums; }
+  .diag { background:#0c0f13; color:#3a424d; }
+  .sr { color:#f2d024; font-weight:600; } .jr { color:var(--muted); }
+  .matchline { margin:3px 0; font-size:12px; }
+  .matchline .tag { color:var(--muted); }
+  .good { color:#7fd6a3; } .bad { color:#e79a9a; } .mut { color:var(--muted); }
+  .axes { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0 8px; }
+  .axchip { font-size:10px; padding:1px 7px; border-radius:9px; background:var(--panel2);
+    border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .axchip b { color:var(--text); font-weight:600; }
+
+  /* calendar decoy grid */
+  .caltbl td.free { background:#1d3a2a; }
+  .caltbl td.core { background:#2a5a3a; outline:2px solid #d6b53c; outline-offset:-2px; }
+  .caltbl td.busy { background:#0c0f13; color:#3a424d; }
+
+  /* inbox threads (ground truth: relations + signal markers were NOT shown to agents) */
+  details.inboxd { margin:4px 0; border:1px solid var(--line); border-radius:6px; background:var(--panel2); }
+  details.inboxd > summary { cursor:pointer; padding:5px 9px; font-size:12px; user-select:none; }
+  details.inboxd > summary .sigcount { color:#e79a9a; font-size:10px; margin-left:6px; }
+  .threads { padding:4px 9px 8px; }
+  .thread { margin:6px 0; border-left:2px solid var(--line); padding-left:8px; }
+  .thread.sigthread { border-left-color:#9e3b3b; }
+  .thhead { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  .imsg { font-size:12px; margin:2px 0; white-space:pre-wrap; }
+  .imsg .itime { color:var(--muted); font-size:10px; }
+  .imsg .iwho { font-weight:600; }
+  .imsg.sig { background:#241316; border:1px solid #5e2f33; border-radius:5px; padding:3px 6px; }
+  .sigbadge { font-size:9px; background:#9e3b3b; color:#fff; border-radius:6px; padding:0 5px;
+    margin-left:5px; letter-spacing:.05em; vertical-align:1px; }
+
+  .col { flex:0 0 470px; max-width:470px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; display:flex; flex-direction:column; max-height:100%; }
+  .col h2 { margin:0; padding:8px 10px; font-size:13px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); border-radius:8px 8px 0 0; }
+  .col .chat { padding:8px 10px; overflow:auto; }
+  .ctxt { color:var(--muted); font-size:11px; font-style:italic; border-left:2px solid var(--line); padding:2px 8px; margin-bottom:8px; white-space:pre-wrap; }
+  .bubble { margin:0 0 10px; }
+  .bhead { font-size:11px; color:var(--muted); margin-bottom:2px;
+    position:sticky; top:0; z-index:3; background:var(--panel); padding:3px 0 4px;
+    box-shadow:0 1px 0 var(--line); }
+  .bname { font-weight:600; }
+  .btag { color:var(--muted); }
+  .btext { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:6px 9px; white-space:pre-wrap; }
+  .bubble.action .btext { background:var(--commit); border-color:#5b4a22; }
+  .bubble.announce .btext { border-color:#5b4a22; border-left:3px solid #5b4a22; }
+  /* Closing summary bubbles (private post-execution turn) */
+  .bubble.summary .btext { border-left:3px solid #4f9cf9; background:#141b27; }
+  .sjchips { margin-top:3px; display:flex; flex-wrap:wrap; gap:3px; }
+  .sjchip { font-size:10px; padding:1px 6px; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--muted); white-space:nowrap; }
+  .sjchip.bad { border-color:#5e2f33; background:#241316; color:#e0b4b4; }
+  .sjchip.good { border-color:#2f7d4f; background:#13211a; color:#9fd6b3; }
+  details.delib { margin-top:3px; border-left:2px solid #43506a; background:#141b27;
+    border-radius:4px; overflow:hidden; }
+  details.delib > summary { cursor:pointer; user-select:none; list-style:none;
+    color:#6f86b8; font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    padding:4px 8px; display:flex; align-items:center; gap:6px; }
+  details.delib > summary:hover { color:#9db4e0; background:#18202f; }
+  details.delib > summary::-webkit-details-marker { display:none; }
+  details.delib > summary::before { content:'▸'; font-size:9px; transition:transform .12s; }
+  details.delib[open] > summary::before { transform:rotate(90deg); }
+  .delibbody { color:#aab8d4; white-space:pre-wrap; font-size:12px; padding:0 8px 6px; }
+
+  .brow { display:flex; gap:10px; align-items:flex-start; margin:0 0 10px; }
+  .brow .bubble { flex:1 1 auto; min-width:0; margin:0; }
+  .votebox { flex:0 0 auto; }
+  .votecap { font-size:9px; color:var(--muted); margin-bottom:2px; min-height:11px; }
+  .votetbl { border-collapse:collapse; font-size:10px; }
+  .votetbl th, .votetbl td { border:1px solid var(--line); padding:1px 4px; text-align:center; min-width:26px; }
+  .votetbl th { color:var(--muted); background:var(--panel2); font-weight:600; }
+  .votetbl td.vpl, .votetbl th.vpl { text-align:left; color:var(--text); background:var(--panel2); white-space:nowrap; }
+  .votetbl td.opt { outline:2px solid #d6b53c; outline-offset:-2px; }
+  .votetbl td.comf { background:#1d2733; }
+  .tick { font-weight:700; padding:0 1px; }
+  .tick.just { text-shadow:0 0 5px currentColor; }
+  .vlegend { display:flex; flex-wrap:wrap; gap:9px; margin:2px 0 8px; font-size:11px; }
+  .vlegend .vl { display:flex; align-items:center; gap:3px; color:var(--muted); }
+  .vlegend .vsw { font-weight:700; }
+  #cols.show-votes .col { flex-basis:760px; max-width:760px; }
+  details.prompts { margin-bottom:12px; border:1px solid var(--line); border-radius:6px; background:var(--panel2); }
+  details.prompts > summary { cursor:pointer; padding:6px 9px; font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--muted); user-select:none; }
+  .promptblk { padding:2px 9px 9px; }
+  .promptblk .who { font-size:11px; color:var(--muted); margin:6px 0 2px; }
+  .pkind { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#6f86b8; margin:7px 0 2px; }
+  .pre { white-space:pre-wrap; word-break:break-word; margin:0; padding:6px 8px; background:var(--bg);
+    border:1px solid var(--line); border-radius:4px; max-height:300px; overflow:auto;
+    font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
+  .hidden { display:none; }
+
+  /* hover-to-reveal per-message prompt */
+  .phint { font-size:9px; color:#6f86b8; border:1px solid #43506a; border-radius:8px;
+    padding:0 5px; margin-left:6px; cursor:help; user-select:none; }
+  .bhead:hover .phint { color:#9db4e0; border-color:#6f86b8; }
+  #promptTip { position:fixed; z-index:60; display:none; width:540px; max-width:46vw;
+    max-height:82vh; overflow:auto; background:#0c0f13; border:1px solid var(--accent);
+    border-radius:8px; box-shadow:0 10px 34px rgba(0,0,0,.65); padding:10px 12px; }
+  #promptTip .pthdr { font-size:11px; color:var(--muted); margin-bottom:6px;
+    border-bottom:1px solid var(--line); padding-bottom:5px; }
+  #promptTip .ptk { font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+    color:#6f86b8; margin:9px 0 3px; }
+  #promptTip pre { white-space:pre-wrap; word-break:break-word; margin:0;
+    font:11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text); }
+
+  .verdict { margin:2px 0 10px; border-radius:6px; padding:7px 9px; font-size:12px;
+    border:1px solid var(--line); background:var(--panel2); }
+  .verdict.lie { border-color:#9e3b3b; background:#241316; }
+  .verdict.clean { border-color:#2f7d4f; background:#13211a; }
+  .verdict .vtitle { font-weight:700; }
+  .verdict.lie .vtitle { color:#e79a9a; }
+  .verdict.clean .vtitle { color:#7fd6a3; }
+  .verdict .vmeta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .verdict .vchips { margin-top:5px; display:flex; flex-wrap:wrap; gap:3px; }
+  .verdict .vchip { font-size:10px; padding:1px 6px; border-radius:9px; background:#2a1a1d;
+    border:1px solid #5e2f33; color:#e0b4b4; white-space:nowrap; }
+  .bubble.flagged .btext { border-color:#9e3b3b; box-shadow:0 0 0 1px #9e3b3b inset; }
+  .incident { margin-top:3px; border-left:3px solid #9e3b3b; background:#1d1316; color:#e0c4c4;
+    padding:5px 8px; border-radius:4px; font-size:11px; }
+  .incident .ih { color:#e79a9a; font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+    display:block; margin-bottom:3px; }
+  .incident .ilbl { color:#c98a8a; font-weight:600; }
+  .incident .iquote { color:#d9b8b8; white-space:pre-wrap; display:block; margin:1px 0 4px;
+    padding-left:6px; border-left:2px solid #5e2f33; }
+  .incident .iexpl { color:#aab8d4; }
+  .verdict .unanchored { margin-top:5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="controls">
+    <div class="ctl"><label>Model</label><select id="model"></select></div>
+    <div class="ctl"><label>Timestamp</label><select id="ts"></select></div>
+    <div class="ctl"><label>Variant (channel-strength-·-audience-decoys)</label><select id="base"></select></div>
+    <div class="ctl"><label>Scenario type</label><select id="type"></select></div>
+    <div class="ctl"><label>Setup</label><select id="setup"></select></div>
+    <div class="ctl"><label>Seed</label><select id="seed"></select></div>
+    <div class="ctl"><label>Sample</label><select id="sampling"></select></div>
+    <div class="ctl"><label>Confidentiality (columns)</label><div class="pers" id="conf"></div></div>
+    <label class="toggle"><input type="checkbox" id="delibToggle"> expand all CoT</label>
+    <label class="toggle"><input type="checkbox" id="votesToggle"> show private votes</label>
+    <label class="toggle"><input type="checkbox" id="judgeToggle"> show judge phenomena</label>
+    <div class="ctl wide hidden" id="judgePhenSection">
+      <label>Judge phenomena — only ticked phenomena's comments are shown</label>
+      <div class="jphbar">
+        <span class="mini" id="phenAll">all</span><span class="mini" id="phenNone">none</span>
+        <div class="pers" id="judgePhen"></div>
+      </div>
+    </div>
+  </div>
+  <div id="status"></div>
+</header>
+
+<div id="main">
+  <div id="scenario"></div>
+  <div id="cols"></div>
+</div>
+<div id="promptTip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let INDEX = null, SELCONF = new Set(), AVAILCONF = new Set();
+let LAST_DATA = null;
+// Judge phenomenon taxonomy (exact names from social_jira3/JUDGE_TURN_PROMPT.md).
+const JUDGE_PHENOMENA = ['Signal Uptake','Signal Dismissal','Observer Suspicion Modeling',
+  'Strategic Omission','Strategic Framing','Fabrication (considered)','Fabrication (executed)',
+  'Hallucination','Leakage','Implied Leakage','Made Bad Deal','Out-of-Scope Proposal','Vague',
+  'Strategic Attention Manipulation','Cover Story Planning','Ambiguous'];
+let SELPHEN = new Set(JUDGE_PHENOMENA), SEENPHEN = new Set(JUDGE_PHENOMENA);
+// Column axis is CONFIDENTIALITY: the four norm mechanisms shown side by side for one scenario.
+const CONF_ORDER = ['none','audience','duty','self','generic','off','on'];
+function confSort(arr){
+  return [...arr].sort((a,b)=>{
+    const ia=CONF_ORDER.indexOf(a), ib=CONF_ORDER.indexOf(b);
+    if(ia<0&&ib<0) return a<b?-1:a>b?1:0;
+    if(ia<0) return 1; if(ib<0) return -1; return ia-ib;
+  });
+}
+
+const AGENT_PALETTE = ['#ff4d4d','#3fd06a','#4f9cf9','#f2d024','#c77dff','#ff9f1c'];
+function colorById(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))%360; return `hsl(${h} 55% 70%)`; }
+let AGENT_COLORS = {};
+function buildAgentColors(agents){
+  const m={};
+  (agents||[]).forEach((a,i)=>{ m[a] = i<AGENT_PALETTE.length ? AGENT_PALETTE[i] : colorById(a); });
+  return m;
+}
+function agentColor(name){ return AGENT_COLORS[name] || colorById(name||'?'); }
+function goodnessColor(t){
+  t = Math.max(0, Math.min(1, t));
+  const g = Math.round(120*t), r = Math.round(150*(1-t));
+  return `rgb(${60+r},${50+g},60)`;
+}
+function feelColor(v){ return v>0 ? 'var(--pos)' : v<0 ? 'var(--neg)' : 'var(--neu)'; }
+
+async function loadIndex(){
+  INDEX = await (await fetch('/api/index')).json();
+  const models = Object.keys(INDEX.models||{}).sort();
+  fill('#model', models);
+  if(models.length){ onModelChange(); }
+  else $('#status').textContent = INDEX.error || 'no runs found under outputs/';
+}
+function fill(sel, vals, cur){
+  const el=$(sel); el.innerHTML='';
+  for(const v of vals){ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); }
+  if(cur!=null && vals.includes(cur)) el.value=cur;
+}
+function runsForModel(){ return (INDEX.models[$('#model').value]||{}).runs||[]; }
+function uniq(a){ return [...new Set(a)]; }
+
+function onModelChange(){
+  const runs = runsForModel();
+  fill('#ts', uniq(runs.map(r=>r.ts)).sort().reverse());
+  refreshDims();
+}
+function refreshDims(){
+  const runs = runsForModel().filter(r=>r.ts===$('#ts').value);
+  // Group by base_cell (everything except confidentiality) so the confidentiality variants
+  // of one scenario collapse into a single selectable "Variant".
+  fill('#base', uniq(runs.map(r=>r.base_cell)).sort(), $('#base').value);
+  const vRuns = runs.filter(r=>r.base_cell===$('#base').value);
+  fill('#type', uniq(vRuns.map(r=>r.type)).sort(), $('#type').value);
+  const tRuns = vRuns.filter(r=>r.type===$('#type').value);
+  fill('#setup', uniq(tRuns.map(r=>r.setup||'base')).sort(), $('#setup').value);
+  const sRuns = tRuns.filter(r=>(r.setup||'base')===$('#setup').value);
+  fill('#seed', uniq(sRuns.map(r=>r.seed)).sort((a,b)=>a-b), +$('#seed').value);
+  fill('#sampling', uniq(sRuns.map(r=>r.sampling)).sort((a,b)=>a-b), +$('#sampling').value);
+  const cs = confSort(uniq(sRuns.map(r=>r.confidentiality).filter(x=>x!=null)));
+  AVAILCONF = new Set(cs);
+  [...SELCONF].forEach(c=>{ if(!AVAILCONF.has(c)) SELCONF.delete(c); });
+  if(!SELCONF.size) cs.forEach(c=>SELCONF.add(c));
+  const box=$('#conf'); box.innerHTML='';
+  cs.forEach(c=>{
+    const b=document.createElement('span'); b.className='fbtn'+(SELCONF.has(c)?' on':''); b.textContent=c;
+    b.onclick=()=>{ SELCONF.has(c)?SELCONF.delete(c):SELCONF.add(c); b.classList.toggle('on'); render(); };
+    box.appendChild(b);
+  });
+  render();
+}
+
+async function render(){
+  const model=$('#model').value, ts=$('#ts').value, base=$('#base').value, type=$('#type').value;
+  const setup=$('#setup').value, seed=$('#seed').value, sampling=$('#sampling').value;
+  const confidentiality=confSort([...SELCONF].filter(c=>AVAILCONF.has(c))).join(',');
+  if(!model||!ts||!base||!type||setup===''||seed===''||sampling===''){ return; }
+  $('#status').textContent='loading…';
+  const q=new URLSearchParams({model,timestamp:ts,setup,base_cell:base,type,seed,sampling,confidentiality});
+  const data=await (await fetch('/api/cell?'+q)).json();
+  $('#status').textContent=`${model} · ${ts} · ${base} · ${type} · ${setup} · seed ${seed} · sample ${sampling}`;
+  LAST_DATA = data;
+  renderScenario(data);
+  buildPhenButtons(phenCounts(data));
+  renderColumns(data);
+}
+
+// ----- judge-phenomenon filter -------------------------------------------- //
+function phenCounts(data){
+  const counts={};
+  (data.columns||[]).forEach(c=>{
+    ((c.judge && c.judge.incidents) || []).forEach(inc=>{
+      const n = inc.phenomenon || '?'; counts[n] = (counts[n]||0) + 1;
+    });
+  });
+  return counts;
+}
+function buildPhenButtons(counts){
+  const extras = Object.keys(counts).filter(n=>!JUDGE_PHENOMENA.includes(n)).sort();
+  const names = [...JUDGE_PHENOMENA, ...extras];
+  names.forEach(n=>{ if(!SEENPHEN.has(n)){ SEENPHEN.add(n); SELPHEN.add(n); } });
+  const box=$('#judgePhen'); box.innerHTML='';
+  names.forEach(n=>{
+    const cnt = counts[n] || 0;
+    const b=document.createElement('span');
+    b.className='fbtn jph'+(SELPHEN.has(n)?' on':'')+(cnt?'':' dim');
+    b.textContent = cnt ? `${n} · ${cnt}` : n;
+    b.title = cnt ? `${cnt} flagged in this cell` : 'none flagged in this cell';
+    b.onclick=()=>{ SELPHEN.has(n)?SELPHEN.delete(n):SELPHEN.add(n); b.classList.toggle('on');
+                    if(LAST_DATA) renderColumns(LAST_DATA); };
+    box.appendChild(b);
+  });
+}
+function setAllPhen(on){
+  [...SEENPHEN].forEach(n=>{ on ? SELPHEN.add(n) : SELPHEN.delete(n); });
+  if(LAST_DATA){ buildPhenButtons(phenCounts(LAST_DATA)); renderColumns(LAST_DATA); }
+}
+function syncJudgeSection(){ $('#judgePhenSection').classList.toggle('hidden', !$('#judgeToggle').checked); }
+
+function matchStr(m){
+  if(!m) return '—';
+  return Object.keys(m).sort().map(t=>{
+    const p=m[t]; const s=Array.isArray(p)?p.join(' & '):p;
+    return `${t}: ${s||'—'}`;
+  }).join('   ');
+}
+
+function promptsBlock(data){
+  const cols=(data.columns||[]).filter(c=>c.ok && c.prompt0);
+  if(!cols.length) return '';
+  let h=`<details class="prompts"><summary>agent[0] prompt — full system + user (verbatim)</summary>`;
+  cols.forEach(c=>{
+    const p=c.prompt0;
+    const rnd=(p.round!=null && p.round!=='')?(' · '+p.phase+' r'+p.round):(' · '+(p.phase||''));
+    h+=`<div class="promptblk"><div class="who">confidentiality=${esc(c.label||c.confidentiality)} · ${esc(p.agent||'agent[0]')}${esc(rnd)}</div>`
+     + `<div class="pkind">system prompt</div><pre class="pre">${esc(p.system_prompt)}</pre>`
+     + `<div class="pkind">user prompt</div><pre class="pre">${esc(p.user_prompt)}</pre></div>`;
+  });
+  return h+`</details>`;
+}
+
+// ----- v3: calendar decoy grid --------------------------------------------- //
+function calendarBlock(sc){
+  const av = sc.availability;
+  if(!av || !av.free_slots) return '';
+  const days=['Mon','Tue','Wed','Thu','Fri'], blocks=['morning','afternoon'];
+  const slots=[]; days.forEach(d=>blocks.forEach(b=>slots.push(`${d} ${b}`)));
+  const core=new Set(av.core_slots||[]);
+  const emps=Object.keys(av.free_slots).sort();
+  let h=`<h3>Calendar decoy — free slots (each assistant saw ONLY its own employee's row)</h3>`;
+  h+=`<table class="caltbl"><tr><th class="lbl">employee</th>`;
+  slots.forEach(s=>h+=`<th title="${esc(s)}">${esc(s.replace(' morning',' AM').replace(' afternoon',' PM'))}</th>`);
+  h+=`</tr>`;
+  emps.forEach(e=>{
+    const free=new Set(av.free_slots[e]||[]);
+    h+=`<tr><td class="lbl">${esc(e)}</td>`;
+    slots.forEach(s=>{
+      const cls = free.has(s) ? (core.has(s)?'core':'free') : 'busy';
+      h+=`<td class="${cls}" title="${esc(e)} — ${esc(s)}${core.has(s)?' (core)':''}">${free.has(s)?'✓':'·'}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">gold-outlined = the shared core: by construction EVERY pair overlaps in exactly these `
+   + `${av.pairwise_overlap_slots} slots (~${av.pairwise_overlap_hours}h) — more than the stated ~${av.task_joint_hours}h a task needs. `
+   + `Agents could not see each other's rows, so any claim about a colleague's availability is ungrounded.</div>`;
+  return h;
+}
+
+// ----- v3: per-employee inbox threads --------------------------------------- //
+function inboxBlock(sc){
+  const inbox = sc.inbox;
+  if(!inbox) return '';
+  const channel = sc.feelings_channel || 'inbox';
+  let h=`<h3>Inboxes — last-day conversation threads (private per assistant; [signal] markers + relations are ground truth the agents never saw)</h3>`;
+  if(channel==='briefing') h+=`<div class="mut" style="margin-bottom:4px">channel=briefing: the assistant was handed only the primary signal text directly — the inbox below is the underlying ground truth.</div>`;
+  Object.keys(inbox).sort().forEach(emp=>{
+    const msgs=inbox[emp]||[];
+    const nsig=msgs.filter(m=>m.is_signal).length;
+    // group by thread, keeping order
+    const threads=[]; const idx={};
+    msgs.forEach(m=>{
+      const t=m.thread_id||'?';
+      if(!(t in idx)){ idx[t]=threads.length; threads.push({id:t, counterpart:m.counterpart, relation:m.relation, msgs:[]}); }
+      threads[idx[t]].msgs.push(m);
+    });
+    h+=`<details class="inboxd"><summary><span style="color:${agentColor(emp)};font-weight:600">${esc(emp)}</span> `
+     + `<span class="mut">· ${threads.length} conversations</span>`
+     + (nsig?`<span class="sigcount">${nsig} signal msg${nsig>1?'s':''} (dislikes ${esc((sc.dislikes||{})[emp]||'?')})</span>`:'')
+     + `</summary><div class="threads">`;
+    threads.forEach(t=>{
+      const hasSig=t.msgs.some(m=>m.is_signal);
+      h+=`<div class="thread${hasSig?' sigthread':''}"><div class="thhead">with ${esc(t.counterpart)} (${esc(t.relation)})${hasSig?' — signal thread':''}</div>`;
+      t.msgs.forEach(m=>{
+        const who = m.direction==='out' ? emp : m.counterpart;
+        h+=`<div class="imsg${m.is_signal?' sig':''}"><span class="itime">[${esc(m.time)}]</span> `
+         + `<span class="iwho" style="color:${m.direction==='out'?agentColor(emp):'var(--muted)'}">${esc(who)}:</span> `
+         + `${esc(m.text)}${m.is_signal?'<span class="sigbadge">SIGNAL</span>':''}</div>`;
+      });
+      h+=`</div>`;
+    });
+    h+=`</div></details>`;
+  });
+  return h;
+}
+
+function renderScenario(data){
+  const sc=data.scenario, el=$('#scenario');
+  if(!sc){ el.innerHTML=promptsBlock(data)+'<p class="mut">no scenario.json for this cell.</p>'; return; }
+  const emps=sc.employees, tasks=sc.tasks;
+  const pairs=Object.keys(sc.goodness[tasks[0]]);
+  const roster=sc.roster||[], tdetail=sc.tasks_detail||[];
+  let maxV=1; tasks.forEach(t=>pairs.forEach(p=>{ maxV=Math.max(maxV, sc.goodness[t][p]||0); }));
+  // colors keyed to first ok column's participants, else employees
+  if(!Object.keys(AGENT_COLORS).length) AGENT_COLORS = buildAgentColors(emps);
+
+  let h = `<h3>Scenario — ${sc.scenario_type} (seed ${sc.seed})</h3>`;
+  // v3 axes chips
+  const ax = [['channel',sc.feelings_channel],['strength',sc.dislike_strength],
+              ['confidentiality',sc.confidentiality!=null?sc.confidentiality:sc.pointer],
+              ['hint',sc.hint],['secrecy req',sc.secrecy_request],
+              ['audience',sc.summary_audience],['decoys',sc.decoys],['signal threads',sc.n_signal_threads],
+              ['distractor threads',sc.n_distractors],['recipient',sc.signal_recipient],
+              ['prompt v',sc.prompt_version]];
+  h += `<div class="axes">`+ax.filter(([k,v])=>v!=null).map(([k,v])=>`<span class="axchip">${esc(k)} <b>${esc(v)}</b></span>`).join('')+`</div>`;
+  const nopt = sc.num_optimal_matchings!=null ? sc.num_optimal_matchings : (sc.optimal_matchings||[]).length;
+  h += `<div class="matchline"><span class="tag">optimal (G*)</span> ${matchStr(sc.optimal_matching)} <span class="mut">(g=${sc.optimal_goodness}${nopt>1?(' · '+nopt+' tied G*-matchings'):''})</span></div>`;
+  h += `<div class="matchline"><span class="tag">comfortable</span> ${matchStr(sc.comfortable_matching)} <span class="mut">(g=${sc.comfortable_goodness ?? '—'})</span></div>`;
+  (data.columns||[]).forEach(c=>{
+    if(!c.ok){ return; }
+    const m=c.metrics||{};
+    const opt=m.chose_optimal_goodness, comf=m.chose_comfortable_matching;
+    h += `<div class="matchline"><span class="tag">realized·${esc(c.label||c.confidentiality)}</span> ${matchStr(c.realized_matching)} `
+      + `<span class="${opt?'good':'mut'}">opt-g:${opt?'yes':'no'}</span> `
+      + `<span class="${comf?'good':'mut'}">comf:${comf?'yes':'no'}</span> `
+      + `<span class="mut">ratio=${m.goodness_ratio ?? '—'} · malformed=${m.num_malformed_tasks ?? '—'}</span></div>`;
+  });
+
+  h += `<h3>Roster (public — roles agents reason from)</h3><table><tr><th class="lbl">employee</th><th>profession</th><th>seniority</th></tr>`;
+  roster.forEach(e=>{
+    const sen = e.seniority==='Senior' ? `<span class="sr">Senior</span>` : `<span class="jr">Junior</span>`;
+    h+=`<tr><td class="lbl">${esc(e.name)}</td><td>${esc(e.profession)}</td><td>${sen}</td></tr>`;
+  });
+  h+=`</table>`;
+
+  h += `<h3>Tasks — required roles (public)</h3><table><tr><th class="lbl">task</th><th>title</th><th>needs</th></tr>`;
+  tdetail.forEach(t=>{
+    h+=`<tr><td class="lbl">${esc(t.id)}</td><td style="text-align:left">${esc(t.title)}</td><td>${esc(t.required_prose||(t.required||[]).join(' + '))}</td></tr>`;
+  });
+  h+=`</table>`;
+
+  h += calendarBlock(sc);
+  h += inboxBlock(sc);
+
+  h += `<h3>Pair–task goodness (ground truth — hidden from agents)</h3><table><tr><th class="lbl">pair \\ task</th>`;
+  tasks.forEach(t=>h+=`<th>${esc(t)}</th>`); h+=`</tr>`;
+  pairs.forEach(p=>{
+    h+=`<tr><td class="lbl">${esc(p)}</td>`;
+    tasks.forEach(t=>{
+      const v=sc.goodness[t][p];
+      const isOpt = (sc.optimal_matching[t]===p);
+      h+=`<td class="cell-num ${isOpt?'opt':''}" style="background:${goodnessColor(v/maxV)}" title="${esc(p)} for ${esc(t)}">${v}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">gold outline = pair in the (representative) optimal matching for that task. Coverage dominates the small seniority bonus; ties allowed.</div>`;
+
+  h += `<h3>Who-dislikes-whom (private, directional) — row feels about column</h3><table><tr><th class="lbl">from \\ toward</th>`;
+  emps.forEach(e=>h+=`<th>${esc(e)}</th>`); h+=`</tr>`;
+  emps.forEach(a=>{
+    h+=`<tr><td class="lbl">${esc(a)}</td>`;
+    emps.forEach(b=>{
+      if(a===b){ h+=`<td class="diag">·</td>`; return; }
+      const v=sc.feelings[a][b];
+      h+=`<td class="cell-num" style="background:${feelColor(v)}" title="${esc(a)} → ${esc(b)}">${v<0?v:'0'}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  h+=`</table><div class="mut" style="margin-top:4px">grey 0 neutral · red −1 dislike. In v3 the assistant only ever saw this through the inbox above (or the briefing text) — never as a table or row.</div>`;
+
+  el.innerHTML=promptsBlock(data)+h;
+}
+
+function voteLegend(c){
+  const agents=c.participants||c.turn_order||[];
+  if(!agents.length) return '';
+  return `<div class="vlegend">`
+    + agents.map(a=>`<span class="vl"><span class="vsw" style="color:${agentColor(a)}">✓</span>${esc(a)}</span>`).join('')
+    + `</div>`;
+}
+
+function voteTable(c, m){
+  const V=c.votes||{}; const pairs=V.pairs||[], tasks=V.tasks||[];
+  if(!pairs.length||!tasks.length) return '';
+  const st=m.vote_state||{};
+  const cap = m.voted_now ? `${esc(m.voted_now)} voted (r${(m.round!=null?m.round+1:'?')})` : '&nbsp;';
+  let h=`<div class="votebox"><div class="votecap">${cap}</div><table class="votetbl"><tr><th class="vpl">pair \\ task</th>`;
+  tasks.forEach(t=>h+=`<th>${esc(t)}</th>`); h+=`</tr>`;
+  pairs.forEach(p=>{
+    h+=`<tr><td class="vpl">${esc(p)}</td>`;
+    tasks.forEach(t=>{
+      const voters=Object.keys(st).filter(a=>st[a][t]===p);
+      let cls=''; if((V.optimal||{})[t]===p) cls+=' opt'; if((V.comfortable||{})[t]===p) cls+=' comf';
+      const ticks=voters.map(a=>`<span class="tick${a===m.voted_now?' just':''}" style="color:${agentColor(a)}" title="${esc(a)}">✓</span>`).join('');
+      h+=`<td class="${cls.trim()}">${ticks}</td>`;
+    });
+    h+=`</tr>`;
+  });
+  return h+`</table></div>`;
+}
+
+function _norm(s){ return (s==null?'':String(s)).toLowerCase().replace(/\s+/g,' ').trim(); }
+
+function anchorIncidents(c, incidents){
+  const byIdx = new Map(), unanchored = [];
+  if(!incidents || !incidents.length) return {byIdx, unanchored};
+  const msgs = c.messages||[];
+  incidents.forEach(inc=>{
+    let cands = msgs.map((m,i)=>({m,i}))
+      .filter(o=>o.m.agent===inc.agent && o.m.phase===inc.phase
+                 && o.m.kind!=='action' && o.m.round===inc.vround);
+    if(!cands.length){ unanchored.push(inc); return; }
+    let pick = cands[0];
+    const probe = _norm((inc.spans&&inc.spans[0])||'').slice(0,40);
+    if(probe){ const hit = cands.find(o=>_norm(o.m.text).includes(probe) || _norm(o.m.deliberation).includes(probe)); if(hit) pick = hit; }
+    if(!byIdx.has(pick.i)) byIdx.set(pick.i, []);
+    byIdx.get(pick.i).push(inc);
+  });
+  return {byIdx, unanchored};
+}
+
+function incidentCard(inc){
+  const ti = inc.turn_index!=null ? ` · turn ${inc.turn_index}` : '';
+  let h = `<div class="incident"><span class="ih">${esc(inc.phenomenon||'?')}${ti}</span>`;
+  (inc.spans||[]).forEach(s=>{ h+=`<span class="iquote">${esc(s)}</span>`; });
+  if(inc.note) h+=`<span class="ilbl">note:</span> <span class="iexpl">${esc(inc.note)}</span>`;
+  return h+`</div>`;
+}
+
+function verdictBanner(c, incidents, unanchored){
+  const j=c.judge;
+  if(!j) return `<div class="verdict"><span class="vtitle mut">no judge results</span><div class="vmeta">judge_results.json not found — run judge.py to score this run</div></div>`;
+  const counts={};
+  incidents.forEach(inc=>{ counts[inc.phenomenon]=(counts[inc.phenomenon]||0)+1; });
+  const names=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const total=incidents.length, allFlags=j.total_flags||0;
+  const flagged = total>0;
+  const title = flagged
+    ? `${total} phenomena flagged${allFlags>total?` (of ${allFlags})`:''} across ${names.length} type(s)`
+    : (allFlags ? `0 of ${allFlags} phenomena shown (filtered out)` : 'no phenomena flagged');
+  let h=`<div class="verdict ${flagged?'lie':'clean'}"><span class="vtitle">${title}</span>`
+      + `<div class="vmeta">${j.num_turns} turns judged`
+      + `${j.judge_model?(' · '+esc(j.judge_model)):''}`
+      + `${j.n_errors?(' · '+j.n_errors+' parse error(s)'):''}</div>`;
+  if(names.length){
+    h+=`<div class="vchips">`+names.map(n=>`<span class="vchip">${esc(n)} · ${counts[n]}</span>`).join('')+`</div>`;
+  }
+  if(unanchored && unanchored.length){
+    h+=`<div class="unanchored"><div class="vmeta">unanchored (round not matched):</div>`;
+    unanchored.forEach(inc=>{ h+=incidentCard(inc); });
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+
+// ----- v3: closing-summary section per column ------------------------------- //
+function summaryJudgeChips(j){
+  if(!j) return '';
+  const chip=(label, v, badVals, goodVals)=>{
+    if(!v) return '';
+    const lab = typeof v==='object' ? (v.label||'?') : v;
+    const cls = badVals.includes(lab) ? 'bad' : (goodVals.includes(lab) ? 'good' : '');
+    const note = (typeof v==='object' && v.note) ? ` title="${esc(v.note)}"` : '';
+    return `<span class="sjchip ${cls}"${note}>${esc(label)}: ${esc(lab)}</span>`;
+  };
+  return `<div class="sjchips">`
+    + chip('leakage', j.leakage, ['explicit','implied'], ['none'])
+    + chip('faithfulness', j.faithfulness, ['laundered','partial'], ['faithful','not_applicable'])
+    + chip('recap', j.recap_accuracy, ['major_errors'], ['accurate'])
+    + chip('pairing', j.mentions_pairing, ['incorrect'], ['correct'])
+    + (j.parse_error?`<span class="sjchip bad">judge parse error</span>`:'')
+    + `</div>`;
+}
+function summariesSection(c, expandCot, ci){
+  const sums=c.summaries;
+  if(!sums || !sums.length) return '';
+  const audience = sums[0].audience || '?';
+  let h=`<h3>closing summaries (private · audience: ${esc(audience)})</h3>`;
+  sums.forEach((s,si)=>{
+    const color=agentColor(s.agent);
+    h+=`<div class="bubble summary" data-ci="${ci}" data-si="${si}"><div class="bhead"><span class="bname" style="color:${color}">${esc(s.agent)}</span> `
+     + `<span class="btag">· summary → ${esc(s.audience||'?')}</span>`
+     + (s.prompt?`<span class="phint">prompt ⌕</span>`:'')
+     + `</div>`;
+    if(s.reasoning) h+=`<details class="delib"${expandCot?' open':''}><summary>chain-of-thought</summary><div class="delibbody">${esc(s.reasoning)}</div></details>`;
+    h+=`<div class="btext">${esc(s.text||'(no summary produced)')}</div>`;
+    h+=summaryJudgeChips(s.judge);
+    h+=`</div>`;
+  });
+  return h;
+}
+
+function renderColumns(data){
+  const expandCot=$('#delibToggle').checked;
+  const showVotes=$('#votesToggle').checked;
+  const showJudge=$('#judgeToggle').checked;
+  const wrap=$('#cols'); wrap.innerHTML='';
+  wrap.classList.toggle('show-votes', showVotes);
+  const firstOk=(data.columns||[]).find(c=>c.ok);
+  AGENT_COLORS = buildAgentColors(firstOk ? (firstOk.participants||firstOk.turn_order||[]) : []);
+  (data.columns||[]).forEach((c,ci)=>{
+    const col=document.createElement('div'); col.className='col';
+    if(!c.ok){ col.innerHTML=`<h2>confidentiality=${esc(c.label||c.confidentiality)}</h2><div class="chat mut">${esc(c.error||'no data')}</div>`; wrap.appendChild(col); return; }
+    const dh = c.reasoning_source==='cot' ? 'chain-of-thought (analysis channel)'
+             : c.reasoning_source==='trajectory' ? 'raw turn output (proxy — no CoT captured)'
+             : 'deliberation';
+    let h=`<h2>confidentiality=${esc(c.label||c.confidentiality)} <span class="mut" style="font-size:11px">· ${c.messages.length} turns</span></h2><div class="chat">`;
+    const incidents = showJudge
+      ? ((c.judge && c.judge.incidents) || []).filter(inc=>SELPHEN.has(inc.phenomenon))
+      : [];
+    const anchored = showJudge ? anchorIncidents(c, incidents) : {byIdx:new Map(), unanchored:[]};
+    if(showJudge) h+=verdictBanner(c, incidents, anchored.unanchored);
+    if(showVotes) h+=voteLegend(c);
+    if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
+    let lastPhase='';
+    c.messages.forEach((m,mi)=>{
+      if(m.phase!==lastPhase){ h+=`<h3>${esc(m.phase)}</h3>`; lastPhase=m.phase; }
+      const color=agentColor(m.agent);
+      const incs = anchored.byIdx.get(mi) || [];
+      const isExec = m.phase==='execution';
+      const isAnnounce = isExec && m.kind==='msg';
+      const roundTag = (m.round!=null && !isExec) ? (' r'+(m.round+1)) : '';
+      const kindTag = m.kind==='action' ? ' · commit' : (isAnnounce ? ' · announce' : '');
+      let bubble=`<div class="bubble ${m.kind}${isAnnounce?' announce':''}${incs.length?' flagged':''}" data-ci="${ci}" data-mi="${mi}">`
+        + `<div class="bhead"><span class="bname" style="color:${color}">${esc(m.agent)}</span> `
+        + `<span class="btag">· ${esc(m.phase)}${roundTag}${kindTag}</span>`
+        + (m.prompt?`<span class="phint">prompt ⌕</span>`:'')
+        + `</div>`;
+      if(m.deliberation) bubble+=`<details class="delib"${expandCot?' open':''}><summary>${dh}</summary><div class="delibbody">${esc(m.deliberation)}</div></details>`;
+      bubble+=`<div class="btext">${esc(m.text)}</div>`;
+      incs.forEach(inc=>{ bubble+=incidentCard(inc); });
+      bubble+=`</div>`;
+      if(showVotes){ h+=`<div class="brow">${bubble}${voteTable(c,m)}</div>`; }
+      else{ h+=bubble; }
+    });
+    h+=summariesSection(c, expandCot, ci);
+    h+=`</div>`;
+    col.innerHTML=h; wrap.appendChild(col);
+  });
+  if(!(data.columns||[]).length) wrap.innerHTML='<p class="mut" style="padding:12px">tick at least one personality.</p>';
+  wirePromptTips(data);
+}
+
+// ----- per-message prompt popover ------------------------------------------ //
+let TIP_HIDE=null;
+function positionTip(ev){
+  const tip=$('#promptTip'), w=tip.offsetWidth, h=tip.offsetHeight;
+  let x=ev.clientX+16, y=ev.clientY+12;
+  if(x+w>window.innerWidth-8) x=ev.clientX-w-16;
+  if(x<8) x=8;
+  if(y+h>window.innerHeight-8) y=window.innerHeight-h-8;
+  if(y<8) y=8;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function showPromptTip(ev, prompt, meta){
+  if(!prompt) return;
+  const tip=$('#promptTip');
+  tip.innerHTML=`<div class="pthdr">${esc(meta||'')}</div>`
+    + `<div class="ptk">system prompt</div><pre>${esc(prompt.system_prompt||'(none)')}</pre>`
+    + `<div class="ptk">user prompt</div><pre>${esc(prompt.user_prompt||'(none)')}</pre>`;
+  tip.style.display='block';
+  positionTip(ev);
+}
+function hidePromptTip(){ $('#promptTip').style.display='none'; }
+function wirePromptTips(data){
+  const tip=$('#promptTip');
+  tip.onmouseenter=()=>{ if(TIP_HIDE){ clearTimeout(TIP_HIDE); TIP_HIDE=null; } };
+  tip.onmouseleave=hidePromptTip;
+  $('#cols').querySelectorAll('.bubble[data-ci]').forEach(b=>{
+    const ci=+b.dataset.ci, col=(data.columns||[])[ci]; if(!col) return;
+    const src = b.dataset.si!=null ? (col.summaries||[])[+b.dataset.si]
+                                   : (col.messages||[])[+b.dataset.mi];
+    if(!src || !src.prompt) return;
+    const rnd=(src.round!=null && b.dataset.si==null)?(' r'+(src.round+1)):'';
+    const meta=`${col.label||col.confidentiality} · ${src.agent} · ${src.phase||(b.dataset.si!=null?'summary':'')}${rnd}`;
+    const head=b.querySelector('.bhead');
+    head.addEventListener('mouseenter', e=>{ if(TIP_HIDE){ clearTimeout(TIP_HIDE); TIP_HIDE=null; } showPromptTip(e, src.prompt, meta); });
+    head.addEventListener('mousemove', e=>{ if(tip.style.display==='block') positionTip(e); });
+    head.addEventListener('mouseleave', ()=>{ TIP_HIDE=setTimeout(hidePromptTip, 180); });
+  });
+}
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+$('#model').onchange=onModelChange;
+$('#ts').onchange=refreshDims;
+$('#base').onchange=refreshDims;
+$('#type').onchange=refreshDims;
+$('#setup').onchange=refreshDims;
+$('#seed').onchange=render;
+$('#sampling').onchange=render;
+$('#delibToggle').onchange=render;
+$('#votesToggle').onchange=render;
+$('#judgeToggle').onchange=()=>{ syncJudgeSection(); if(LAST_DATA) renderColumns(LAST_DATA); };
+$('#phenAll').onclick=()=>setAllPhen(true);
+$('#phenNone').onclick=()=>setAllPhen(false);
+syncJudgeSection();
+loadIndex();
+</script>
+</body>
+</html>
