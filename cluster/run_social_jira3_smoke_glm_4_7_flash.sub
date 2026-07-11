@@ -1,0 +1,21 @@
+# HTCondor submit: GLM-4.7-Flash social-jira3 SMOKE (1 run) — reasoning-capture probe
+# (tool calls already work with glm47). Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira3_smoke_glm_4_7_flash.sub
+
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_smoke_glm_4_7_flash.sh
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = social_jira3_smoke_glm_4_7_flash_$(Cluster).err
+output = social_jira3_smoke_glm_4_7_flash_$(Cluster).out
+log    = social_jira3_smoke_glm_4_7_flash_$(Cluster).log
+
+# GLM-4.7-Flash 30B-A3B MoE bf16 ~60GB -> 2x H100-80GB (tensor_parallel_size: 2 in the YAML).
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine =!= "i105.internal.cluster.is.localnet") && (TARGET.Machine =!= "i107.internal.cluster.is.localnet")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

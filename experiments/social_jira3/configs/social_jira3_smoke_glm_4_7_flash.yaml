@@ -1,0 +1,81 @@
+# social-jira3 SMOKE for GLM-4.7-Flash: 1 run. GLM tool calls already work (glm47 parser);
+# this run is the reasoning-capture probe -- confirm whether reasoning_content populates for
+# a <think>-style model on tool-call turns (gpt-oss captured 100%, GLM/Qwen captured 0% in
+# the hintsweep). Same single-cell layout as the qwen smoke for a like-for-like comparison.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3
+  max_conversation_steps: 5
+  seed: 2
+  tags: [social_jira3_smoke_glm]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "on"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-glm-4.7-flash
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "zai-org/GLM-4.7-Flash"
+            host: "127.0.0.1"
+            port: 8033
+            request_timeout: 600
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 128000
+            trust_remote_code: true
+            tool_call_parser: "glm47"
+            reasoning_parser: "glm45"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "glm47"
+              - "--reasoning-parser"
+              - "glm45"
+
+experiment:
+  tag: social_jira3_smoke_glm
+  output_dir: experiments/social_jira3/outputs/social_jira3_smoke_glm
+  planning_rounds: 3
+  min_planning_rounds: 2
+  preliminary_vote: true
+  early_stop_stable: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 1
+  run_attempts: 2
+
+  social_jira3:
+    scenario_types: [conflict]
+    feelings_channels: [inbox]
+    dislike_strengths: [quit]
+    confidentiality: [audience]
+    summary_audiences: [employee]
+    decoys: ["on"]
+    personalities: [none]
+    samples_per_seed: 1

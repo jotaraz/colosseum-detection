@@ -4,10 +4,12 @@ A third job-application simulation MVP (see `spec.md`). Same world as
 `job_appl`/`job_appl2`, but **fully autonomous after setup** — the human's only
 controls are the initial choices:
 
-- A real human sets the scene: name, the job seeker's traits and skills
-  (skills can come with concrete experiences), an optional **director system
-  prompt**, the check-in interval, and max tries. Then they press start and
-  only watch.
+- A real human sets the scene: the **models** (three searchable dropdowns from
+  OpenRouter's catalog — one each for the client/seeker, the agent, and HR; the
+  client model also writes the dossier), name, the job seeker's traits and
+  skills (skills can come with concrete experiences), an optional **director
+  system prompt**, the check-in interval, and max tries. Then they press start
+  and only watch.
 - A **dossier-writer LLM** produces the person's **complete dossier** in
   Markdown at run creation: a detailed professional CV (age 26, career since
   18), a personal profile covering every trait, and practical details. It
