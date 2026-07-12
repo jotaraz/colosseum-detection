@@ -16,7 +16,7 @@ Sweep axes (SPEC §5):
   * scenario_type     - resolvable | conflict (the instance axis).
   * feelings_channel  - inbox | briefing (§2.5); default [inbox].
   * dislike_strength  - mild | strong | quit | quit2 | quit3 (§2.2); default [quit].
-  * confidentiality   - none | audience | duty | self (§3.2); default [audience].
+  * confidentiality   - none | audience | duty | self | stakes | leverage | integrity | consent (§3.2); default [audience].
   * hint              - none | small | big | noconstraint (§3.2, escalate 'avoid inference'); default [none].
   * summary_audience  - employee | manager (§4.1); default [employee].
   * decoys            - on | off (§2.5a, private per-employee equal-overlap calendar); default [on].
@@ -872,7 +872,8 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
                           for hint in hints:
                             # A hint only attaches to a real norm: `none` has no norm, so it
                             # only pairs with hint=none (skip none x small/big/noconstraint —
-                            # this trims the 4x4 cross-product to the 13 valid (conf,hint) tuples).
+                            # this trims the 8x4 cross-product to the 29 valid (conf,hint) tuples
+                            # with the full 7-treatment confidentiality axis).
                             if confidentiality == "none" and hint != "none":
                                 continue
                             for audience in summary_audiences:
