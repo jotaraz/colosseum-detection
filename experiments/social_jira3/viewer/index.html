@@ -136,8 +136,19 @@
 
   /* hover-to-reveal per-message prompt */
   .phint { font-size:9px; color:#6f86b8; border:1px solid #43506a; border-radius:8px;
-    padding:0 5px; margin-left:6px; cursor:help; user-select:none; }
+    padding:0 5px; cursor:help; user-select:none; }
   .bhead:hover .phint { color:#9db4e0; border-color:#6f86b8; }
+  /* top-right group: judge status + prompt affordance */
+  .bright { float:right; display:inline-flex; align-items:center; gap:6px; }
+  .jstat { font-size:9px; text-transform:uppercase; letter-spacing:.04em; font-weight:600;
+    border-radius:8px; padding:0 6px; border:1px solid; }
+  .jstat.judged { color:#9fd6b3; border-color:#2f7d4f; background:#13211a; }
+  .jstat.failed { color:#e0b4b4; border-color:#9e3b3b; background:#241316; }
+  .jstat.notry  { color:#8f8f8f; border-color:#3a3a3a; background:#1a1a1a; }
+  /* per-turn flagged-phenomenon abbreviations (always all flagged, ignores the filter) */
+  .pabbrs { margin-left:8px; display:inline-flex; gap:3px; vertical-align:middle; }
+  .pabbr { font-size:9px; font-weight:700; letter-spacing:.03em; color:#e0b4b4;
+    border:1px solid #5e2f33; background:#241316; border-radius:6px; padding:0 4px; cursor:default; }
   #promptTip { position:fixed; z-index:60; display:none; width:540px; max-width:46vw;
     max-height:82vh; overflow:auto; background:#0c0f13; border:1px solid var(--accent);
     border-radius:8px; box-shadow:0 10px 34px rgba(0,0,0,.65); padding:10px 12px; }
@@ -206,11 +217,12 @@
 const $ = s => document.querySelector(s);
 let INDEX = null, SELCONF = new Set(), AVAILCONF = new Set();
 let LAST_DATA = null;
-// Judge phenomenon taxonomy (exact names from social_jira3/JUDGE_TURN_PROMPT.md).
-const JUDGE_PHENOMENA = ['Signal Uptake','Signal Dismissal','Observer Suspicion Modeling',
+// Judge phenomenon taxonomy — derived from JUDGE_TURN_PROMPT.md at runtime (see loadIndex);
+// this is only the fallback used before /api/index responds. Order = display order.
+let JUDGE_PHENOMENA = ['Signal Uptake','Signal Dismissal','Observer Suspicion Modeling',
   'Strategic Omission','Strategic Framing','Fabrication (considered)','Fabrication (executed)',
-  'Hallucination','Leakage','Implied Leakage','Made Bad Deal','Out-of-Scope Proposal','Vague',
-  'Strategic Attention Manipulation','Cover Story Planning','Ambiguous'];
+  'Hallucination','Leakage','Implied Leakage','Zero-Pressure Leakage','Made Bad Deal',
+  'Out-of-Scope Proposal','Suggest Mediation','Vague','Ambiguous'];
 let SELPHEN = new Set(JUDGE_PHENOMENA), SEENPHEN = new Set(JUDGE_PHENOMENA);
 // Column axis is CONFIDENTIALITY: the four norm mechanisms shown side by side for one scenario.
 const CONF_ORDER = ['none','audience','duty','self','generic','off','on'];
@@ -240,6 +252,13 @@ function feelColor(v){ return v>0 ? 'var(--pos)' : v<0 ? 'var(--neg)' : 'var(--n
 
 async function loadIndex(){
   INDEX = await (await fetch('/api/index')).json();
+  // Adopt the taxonomy derived from the judge prompt (keeps the phenomenon buttons in sync
+  // as the prompt evolves; falls back to the baked-in list if the server didn't provide it).
+  if(Array.isArray(INDEX.phenomena_taxonomy) && INDEX.phenomena_taxonomy.length){
+    JUDGE_PHENOMENA = INDEX.phenomena_taxonomy;
+    SELPHEN = new Set(JUDGE_PHENOMENA);
+    SEENPHEN = new Set(JUDGE_PHENOMENA);
+  }
   const models = Object.keys(INDEX.models||{}).sort();
   fill('#model', models);
   if(models.length){ onModelChange(); }
@@ -541,6 +560,32 @@ function anchorIncidents(c, incidents){
   return {byIdx, unanchored};
 }
 
+// Per-message judge status, shown top-right when "show judge phenomena" is on:
+//   'judged'  — this turn was scored by the judge (flagged or not)
+//   'failed'  — the judge attempt errored for this turn (parse_error / post-retry failure)
+//   'no try'  — no judge attempt: run has no judge_results.json, or this phase/turn wasn't judged
+function judgeStatusFor(c, m){
+  if(!c.judge) return 'no try';                          // run-level: judge_results.json absent
+  const ts = c.judge.turn_status || {};
+  const vr = (m.phase==='planning' && m.round!=null) ? m.round : 0;
+  return ts[`${m.agent}|${m.phase}|${vr}`] || 'no try';  // turn absent from judged set
+}
+
+// 1-3 letter abbreviations for the phenomenon taxonomy. Unknown names (e.g. after a
+// taxonomy edit) fall back to their capital-letter initials, capped at 3 chars.
+const PHEN_ABBR = {
+  'Signal Uptake':'SU','Signal Dismissal':'SD','Observer Suspicion Modeling':'OSM',
+  'Strategic Omission':'SO','Strategic Framing':'SF','Fabrication (considered)':'FC',
+  'Fabrication (executed)':'FE','Hallucination':'H','Leakage':'L','Implied Leakage':'IL',
+  'Zero-Pressure Leakage':'ZPL','Made Bad Deal':'MBD','Out-of-Scope Proposal':'OOS',
+  'Suggest Mediation':'SM','Vague':'V','Ambiguous':'A'
+};
+function phenAbbr(name){
+  if(PHEN_ABBR[name]) return PHEN_ABBR[name];
+  const caps=(name.match(/[A-Z]/g)||[]).join('');
+  return (caps || (name||'?').slice(0,2).toUpperCase()).slice(0,3);
+}
+
 function incidentCard(inc){
   const ti = inc.turn_index!=null ? ` · turn ${inc.turn_index}` : '';
   let h = `<div class="incident"><span class="ih">${esc(inc.phenomenon||'?')}${ti}</span>`;
@@ -631,6 +676,8 @@ function renderColumns(data){
       ? ((c.judge && c.judge.incidents) || []).filter(inc=>SELPHEN.has(inc.phenomenon))
       : [];
     const anchored = showJudge ? anchorIncidents(c, incidents) : {byIdx:new Map(), unanchored:[]};
+    // ALL flagged incidents (ignoring the phenomenon filter) — for the per-turn abbreviations.
+    const anchoredAll = showJudge ? anchorIncidents(c, (c.judge && c.judge.incidents) || []) : {byIdx:new Map()};
     if(showJudge) h+=verdictBanner(c, incidents, anchored.unanchored);
     if(showVotes) h+=voteLegend(c);
     if(c.context) h+=`<div class="ctxt">${esc(c.context)}</div>`;
@@ -643,10 +690,25 @@ function renderColumns(data){
       const isAnnounce = isExec && m.kind==='msg';
       const roundTag = (m.round!=null && !isExec) ? (' r'+(m.round+1)) : '';
       const kindTag = m.kind==='action' ? ' · commit' : (isAnnounce ? ' · announce' : '');
+      const jstat = showJudge ? judgeStatusFor(c, m) : null;  // 'judged'|'failed'|'no try'
+      const jcls = jstat==='failed' ? 'failed' : jstat==='judged' ? 'judged' : 'notry';
+      // all phenomena flagged for THIS turn (unfiltered), as abbreviations, in taxonomy order
+      let abbrHtml='';
+      if(showJudge){
+        const names=[...new Set((anchoredAll.byIdx.get(mi)||[]).map(inc=>inc.phenomenon))]
+          .sort((a,b)=>JUDGE_PHENOMENA.indexOf(a)-JUDGE_PHENOMENA.indexOf(b));
+        if(names.length) abbrHtml=`<span class="pabbrs">`
+          + names.map(n=>`<span class="pabbr" title="${esc(n)}">${esc(phenAbbr(n))}</span>`).join('')
+          + `</span>`;
+      }
       let bubble=`<div class="bubble ${m.kind}${isAnnounce?' announce':''}${incs.length?' flagged':''}" data-ci="${ci}" data-mi="${mi}">`
         + `<div class="bhead"><span class="bname" style="color:${color}">${esc(m.agent)}</span> `
         + `<span class="btag">· ${esc(m.phase)}${roundTag}${kindTag}</span>`
-        + (m.prompt?`<span class="phint">prompt ⌕</span>`:'')
+        + abbrHtml
+        + `<span class="bright">`
+        +   (jstat?`<span class="jstat ${jcls}">${jstat}</span>`:'')
+        +   (m.prompt?`<span class="phint">prompt ⌕</span>`:'')
+        + `</span>`
         + `</div>`;
       if(m.deliberation) bubble+=`<details class="delib"${expandCot?' open':''}><summary>${dh}</summary><div class="delibbody">${esc(m.deliberation)}</div></details>`;
       bubble+=`<div class="btext">${esc(m.text)}</div>`;

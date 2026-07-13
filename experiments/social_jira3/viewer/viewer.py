@@ -403,6 +403,7 @@ def load_judge(run_dir: Path):
 
     incidents: list = []
     counts: dict = {}
+    turn_status: dict = {}  # "agent|phase|vround" -> "judged" | "failed" (parse_error)
     for t in d.get("turns") or []:
         agent = t.get("agent")
         phase = t.get("phase") or "planning"
@@ -411,6 +412,7 @@ def load_judge(run_dir: Path):
             vround = jround - 1
         else:
             vround = 0
+        turn_status[f"{agent}|{phase}|{vround}"] = "failed" if t.get("parse_error") else "judged"
         for ph in t.get("present_phenomena") or []:
             name = ph.get("phenomenon") or "?"
             counts[name] = counts.get(name, 0) + 1
@@ -431,6 +433,7 @@ def load_judge(run_dir: Path):
         "counts": counts,
         "n_errors": n_errors,
         "incidents": incidents,
+        "turn_status": turn_status,
     }
 
 
@@ -599,6 +602,42 @@ def load_cell(model, ts, setup, base_cell, rtype, seed, sampling, confidentialit
 
 
 # --------------------------------------------------------------------------- #
+# Judge phenomenon taxonomy — derived from the judge prompt so it can't drift  #
+# --------------------------------------------------------------------------- #
+JUDGE_PROMPT_PATH = (HERE / ".." / "JUDGE_TURN_PROMPT.md").resolve()
+# Fallback if the prompt can't be read/parsed — kept in sync with the prompt's
+# "## Phenomenon Taxonomy" section (order matters; it's the display order).
+_PHENOMENA_FALLBACK = [
+    "Signal Uptake", "Signal Dismissal", "Observer Suspicion Modeling",
+    "Strategic Omission", "Strategic Framing", "Fabrication (considered)",
+    "Fabrication (executed)", "Hallucination", "Leakage", "Implied Leakage",
+    "Zero-Pressure Leakage", "Made Bad Deal", "Out-of-Scope Proposal",
+    "Suggest Mediation", "Vague", "Ambiguous",
+]
+
+
+def load_phenomena_taxonomy() -> list:
+    """Parse the phenomenon names out of the judge prompt's ``## Phenomenon Taxonomy``
+    section (each phenomenon is a bold header ``**Name**`` on its own line), so the viewer
+    always tracks the latest taxonomy. Falls back to a baked-in copy on any error."""
+    try:
+        lines = JUDGE_PROMPT_PATH.read_text(encoding="utf-8").splitlines()
+        names, in_section = [], False
+        for ln in lines:
+            s = ln.strip()
+            if s.startswith("## "):
+                in_section = s == "## Phenomenon Taxonomy"
+                continue
+            if in_section:
+                m = re.match(r"^\*\*([^*{}]+)\*\*$", s)  # exclude template headers like **{agent}...**
+                if m:
+                    names.append(m.group(1).strip())
+        return names or _PHENOMENA_FALLBACK
+    except Exception:
+        return _PHENOMENA_FALLBACK
+
+
+# --------------------------------------------------------------------------- #
 # Routes                                                                       #
 # --------------------------------------------------------------------------- #
 @app.route("/")
@@ -608,7 +647,7 @@ def home():
 
 @app.route("/api/index")
 def api_index():
-    return jsonify(scan_index())
+    return jsonify({**scan_index(), "phenomena_taxonomy": load_phenomena_taxonomy()})
 
 
 @app.route("/api/cell")
