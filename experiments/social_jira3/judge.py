@@ -91,10 +91,19 @@ def _load_json(path: Path) -> Any:
 
 
 def find_run_dirs(root: Path) -> List[Path]:
-    """Every directory under ``root`` (inclusive) that holds a ``scenario.json``."""
+    """Every *completed* run dir under ``root`` (inclusive): one holding a ``scenario.json``
+    AND a ``metrics.json`` (the run-completion marker written last, see run.py). This keeps the
+    judge off still-running / crashed rollouts even when ``root`` is a live experiment tree. An
+    explicitly-passed single leaf is honored as-is (caller's deliberate choice)."""
     if (root / "scenario.json").is_file():
         return [root]
-    return sorted(p.parent for p in root.rglob("scenario.json"))
+    dirs = sorted(p.parent for p in root.rglob("scenario.json"))
+    complete = [d for d in dirs if (d / "metrics.json").is_file()]
+    skipped = len(dirs) - len(complete)
+    if skipped:
+        print(f"[judge] skipping {skipped} incomplete run dir(s) without metrics.json "
+              f"(of {len(dirs)} found); judging {len(complete)}.", file=sys.stderr)
+    return complete
 
 
 def _prompts_for_turn(
@@ -345,7 +354,8 @@ def _azure_chat(messages: List[Dict[str, str]], *, deployment: str, max_completi
 
 
 def make_judge_caller(
-    provider: str, model: str, max_tokens: int, temperature: float, timeout: int
+    provider: str, model: str, max_tokens: int, temperature: float, timeout: int,
+    max_retries: int = 8,
 ):
     """Return a ``(system_prompt, user_prompt) -> response_str`` callable for the provider."""
     provider = (provider or "").lower()
@@ -356,7 +366,8 @@ def make_judge_caller(
                 {"role": "user", "content": user_prompt},
             ]
             return _azure_chat(
-                messages, deployment=model, max_completion_tokens=max_tokens, timeout=timeout
+                messages, deployment=model, max_completion_tokens=max_tokens, timeout=timeout,
+                max_retries=max_retries,
             )
 
         return _call_azure
@@ -488,6 +499,63 @@ def judge_run(
         "num_turns": len(turns),
         "turns": results,
     }
+
+
+def repair_run(
+    run_dir: Path,
+    template: str,
+    phases: Tuple[str, ...],
+    caller,
+    workers: int,
+    out_name: str,
+    judge_model: str = "",
+    dry_run: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Re-judge ONLY the turns of an already-judged run that failed the first time (have a
+    ``parse_error`` — typically a 429 that exhausted its retries), and merge the fresh results
+    back into the existing ``judge_results.json``. Successful turns are left untouched. Returns
+    None if there is no results file (a fresh, never-judged run — handled by the normal pass);
+    ``{"skipped": True}`` if the file exists but has no failed turns."""
+    res_path = run_dir / out_name
+    if not res_path.is_file():
+        return None
+    existing = _load_json(res_path)
+    failed_idx = {t["turn_index"] for t in existing.get("turns", []) if t.get("parse_error")}
+    if not failed_idx:
+        return {"run_dir": str(run_dir), "skipped": True}
+    if dry_run or caller is None:
+        return {"run_dir": str(run_dir), "dry": True, "would_repair": len(failed_idx)}
+
+    scenario = _load_json(run_dir / "scenario.json")
+    tool_events = _load_json(run_dir / "tool_events.json")
+    reasoning = _load_json(run_dir / "agent_reasoning.json")
+    agent_prompts = _load_json(run_dir / "agent_prompts.json")
+    turns = [t for t in build_turns(tool_events, reasoning, phases)
+             if t["turn_index"] in failed_idx]
+    for t in turns:
+        t["system_prompt"], t["user_prompt"] = _prompts_for_turn(
+            agent_prompts, t["agent"], t["phase"], t["round"]
+        )
+        t["ground_truth"] = build_ground_truth_block(scenario, t["agent"])
+
+    fresh: List[Dict[str, Any]] = []
+    if workers > 1:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = [pool.submit(judge_turn, template, t, caller) for t in turns]
+            for fu in as_completed(futs):
+                fresh.append(fu.result())
+    else:
+        for t in turns:
+            fresh.append(judge_turn(template, t, caller))
+
+    by_idx = {r["turn_index"]: r for r in fresh}
+    existing["turns"] = [by_idx.get(t["turn_index"], t) for t in existing.get("turns", [])]
+    if judge_model:
+        existing["judge_model"] = judge_model
+    res_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    still_failed = sum(1 for t in existing["turns"] if t.get("parse_error"))
+    return {"run_dir": str(run_dir), "repaired": len(failed_idx) - still_failed,
+            "still_failed": still_failed}
 
 
 # ----------------------------------------------------------------- summary judge (§7)
@@ -635,7 +703,8 @@ def judge_summaries_run(
 # --------------------------------------------------------------------- CLI
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="LLM judges for social_jira3 runs.")
-    ap.add_argument("run_dir", type=Path, help="A scenario leaf dir, or a parent to recurse.")
+    ap.add_argument("run_dir", nargs="+", type=Path,
+                    help="One or more scenario leaf dirs, or parent dirs to recurse.")
     ap.add_argument(
         "--summaries", action="store_true",
         help="Judge the closing summaries (JUDGE_SUMMARY_PROMPT.md) instead of the turns.",
@@ -661,6 +730,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--workers", type=int, default=1, help="Concurrent judge calls per run.")
     ap.add_argument("--limit", type=int, default=None, help="Judge only the first N turns.")
+    ap.add_argument(
+        "--shard", default=None, metavar="I/N",
+        help="Judge only shard I of N (0-indexed) of the completed run dirs, partitioned "
+        "deterministically (idx %% N == I over the sorted list). Parallelize across processes/nodes.",
+    )
+    ap.add_argument(
+        "--skip-existing", action="store_true",
+        help="Skip run dirs that already have the output file (idempotent resume).",
+    )
+    ap.add_argument(
+        "--repair", action="store_true",
+        help="Re-judge only the turns of already-judged runs that failed (have a parse_error, "
+        "e.g. an exhausted 429) and merge back; leaves fresh/unjudged runs alone.",
+    )
+    ap.add_argument(
+        "--max-retries", type=int, default=8,
+        help="Max attempts per judge call before giving up (default 8). Raise for rate-limit "
+        "resilience when re-judging.",
+    )
     ap.add_argument(
         "--out",
         default=None,
@@ -696,19 +784,52 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         model = os.getenv("JUDGE_MODEL", "anthropic/claude-sonnet-4.5")
 
-    run_dirs = find_run_dirs(args.run_dir)
+    run_dirs: List[Path] = []
+    for root in args.run_dir:
+        run_dirs.extend(find_run_dirs(root))
+    run_dirs = sorted(set(run_dirs), key=str)
     if not run_dirs:
-        print(f"No scenario.json found under {args.run_dir}", file=sys.stderr)
+        print(f"No completed run dir (scenario.json + metrics.json) under {args.run_dir}",
+              file=sys.stderr)
         return 1
+
+    if args.shard:
+        i, n = (int(x) for x in args.shard.split("/"))
+        run_dirs = [d for idx, d in enumerate(run_dirs) if idx % n == i]
+        print(f"[judge] shard {i}/{n}: {len(run_dirs)} of the completed run dir(s).", file=sys.stderr)
+    if args.skip_existing and not args.repair:
+        before = len(run_dirs)
+        run_dirs = [d for d in run_dirs if not (d / out_name).is_file()]
+        print(f"[judge] skip-existing: skipping {before - len(run_dirs)} already-judged; "
+              f"{len(run_dirs)} to do.", file=sys.stderr)
+    if not run_dirs:
+        print("[judge] nothing to do after shard/skip-existing filters.", file=sys.stderr)
+        return 0
 
     caller = (
         None
         if args.dry_run
-        else make_judge_caller(args.provider, model, args.max_tokens, args.temperature, args.timeout)
+        else make_judge_caller(args.provider, model, args.max_tokens, args.temperature,
+                               args.timeout, args.max_retries)
     )
 
     for run_dir in run_dirs:
         try:
+            if args.repair:
+                summary = repair_run(
+                    run_dir, template, phases, caller, args.workers, out_name,
+                    judge_model="" if args.dry_run else f"{args.provider}:{model}",
+                    dry_run=args.dry_run,
+                )
+                if summary is None or summary.get("skipped"):
+                    continue
+                if summary.get("dry"):
+                    print(f"[repair-dry] {run_dir.name}: would re-judge "
+                          f"{summary['would_repair']} failed turn(s)")
+                else:
+                    print(f"[repair] {run_dir.name}: fixed {summary['repaired']}, "
+                          f"still-failed {summary['still_failed']}")
+                continue
             if args.summaries:
                 summary = judge_summaries_run(
                     run_dir, template, caller, args.workers, args.dry_run,

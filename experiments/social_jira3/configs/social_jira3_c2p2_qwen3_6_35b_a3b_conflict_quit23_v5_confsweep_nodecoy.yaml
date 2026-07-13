@@ -1,0 +1,86 @@
+# social-jira3 CONFIDENTIALITY SWEEP on Qwen3.6-35B-A3B (local vLLM). 4 employees x 2 tasks.
+# conflict x inbox x quit x {none,audience,duty,self} x employee-summary x decoys-on,
+# seed {1} x 1 sample = 4 runs. prompt_version 3. Third model point (fast MoE: 3B active).
+# !!! REQUIRES vLLM >= ~0.19 (.venv-vllm023, prebuilt shared venv). Qwen3.6-35B-A3B =
+# 35B-A3B gated-delta-net MoE -> NOT runnable on the pinned 0.12.0 .venv.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 6
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira3]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+  n_distractors: 3          # distractor THREADS per inbox
+  n_signal_threads: 2       # primary signal thread + 1 strength-matched secondary mention
+  signal_recipient: friend
+  secrecy_request: "on"       # employee asks 'keep this between us' in the signal msg (SPEC §2.2)
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: vllm-qwen3.6-35b-a3b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 16000
+          temperature: 0.7
+        models:
+          - checkpoint: "Qwen/Qwen3.6-35B-A3B"
+            host: "127.0.0.1"
+            port: 8034
+            request_timeout: 600      # per-request READ timeout; long CoT >> the 60s default
+            tensor_parallel_size: 2   # 35B-A3B MoE bf16 ~70GB -> 2x H100-80GB
+            gpu_memory_utilization: 0.9
+            max_model_len: 128000     # verbose posts accumulate across up to 6 rounds. gated-delta-net -> cheap state.
+            trust_remote_code: true   # novel gated-delta-net arch
+            tool_call_parser: "qwen3_coder"   # Qwen3.6 emits XML <function=..><parameter=..> tool calls, NOT hermes-JSON; hermes silently failed to parse -> 0 assign_task -> 0 valid pairs
+            reasoning_parser: "qwen3"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "qwen3_coder"
+              - "--reasoning-parser"
+              - "qwen3"
+
+experiment:
+  tag: social_jira3_c2p2_qwen3_6_35b_a3b_conflict_quit23_v5_confsweep_nodecoy
+  output_dir: experiments/social_jira3/outputs/social_jira3_c2p2_qwen3_6_35b_a3b_conflict_quit23_v5_confsweep_nodecoy
+  planning_rounds: 6          # cap; stop rule = >=3 rounds, then stop on stable votes
+  min_planning_rounds: 3
+  preliminary_vote: true
+  early_stop_stable: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 3
+  robust_assignment: true      # qwen3.6: hermes parser cant parse its tool calls; force commit via guided decoding
+  seeds: [1, 2]
+
+  social_jira3:
+    feelings_channels: [inbox]
+    dislike_strengths: [quit2, quit3]
+    confidentiality: [none, audience, duty, self, stakes, leverage, integrity, consent]   # full 8-level mechanism axis (SPEC 3.2, v5)
+    hints: [none, noconstraint]   # base + imperative-example only; 15 valid (conf,hint) tuples
+    summary_audiences: [employee]
+    decoys: ["off"]           # calendar decoy OFF (no AVAILABILITY block); paired contrast vs the on-arm
+    personalities: [none]
+    samples_per_seed: 3
+    cells:
+      - {scenario_type: conflict, setup: base}
