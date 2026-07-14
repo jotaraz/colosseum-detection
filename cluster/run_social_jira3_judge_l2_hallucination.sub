@@ -1,0 +1,19 @@
+# CPU-only level-2 (Hallucination) confirmation judge over the 5 completed v5_quit23 confsweep
+# trees (all but glm-nodecoy). Re-judges only L1-flagged turns with gpt-5.4; writes
+# judge_l2_hallucination.json per leaf. Single node, --workers 16, --skip-existing (resumable).
+# Submit (needs a valid login-node kerberos ticket):
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_l2_hallucination.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_l2_hallucination.sh $(Process) 1
+
+error  = /fast/jtaraz/cluster_stuff/judge/l2hall_$(Process)_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/l2hall_$(Process)_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/l2hall_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

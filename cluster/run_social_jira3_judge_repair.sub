@@ -1,0 +1,18 @@
+# PASS (A): low-concurrency repair of all previously-failed (429) turns across the v5_quit23 judgments.
+# Single job, single process, --workers 8 -> ~8 concurrent Azure calls (validated 0x 429 / ~7s per
+# call). --max-retries 20 for extra resilience. Idempotent; re-submit to mop up any residual failures.
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_repair.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_repair.sh --workers 8 --max-retries 20
+
+error  = /fast/jtaraz/cluster_stuff/judge/repairA_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/repairA_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/repairA_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue

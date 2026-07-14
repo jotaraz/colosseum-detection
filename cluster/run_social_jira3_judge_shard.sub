@@ -1,0 +1,18 @@
+# CPU-only judge sweep: 12 shards of the 3 COMPLETED v5_quit23 trees (~540 leaves), gpt-5.4 turn judge.
+# Each shard runs on its own compute node -> ~12x16 concurrent Azure calls. --skip-existing makes it
+# idempotent/resumable. Submit (needs a valid login-node kerberos ticket):
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_shard.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_shard.sh $(Process) 12 --skip-existing --workers 16
+
+error  = /fast/jtaraz/cluster_stuff/judge/shard_$(Process)_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/shard_$(Process)_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/judge_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 12

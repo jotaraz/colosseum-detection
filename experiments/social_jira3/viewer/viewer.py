@@ -391,8 +391,24 @@ def attach_vote_states(messages, votes, scenario):
             "comfortable": sc.get("comfortable_matching") or {}}
 
 
+# Level-2 confirmation files (written by judge.py --level2) folded into the turn overlay as
+# their own phenomena. Maps the per-run L2 output filename -> the display phenomenon name.
+L2_PHENOMENA = {
+    "judge_l2_fabrication_executed.json": "L2 Fabrication (executed)",
+}
+
+
+def _vround_of(phase: str, jround) -> int:
+    """Map a judged turn's (phase, round) to the vote round used as its overlay key."""
+    if phase == "planning" and isinstance(jround, int) and jround > 0:
+        return jround - 1
+    return 0
+
+
 def load_judge(run_dir: Path):
-    """Turn-judge results (``judge_results.json``); see the jira2 viewer for conventions."""
+    """Turn-judge results (``judge_results.json``); see the jira2 viewer for conventions.
+    Level-2 confirmation passes (``judge_l2_*.json``) are folded in as independent
+    phenomena (e.g. ``L2 Fabrication (executed)``), one incident per confirmed turn."""
     p = run_dir / "judge_results.json"
     if not p.exists():
         return None
@@ -407,11 +423,7 @@ def load_judge(run_dir: Path):
     for t in d.get("turns") or []:
         agent = t.get("agent")
         phase = t.get("phase") or "planning"
-        jround = t.get("round")
-        if phase == "planning" and isinstance(jround, int) and jround > 0:
-            vround = jround - 1
-        else:
-            vround = 0
+        vround = _vround_of(phase, t.get("round"))
         turn_status[f"{agent}|{phase}|{vround}"] = "failed" if t.get("parse_error") else "judged"
         for ph in t.get("present_phenomena") or []:
             name = ph.get("phenomenon") or "?"
@@ -424,6 +436,31 @@ def load_judge(run_dir: Path):
                 "note": ph.get("note") or "",
             })
     n_errors = sum(1 for t in (d.get("turns") or []) if t.get("parse_error"))
+
+    # Fold in level-2 confirmation passes as independent phenomena. Each L2 file confirms
+    # one L1 phenomenon; a confirmed turn (present==True) becomes one "L2 <phenomenon>"
+    # incident, kept separate from the L1 phenomenon so the two are counted independently.
+    for l2_name, l2_phenomenon in L2_PHENOMENA.items():
+        l2p = run_dir / l2_name
+        if not l2p.exists():
+            continue
+        try:
+            l2d = json.loads(l2p.read_text())
+        except Exception:
+            continue
+        for t in l2d.get("turns") or []:
+            if not t.get("present"):
+                continue
+            phase = t.get("phase") or "planning"
+            counts[l2_phenomenon] = counts.get(l2_phenomenon, 0) + 1
+            incidents.append({
+                "agent": t.get("agent"), "phase": phase,
+                "vround": _vround_of(phase, t.get("round")),
+                "turn_index": t.get("turn_index"),
+                "phenomenon": l2_phenomenon,
+                "spans": t.get("spans") or [],
+                "note": t.get("note") or "",
+            })
 
     return {
         "schema": "phenomena",
@@ -610,10 +647,26 @@ JUDGE_PROMPT_PATH = (HERE / ".." / "JUDGE_TURN_PROMPT.md").resolve()
 _PHENOMENA_FALLBACK = [
     "Signal Uptake", "Signal Dismissal", "Observer Suspicion Modeling",
     "Strategic Omission", "Strategic Framing", "Fabrication (considered)",
-    "Fabrication (executed)", "Hallucination", "Leakage", "Implied Leakage",
+    "Fabrication (executed)", "L2 Fabrication (executed)", "Hallucination",
+    "Leakage", "Implied Leakage",
     "Zero-Pressure Leakage", "Made Bad Deal", "Out-of-Scope Proposal",
     "Suggest Mediation", "Vague", "Ambiguous",
 ]
+
+
+def _with_l2_phenomena(names: list) -> list:
+    """Insert each level-2 phenomenon right after its L1 sibling (or append), so L2 passes
+    show up in the taxonomy even though they aren't headers in the judge prompt."""
+    out = list(names)
+    for l2_phenomenon in L2_PHENOMENA.values():
+        if l2_phenomenon in out:
+            continue
+        base = l2_phenomenon[3:] if l2_phenomenon.startswith("L2 ") else None
+        if base and base in out:
+            out.insert(out.index(base) + 1, l2_phenomenon)
+        else:
+            out.append(l2_phenomenon)
+    return out
 
 
 def load_phenomena_taxonomy() -> list:
@@ -632,7 +685,7 @@ def load_phenomena_taxonomy() -> list:
                 m = re.match(r"^\*\*([^*{}]+)\*\*$", s)  # exclude template headers like **{agent}...**
                 if m:
                     names.append(m.group(1).strip())
-        return names or _PHENOMENA_FALLBACK
+        return _with_l2_phenomena(names) if names else _PHENOMENA_FALLBACK
     except Exception:
         return _PHENOMENA_FALLBACK
 

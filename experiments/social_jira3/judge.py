@@ -11,6 +11,16 @@ Two judges over a finished run directory:
   * **Summary judge** (``--summaries``) — new: labels each agent's closing summary for
     leakage / faithfulness / recap accuracy against the full turn history
     (``JUDGE_SUMMARY_PROMPT.md``). Writes ``judge_summary_results.json`` per run dir.
+  * **Level-2 confirmation judge** (``--level2``) — a per-phenomenon *precision* pass on top
+    of an existing turn judging: for one phenomenon (default ``Fabrication (executed)``), it
+    re-judges ONLY the turns that ``judge_results.json`` flagged as that phenomenon, with a
+    second, independent judge whose ballot is reduced to that single phenomenon and whose
+    description is tightened (``JUDGE_L2_FABRICATION_EXECUTED.md``). The L2 judge is blind to
+    L1's verdict (inputs are rebuilt from raw artifacts; L1 is used only to pick which turns to
+    re-judge) and returns a binary ``present`` + ``confidence`` + ``spans`` + ``note``. It can
+    only shrink the flagged set → it measures precision, not recall. Writes
+    ``judge_l2_fabrication_executed.json`` per run dir (non-destructive). See
+    ``JUDGE_LEVEL2_HANDOFF.md``.
 
 Inputs are read from a scenario-leaf directory (the one containing ``scenario.json``); pass
 a parent directory and the judge recurses over every leaf under it.
@@ -37,6 +47,13 @@ from typing import Any, Dict, List, Optional, Tuple
 HERE = Path(__file__).resolve().parent
 DEFAULT_TURN_PROMPT_FILE = HERE / "JUDGE_TURN_PROMPT.md"
 DEFAULT_SUMMARY_PROMPT_FILE = HERE / "JUDGE_SUMMARY_PROMPT.md"
+DEFAULT_L2_PROMPT_FILE = HERE / "JUDGE_L2_FABRICATION_EXECUTED.md"
+# Per-phenomenon level-2 defaults: phenomenon name -> (prompt file, output filename). Adding a
+# phenomenon = add its focus prompt file and one entry here (see JUDGE_LEVEL2_HANDOFF.md §4).
+L2_PHENOMENA = {
+    "Fabrication (executed)": (DEFAULT_L2_PROMPT_FILE, "judge_l2_fabrication_executed.json"),
+    "Hallucination": (HERE / "JUDGE_L2_HALLUCINATION.md", "judge_l2_hallucination.json"),
+}
 PLACEHOLDERS = (
     "system_prompt",
     "user_prompt",
@@ -558,6 +575,136 @@ def repair_run(
             "still_failed": still_failed}
 
 
+# --------------------------------------------------------- level-2 confirmation judge
+def _l1_flagged_turn_indices(run_dir: Path, l1_name: str, phenomenon: str) -> Optional[set]:
+    """The ``turn_index``es that the level-1 turn judge flagged as ``phenomenon`` in this run.
+    Returns None if there is no L1 results file (nothing to confirm here — the L2 pass skips the
+    dir). L1 is used ONLY for selection; the re-judge inputs are rebuilt from raw artifacts so
+    the L2 judge stays blind to L1's verdict/spans/note."""
+    res_path = run_dir / l1_name
+    if not res_path.is_file():
+        return None
+    data = _load_json(res_path)
+    idx: set = set()
+    for t in data.get("turns", []):
+        for p in (t.get("present_phenomena") or []):
+            if p.get("phenomenon") == phenomenon:
+                idx.add(t["turn_index"])
+                break
+    return idx
+
+
+def judge_turn_l2(template: str, turn: Dict[str, Any], caller) -> Dict[str, Any]:
+    """Single-phenomenon confirmation of one turn: parses the L2 binary verdict shape
+    ``{present, confidence, spans, note}`` (vs L1's ``present_phenomena`` list)."""
+    user_prompt = fill_template(template, _turn_values(turn))
+
+    parsed: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    raw = ""
+    try:
+        raw = caller(JUDGE_SYSTEM_PROMPT, user_prompt)
+        parsed = json.loads(_strip_json(raw))
+    except Exception as exc:  # noqa: BLE001 - record per-turn and keep going
+        error = f"{type(exc).__name__}: {exc}"
+
+    result: Dict[str, Any] = {
+        "turn_index": turn["turn_index"],
+        "agent": turn["agent"],
+        "phase": turn["phase"],
+        "round": turn["round"],
+    }
+    if parsed is not None and error is None:
+        result["present"] = bool(parsed.get("present", False))
+        result["confidence"] = parsed.get("confidence")
+        result["spans"] = parsed.get("spans", []) or []
+        result["note"] = parsed.get("note", "")
+    else:
+        result["parse_error"] = error or "no JSON found"
+        result["raw_response"] = raw
+    return result
+
+
+def level2_run(
+    run_dir: Path,
+    template: str,
+    phases: Tuple[str, ...],
+    caller,
+    workers: int,
+    phenomenon: str,
+    l1_name: str,
+    judge_model: str = "",
+    dry_run: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Level-2 precision pass for one ``phenomenon`` over one run dir. Selects the turns L1
+    flagged as ``phenomenon``, rebuilds their inputs exactly like ``repair_run`` (blind to L1's
+    output), and re-judges each with the reduced single-phenomenon prompt. Returns None if the
+    run has no L1 results file (the caller then just skips it)."""
+    flagged = _l1_flagged_turn_indices(run_dir, l1_name, phenomenon)
+    if flagged is None:
+        return None
+
+    scenario = _load_json(run_dir / "scenario.json")
+    run_cfg_path = run_dir / "run_config.json"
+    run_cfg = _load_json(run_cfg_path) if run_cfg_path.is_file() else {}
+
+    turns: List[Dict[str, Any]] = []
+    if flagged:
+        tool_events = _load_json(run_dir / "tool_events.json")
+        reasoning = _load_json(run_dir / "agent_reasoning.json")
+        agent_prompts = _load_json(run_dir / "agent_prompts.json")
+        turns = [t for t in build_turns(tool_events, reasoning, phases)
+                 if t["turn_index"] in flagged]
+        for t in turns:
+            t["system_prompt"], t["user_prompt"] = _prompts_for_turn(
+                agent_prompts, t["agent"], t["phase"], t["round"]
+            )
+            t["ground_truth"] = build_ground_truth_block(scenario, t["agent"])
+
+    if dry_run:
+        if turns:
+            print(fill_template(template, _turn_values(turns[0])))
+        return {"run_dir": str(run_dir), "phenomenon": phenomenon,
+                "l1_flagged": len(flagged), "dry_run": True}
+
+    results: List[Dict[str, Any]] = []
+    if workers > 1 and turns:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = {pool.submit(judge_turn_l2, template, t, caller): t for t in turns}
+            for fut in as_completed(futs):
+                results.append(fut.result())
+        results.sort(key=lambda r: r["turn_index"])
+    else:
+        for t in turns:
+            results.append(judge_turn_l2(template, t, caller))
+
+    confirmed = sum(1 for r in results if r.get("present"))
+    return {
+        "run_dir": str(run_dir),
+        "level2": True,
+        "phenomenon": phenomenon,
+        "judge_model": judge_model,
+        "l1_source": l1_name,
+        "model": run_cfg.get("model") or scenario.get("setup"),
+        "model_label": run_cfg.get("model_label"),
+        "scenario_type": scenario.get("scenario_type"),
+        "seed": scenario.get("seed"),
+        "feelings_channel": run_cfg.get("feelings_channel") or scenario.get("feelings_channel"),
+        "dislike_strength": run_cfg.get("dislike_strength") or scenario.get("dislike_strength"),
+        "confidentiality": run_cfg.get("confidentiality") or scenario.get("confidentiality")
+            or run_cfg.get("pointer") or scenario.get("pointer"),
+        "hint": run_cfg.get("hint") or scenario.get("hint"),
+        "decoys": run_cfg.get("decoys") or scenario.get("decoys"),
+        "personality": run_cfg.get("personality") or scenario.get("personality"),
+        "setup": run_cfg.get("setup") or scenario.get("setup"),
+        # precision denominator = L1-flagged; numerator = confirmed. Join back by
+        # (run_dir, turn_index, agent).
+        "num_l1_flagged": len(flagged),
+        "num_confirmed": confirmed,
+        "turns": results,
+    }
+
+
 # ----------------------------------------------------------------- summary judge (§7)
 def build_turn_history(
     run_dir: Path, agent: str, scenario: Dict[str, Any]
@@ -710,6 +857,26 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Judge the closing summaries (JUDGE_SUMMARY_PROMPT.md) instead of the turns.",
     )
     ap.add_argument(
+        "--level2", action="store_true",
+        help="Level-2 precision pass: re-judge only the turns an existing judge_results.json "
+        "flagged as --phenomenon, with the reduced single-phenomenon prompt. Non-destructive.",
+    )
+    ap.add_argument(
+        "--phenomenon", default="Fabrication (executed)",
+        help="Level-2 target phenomenon name, exactly as it appears in L1's present_phenomena "
+        "(default: 'Fabrication (executed)').",
+    )
+    ap.add_argument(
+        "--l1-results", default="judge_results.json",
+        help="Level-2 only: the L1 results filename used to SELECT which turns to re-judge "
+        "(default: judge_results.json). L1 is never shown to the L2 judge.",
+    )
+    ap.add_argument(
+        "--path-contains", default=None,
+        help="Only judge run dirs whose path contains this substring (e.g. "
+        "conflict_quit23_v5_confsweep to scope the level-2 pass). Applied after find_run_dirs.",
+    )
+    ap.add_argument(
         "--provider",
         choices=("azure", "openrouter"),
         default=os.getenv("JUDGE_PROVIDER", "azure"),
@@ -770,10 +937,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    prompt_file = args.prompt_file or (
-        DEFAULT_SUMMARY_PROMPT_FILE if args.summaries else DEFAULT_TURN_PROMPT_FILE
+    if args.level2 and args.summaries:
+        ap.error("--level2 and --summaries are mutually exclusive.")
+
+    l2_prompt_default, l2_out_default = L2_PHENOMENA.get(
+        args.phenomenon, (DEFAULT_L2_PROMPT_FILE, None)
     )
-    out_name = args.out or ("judge_summary_results.json" if args.summaries else "judge_results.json")
+    if args.level2:
+        prompt_file = args.prompt_file or l2_prompt_default
+        if l2_out_default is None and not args.out:
+            ap.error(
+                f"No default output filename for level-2 phenomenon {args.phenomenon!r}; "
+                "pass --out and --prompt-file (or add it to L2_PHENOMENA)."
+            )
+        out_name = args.out or l2_out_default
+    elif args.summaries:
+        prompt_file = args.prompt_file or DEFAULT_SUMMARY_PROMPT_FILE
+        out_name = args.out or "judge_summary_results.json"
+    else:
+        prompt_file = args.prompt_file or DEFAULT_TURN_PROMPT_FILE
+        out_name = args.out or "judge_results.json"
     template = load_prompt_template(prompt_file)
     phases = tuple(p.strip() for p in args.phases.split(",") if p.strip())
 
@@ -792,6 +975,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"No completed run dir (scenario.json + metrics.json) under {args.run_dir}",
               file=sys.stderr)
         return 1
+
+    if args.path_contains:
+        before = len(run_dirs)
+        run_dirs = [d for d in run_dirs if args.path_contains in str(d)]
+        print(f"[judge] path-contains {args.path_contains!r}: kept {len(run_dirs)} of "
+              f"{before} run dir(s).", file=sys.stderr)
+        if not run_dirs:
+            return 0
 
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
@@ -830,7 +1021,21 @@ def main(argv: Optional[List[str]] = None) -> int:
                     print(f"[repair] {run_dir.name}: fixed {summary['repaired']}, "
                           f"still-failed {summary['still_failed']}")
                 continue
-            if args.summaries:
+            if args.level2:
+                summary = level2_run(
+                    run_dir, template, phases, caller, args.workers, args.phenomenon,
+                    args.l1_results,
+                    judge_model="" if args.dry_run else f"{args.provider}:{model}",
+                    dry_run=args.dry_run,
+                )
+                if summary is None:  # no L1 results file here — nothing to confirm
+                    continue
+                if args.dry_run:
+                    # keep looking until a dir actually has flagged turns to print
+                    if summary.get("l1_flagged"):
+                        return 0
+                    continue
+            elif args.summaries:
                 summary = judge_summaries_run(
                     run_dir, template, caller, args.workers, args.dry_run,
                     judge_model="" if args.dry_run else f"{args.provider}:{model}",
@@ -847,7 +1052,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
         out_path = run_dir / out_name
         out_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-        if args.summaries:
+        if args.level2:
+            print(f"[l2] {run_dir.name}: {summary['num_confirmed']}/{summary['num_l1_flagged']} "
+                  f"confirmed {args.phenomenon!r} -> {out_path.name}")
+        elif args.summaries:
             print(f"[ok] {run_dir.name}: {summary['num_summaries']} summaries -> {out_path.name}")
         else:
             n_flags = sum(len(t.get("present_phenomena", [])) for t in summary["turns"])

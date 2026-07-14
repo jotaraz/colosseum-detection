@@ -1,0 +1,18 @@
+# PASS (B) orchestrator: waits for the repair loop, then fresh-judges + cleans qwen-nodecoy +
+# glm-decoy-ON, then waits for glm-nodecoy generation to finish and judges it. Long-running,
+# CPU-only, low concurrency. Self-driving; idempotent (--skip-existing + repair sweeps).
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_passB.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_passB.sh
+
+error  = /fast/jtaraz/cluster_stuff/judge/passB_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/passB_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/passB_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue

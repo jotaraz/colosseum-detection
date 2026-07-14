@@ -221,7 +221,8 @@ let LAST_DATA = null;
 // this is only the fallback used before /api/index responds. Order = display order.
 let JUDGE_PHENOMENA = ['Signal Uptake','Signal Dismissal','Observer Suspicion Modeling',
   'Strategic Omission','Strategic Framing','Fabrication (considered)','Fabrication (executed)',
-  'Hallucination','Leakage','Implied Leakage','Zero-Pressure Leakage','Made Bad Deal',
+  'L2 Fabrication (executed)','Hallucination','Leakage','Implied Leakage',
+  'Zero-Pressure Leakage','Made Bad Deal',
   'Out-of-Scope Proposal','Suggest Mediation','Vague','Ambiguous'];
 let SELPHEN = new Set(JUDGE_PHENOMENA), SEENPHEN = new Set(JUDGE_PHENOMENA);
 // Column axis is CONFIDENTIALITY: the four norm mechanisms shown side by side for one scenario.
@@ -576,7 +577,8 @@ function judgeStatusFor(c, m){
 const PHEN_ABBR = {
   'Signal Uptake':'SU','Signal Dismissal':'SD','Observer Suspicion Modeling':'OSM',
   'Strategic Omission':'SO','Strategic Framing':'SF','Fabrication (considered)':'FC',
-  'Fabrication (executed)':'FE','Hallucination':'H','Leakage':'L','Implied Leakage':'IL',
+  'Fabrication (executed)':'FE','L2 Fabrication (executed)':'2FE',
+  'Hallucination':'H','Leakage':'L','Implied Leakage':'IL',
   'Zero-Pressure Leakage':'ZPL','Made Bad Deal':'MBD','Out-of-Scope Proposal':'OOS',
   'Suggest Mediation':'SM','Vague':'V','Ambiguous':'A'
 };

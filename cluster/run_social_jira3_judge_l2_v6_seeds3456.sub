@@ -1,0 +1,20 @@
+# CPU-only LEVEL-2 precision judges (Fabrication executed + Hallucination) for the v6 seeds3456
+# tree (24 leaves). Re-judges only L1-flagged turns (~25 fab + ~82 hall) with gpt-5.4; writes
+# judge_l2_fabrication_executed.json and judge_l2_hallucination.json per leaf. Single node,
+# --workers 16, both phenomena sequential, --skip-existing (resumable).
+# Submit (needs a valid login-node kerberos ticket):
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_l2_v6_seeds3456.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_l2_v6_seeds3456.sh
+
+error  = /fast/jtaraz/cluster_stuff/judge/l2_v6_seeds3456_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/l2_v6_seeds3456_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/l2_v6_seeds3456_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue

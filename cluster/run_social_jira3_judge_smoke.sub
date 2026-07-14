@@ -1,0 +1,17 @@
+# SMOKE: one CPU-only job, shard 0 of 540 -> ~1 leaf, --limit 2 -> ~2 Azure calls. Verifies a compute
+# node can source the Azure .env, reach the endpoint via the cluster proxy, and write judge_results.json.
+#   condor_submit_bid 50 cluster/run_social_jira3_judge_smoke.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_judge_shard.sh 0 540 --limit 2 --workers 2
+
+error  = /fast/jtaraz/cluster_stuff/judge/smoke_$(Cluster).err
+output = /fast/jtaraz/cluster_stuff/judge/smoke_$(Cluster).out
+log    = /fast/jtaraz/cluster_stuff/judge/smoke_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 4096
+request_disk   = 2G
++BypassLXCfs   = "true"
+
+queue 1
