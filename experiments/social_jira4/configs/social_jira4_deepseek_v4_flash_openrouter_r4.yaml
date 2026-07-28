@@ -48,6 +48,19 @@ llm_models:
         params:
           max_tokens: 20000
           temperature: 0.7
+          # REQUIRED for this target — not a tuning knob. deepseek-v4-flash is adaptive-thinking:
+          # it decides per request whether to emit reasoning, and it reliably declines when
+          # tool_choice forces a function call. sj4 forces `post_message` on every planning turn
+          # (social_jira3.run._build_generation_params), i.e. on exactly the turns the critic
+          # judges — so without this ~75% of judged turns returned no CoT, and CRITIC_CATEGORY
+          # (intent-based, "read from the reasoning") scored them off "(no reasoning captured)".
+          # Measured against the live endpoint with a realistic forced-tool payload: 0/8 requests
+          # carried CoT unset, 5/5 at each of effort low/medium/high (~1k chars either way).
+          # `reasoning_effort` is the ONLY spelling that reaches the wire: the openrouter provider
+          # is served by the repo-local experiments/social_jira2/openrouter_client.py, which maps
+          # reasoning_effort -> payload["reasoning"]={"effort": ...} and drops any other spelling.
+          # qwen3.6/gpt-oss don't need this — they emit CoT under a forced tool_choice regardless.
+          reasoning_effort: medium
 
 experiment:
   tag: social_jira4_deepseek_v4_flash_or_r4
