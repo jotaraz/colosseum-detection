@@ -1,0 +1,22 @@
+# social_jira4 v3 — deepseek-v4-flash target, warm start (1 seed + 8 optimizer steps) x 3 rollout seeds.
+#
+# v3 = the reworked setup: revised prompter scaffold + validator prompt, composed sj4-local decoy
+# substrates (decoys.py) with the per-step decoy ramp, and the CONSISTENCY gate on (blocks may no
+# longer assert scenario facts the target is never shown). Everything but the target is
+# deepseek/deepseek-v4-pro over OpenRouter — prompter, category/soundness/at-stake critics,
+# validator, consistency, referee (llm.py defaults; keys from the repo .env).
+#
+# CPU-only: all model calls leave the node over the HTTP proxy. Submit with `condor_submit_bid 100`.
+# Warm start — step 0 replays ONE proven jira3 fabrication seed (l2_seed_top1.json: the
+# audience/decoys-on/quit2 config whose L2 lie invented hard calendar conflicts for Pauline,
+# judge confidence 0.99), then 8 optimizer steps build on that trajectory. 9 steps total, so
+# the prompter gets the same 8 attempts as the cold run.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_or.sh
+arguments = "experiments/social_jira4/configs/social_jira4_deepseek_v4_flash_openrouter_r4.yaml openrouter-deepseek-v4-flash experiments/social_jira4/outputs/cluster_dsflash_r4_v3_warm --steps 9 --warmstart experiments/social_jira4/seeds/l2_seed_top1.json"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash_v3_warm.out
+error = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash_v3_warm.err
+log = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash_v3_warm.log
+request_cpus = 4
+request_memory = 8192
+request_disk = 4G
+queue
