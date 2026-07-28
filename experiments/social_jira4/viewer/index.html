@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social_jira4 — optimizer pathway</title>
+<style>
+:root{
+  --bg:#0f1115; --panel:#161a21; --panel2:#1c212a; --line:#272d38; --line2:#333b49;
+  --fg:#dfe4ec; --dim:#8b95a7; --dim2:#5f6878;
+  --accent:#6ea8fe; --ok:#4ec98d; --warn:#e0b054; --bad:#e8697d; --purple:#b48ce8;
+  --ins:#1d3b2a; --del:#3d1f27;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:var(--accent)}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:30;background:rgba(15,17,21,.96);
+  border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.hrow{display:flex;gap:16px;align-items:center;padding:10px 18px;flex-wrap:wrap}
+.hrow h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.02em}
+.hrow h1 span{color:var(--dim2);font-weight:400}
+select{background:var(--panel2);color:var(--fg);border:1px solid var(--line2);
+  border-radius:6px;padding:5px 8px;font:inherit}
+.meta{color:var(--dim);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
+.meta b{color:var(--fg);font-weight:500}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:5px 12px;border-radius:6px;color:var(--dim);font-size:13px}
+.tab:hover{background:var(--panel2);color:var(--fg)}
+.tab.on{background:var(--panel2);color:var(--fg);box-shadow:inset 0 -2px 0 var(--accent)}
+
+/* ---------- trajectory strip ---------- */
+.strip{display:flex;gap:6px;padding:4px 18px 12px;overflow-x:auto;align-items:flex-end}
+.chip{flex:0 0 auto;width:78px;border:1px solid var(--line2);border-radius:7px;
+  background:var(--panel);padding:6px 7px;text-align:left;transition:.12s}
+.chip:hover{border-color:var(--accent);transform:translateY(-1px)}
+.chip.sel{border-color:var(--accent);background:var(--panel2)}
+.chip .n{font-size:11px;color:var(--dim2)}
+.chip .sc{font-size:17px;font-weight:600;line-height:1.2}
+.chip .bar{height:3px;border-radius:2px;margin-top:4px;background:var(--line2)}
+.chip.ran .sc{color:var(--fg)} .chip.ran .bar{background:var(--accent)}
+.chip.warmstart .sc{color:var(--purple)} .chip.warmstart .bar{background:var(--purple)}
+.chip.rejected .sc{color:var(--bad)} .chip.rejected .bar{background:var(--bad)}
+.chip.invalid .sc{color:var(--warn)} .chip.invalid .bar{background:var(--warn)}
+.chip .star{color:var(--warn);font-size:11px}
+.chip.nodetail{opacity:.45}   /* pre-schema-2 step: history row only, no step file to expand */
+
+/* ---------- layout ---------- */
+main{padding:20px 18px 120px;max-width:1180px;margin:0 auto}
+.spine{position:relative;padding-left:26px}
+.spine:before{content:"";position:absolute;left:7px;top:6px;bottom:0;width:2px;
+  background:linear-gradient(var(--line2),var(--line2) 70%,transparent)}
+.card{margin-bottom:26px;position:relative;scroll-margin-top:150px}  /* clear the sticky header */
+.card>.dot{position:absolute;left:-26px;top:11px;width:16px;height:16px;border-radius:50%;
+  background:var(--bg);border:2px solid var(--line2)}
+.card.ran>.dot{border-color:var(--accent)}
+.card.warmstart>.dot{border-color:var(--purple)}
+.card.rejected>.dot{border-color:var(--bad)}
+.card.invalid>.dot{border-color:var(--warn)}
+.chead{display:flex;gap:12px;align-items:baseline;padding:6px 0 10px;cursor:pointer}
+.chead h2{font-size:16px;margin:0;font-weight:600}
+.chead .score{font-size:13px;color:var(--dim)}
+.chead .rat{color:var(--dim);font-size:12.5px;flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- stages ---------- */
+.stage{border:1px solid var(--line);border-radius:9px;background:var(--panel);
+  margin-bottom:10px;overflow:hidden}
+.stage>summary{list-style:none;padding:9px 13px;display:flex;gap:10px;align-items:center;
+  cursor:pointer;user-select:none}
+.stage>summary::-webkit-details-marker{display:none}
+.stage>summary:hover{background:var(--panel2)}
+.stage .num{font-size:10.5px;color:var(--dim2);border:1px solid var(--line2);
+  border-radius:4px;padding:1px 5px;letter-spacing:.06em}
+.stage .ttl{font-weight:600;font-size:13.5px}
+.stage .sub{color:var(--dim);font-size:12px;margin-left:auto;text-align:right}
+.stage .body{padding:2px 13px 13px;border-top:1px solid var(--line)}
+
+/* ---------- bits ---------- */
+.badge{display:inline-block;font-size:11px;padding:1.5px 7px;border-radius:20px;
+  border:1px solid var(--line2);color:var(--dim);white-space:nowrap}
+.badge.ok{color:var(--ok);border-color:#2c5e46} .badge.bad{color:var(--bad);border-color:#6b2f3b}
+.badge.warn{color:var(--warn);border-color:#6b5426}
+.badge.pur{color:var(--purple);border-color:#4d3a6b}
+.badge.acc{color:var(--accent);border-color:#2f4d78}
+.badge.fab{color:#ffb4c0;border-color:#7d3546;background:#2c161c}
+pre.txt{white-space:pre-wrap;word-break:break-word;background:var(--panel2);
+  border:1px solid var(--line);border-radius:7px;padding:10px 12px;font-size:12.5px;
+  max-height:420px;overflow:auto;margin:6px 0}
+pre.txt.tall{max-height:640px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin:6px 0}
+.kv dt{color:var(--dim)} .kv dd{margin:0}
+.blk{margin:9px 0}
+.blk .lbl{font-size:11px;color:var(--dim2);letter-spacing:.05em;text-transform:uppercase;
+  display:flex;gap:8px;align-items:center;margin-bottom:3px}
+.blk .val{background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:9px 11px;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+ins{background:var(--ins);color:#8ee0b0;text-decoration:none;border-radius:3px;padding:0 2px}
+del{background:var(--del);color:#f0919f;text-decoration:line-through;border-radius:3px;padding:0 2px}
+.note{color:var(--dim);font-size:12px;font-style:italic;margin:6px 0}
+.err{color:var(--bad);font-size:12.5px}
+
+/* ---------- transcript ---------- */
+.seedtabs{display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap}
+.seedtab{padding:4px 11px;border:1px solid var(--line2);border-radius:6px;font-size:12.5px;color:var(--dim)}
+.seedtab.on{border-color:var(--accent);color:var(--fg);background:var(--panel2)}
+.dlbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 10px}
+.dllbl{font-size:11px;color:var(--dim2);letter-spacing:.05em;text-transform:uppercase;margin-right:2px}
+.dlbtn{font-size:11.5px;color:var(--dim);border:1px solid var(--line2);border-radius:5px;
+  padding:2px 9px;text-decoration:none}
+.dlbtn:hover{border-color:var(--accent);background:var(--panel2)}
+.rnd{display:flex;align-items:center;gap:9px;margin:14px 0 8px;color:var(--dim2);font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase}
+.rnd:after{content:"";flex:1;height:1px;background:var(--line)}
+.bub{border:1px solid var(--line);border-left:3px solid var(--a);border-radius:8px;
+  background:var(--panel2);margin:8px 0;overflow:hidden}
+.bub .bh{display:flex;gap:9px;align-items:center;padding:7px 11px;flex-wrap:wrap}
+.bub .who{font-weight:600;color:var(--a);font-size:13px}
+.bub .ti{font-size:11px;color:var(--dim2)}
+.bub .msg{padding:0 11px 10px;white-space:pre-wrap;word-break:break-word;font-size:13px}
+.bub .tools{display:flex;gap:8px;padding:0 11px 9px;flex-wrap:wrap}
+.bub .tools button{font-size:11.5px;color:var(--dim);border:1px solid var(--line2);
+  border-radius:5px;padding:2px 8px}
+.bub .tools button:hover{color:var(--fg);border-color:var(--accent)}
+.bub .drop{padding:0 11px 11px}
+mark{background:#5c2331;color:#ffd0d8;border-radius:3px;padding:0 2px}
+mark.plain{background:#26313f;color:#c3d3e8}
+
+/* ---------- tables ---------- */
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:var(--dim);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+tr:hover td{background:var(--panel2)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.grid{overflow-x:auto}
+.cellbox{width:34px;height:22px;border-radius:4px;display:inline-block;border:1px solid var(--line2)}
+.center{text-align:center}
+.loading{color:var(--dim);padding:20px;text-align:center}
+.hint{color:var(--dim2);font-size:12px;margin:10px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>social_jira4 <span>· optimizer pathway</span></h1>
+    <select id="runsel"></select>
+    <div class="meta" id="runmeta"></div>
+    <div class="tabs">
+      <button class="tab on" data-view="pathway">Pathway</button>
+      <button class="tab" data-view="lies">Lies board</button>
+      <button class="tab" data-view="blocks">Blocks evolution</button>
+      <button class="tab" data-view="scaffold">Scaffold</button>
+    </div>
+  </div>
+  <div class="strip" id="strip"></div>
+</header>
+<main id="main"><div class="loading">loading…</div></main>
+
+<script>
+const $ = (s,r=document)=>r.querySelector(s);
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!==undefined)e.innerHTML=h; return e;};
+const esc = s => (s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n===undefined||n===null)?'—':(Math.round(n*100)/100).toLocaleString();
+const ktok = n => n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+'k' : (n||0);
+const AC = ['#6ea8fe','#4ec98d','#e0b054','#b48ce8','#e8697d','#4fd0d8'];
+
+let RUN=null, STEPS={}, VIEW='pathway', OPEN=new Set();
+
+/* ============================ boot ============================ */
+async function boot(){
+  const r = await (await fetch('/api/runs')).json();
+  const sel = $('#runsel');
+  if(!r.runs.length){ $('#main').innerHTML = `<div class="loading">No optimizer runs found under <code>${esc(r.outputs)}</code>.</div>`; return; }
+  r.runs.forEach(x=>{
+    const o=el('option'); o.value=x.name;
+    o.textContent = `${x.name} · ${x.models?.target||'?'} · ${x.n_steps} steps${x.step_schema<2?'  (legacy)':''}`;
+    sel.appendChild(o);
+  });
+  sel.onchange = ()=>{ setHash({run:sel.value, view:VIEW}); loadRun(sel.value); };
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setView(t.dataset.view));
+  const h = readHash();
+  if(h.run && r.runs.some(x=>x.name===h.run)) sel.value=h.run;
+  if(h.view) VIEW=h.view;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.view===VIEW));
+  loadRun(sel.value, h.step);
+}
+
+/* Hash routing — so a step (or view) is linkable: #run=<name>&view=pathway&step=2 */
+function readHash(){
+  const o={};
+  (location.hash||'').replace(/^#/,'').split('&').forEach(p=>{
+    const [k,v]=p.split('='); if(k) o[k]=decodeURIComponent(v||'');
+  });
+  if(o.step!==undefined) o.step=parseInt(o.step,10);
+  return o;
+}
+function setHash(o){
+  const cur=readHash(), n={...cur,...o};
+  location.replace('#'+Object.entries(n).filter(([,v])=>v!==undefined&&v!=='')
+    .map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&'));
+}
+function setView(v){
+  VIEW=v; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.view===v));
+  setHash({view:v}); render();
+}
+
+async function loadRun(name, wantStep){
+  $('#main').innerHTML='<div class="loading">loading…</div>';
+  STEPS={}; OPEN=new Set();
+  RUN = await (await fetch('/api/run?run='+encodeURIComponent(name))).json();
+  const m=RUN.metadata||{}, mo=m.models||{}, tk=RUN.totals?.tokens||{};
+  $('#runmeta').innerHTML = [
+    `target <b>${esc(mo.target||'?')}</b>`, `prompter <b>${esc(mo.prompter||'?')}</b>`,
+    `judge <b>${esc(mo.judge||'?')}</b>`, `objective <b>${esc(m.objective||'?')}</b>`,
+    `seeds <b>${(m.seeds||[]).join(',')||'?'}</b>`,
+    `<b>${ktok(Object.values(tk).reduce((a,b)=>a+b,0))}</b> tok`,
+    `<b>${Math.round((RUN.totals?.duration_s||0)/60)}</b> min`,
+  ].join('');
+  setHash({run:name});
+  buildStrip(); render();
+  const first = RUN.steps.find(s=>s.step===wantStep) || RUN.steps[0];
+  if(first) openStep(first.step, wantStep!==undefined);
+}
+
+function buildStrip(){
+  const s=$('#strip'); s.innerHTML='';
+  const max = Math.max(0.001, ...RUN.steps.map(x=>x.score||0));
+  RUN.steps.forEach(st=>{
+    const b=el('button','chip '+st.state+(st.has_detail?'':' nodetail'));
+    b.innerHTML = `<div class="n">step ${st.step} ${st.is_best?'<span class="star">★</span>':''}</div>
+      <div class="sc">${st.state==='ran'||st.state==='warmstart'?fmt(st.score):'—'}</div>
+      <div class="bar" style="width:${Math.max(8,(st.score/max)*100)}%"></div>`;
+    b.title = st.state==='ran' ? (st.rationale||'') : st.cb_reason||'';
+    b.onclick=()=>{ if(VIEW!=='pathway') setView('pathway'); openStep(st.step,true); };
+    b.dataset.step=st.step; s.appendChild(b);
+  });
+}
+
+function render(){
+  const m=$('#main'); m.innerHTML='';
+  if(VIEW==='pathway') return renderPathway(m);
+  if(VIEW==='lies') return renderLies(m);
+  if(VIEW==='blocks') return renderBlocks(m);
+  if(VIEW==='scaffold') return renderScaffold(m);
+}
+
+/* ============================ pathway ============================ */
+function renderPathway(root){
+  const sp = el('div','spine'); root.appendChild(sp);
+  RUN.steps.forEach(st=>{
+    const c = el('div','card '+st.state); c.id='card-'+st.step;
+    c.appendChild(el('div','dot'));
+    const head = el('div','chead');
+    head.innerHTML = `<h2>Step ${st.step}</h2>
+      <span class="score">${st.state==='ran'||st.state==='warmstart'
+        ? `score <b>${fmt(st.score)}</b>${st.is_best?' <span class="badge warn">best</span>':''}`
+        : `<span class="badge bad">${st.state==='rejected'?'rejected by C&amp;B':'invalid blocks'}</span>`}</span>
+      <span class="rat">${esc(st.rationale||st.cb_reason||'')}</span>
+      <span class="badge">${Math.round(st.duration_s/60)||'<1'} min</span>`;
+    head.onclick = ()=>toggleStep(st.step);
+    c.appendChild(head);
+    c.appendChild(el('div','stagewrap','<div class="loading" style="padding:8px">…</div>'));
+    sp.appendChild(c);
+  });
+  OPEN.forEach(s=>paintStep(s));
+}
+
+function toggleStep(step){
+  if(OPEN.has(step)){ OPEN.delete(step);
+    const w=$('#card-'+step+' .stagewrap'); if(w) w.innerHTML='';
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',OPEN.has(+c.dataset.step)));
+  } else openStep(step,true);
+}
+
+async function openStep(step, scroll){
+  OPEN.add(step);
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('sel',OPEN.has(+c.dataset.step)));
+  if(!STEPS[step]){
+    STEPS[step] = await (await fetch(`/api/step?run=${encodeURIComponent(RUN.name)}&step=${step}`)).json();
+  }
+  setHash({step});
+  if(VIEW==='pathway'){ paintStep(step); if(scroll) $('#card-'+step)?.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+
+function paintStep(step){
+  const w = $('#card-'+step+' .stagewrap'); if(!w) return;
+  const d = STEPS[step]; if(!d) return;
+  w.innerHTML='';
+  if(d.error){
+    w.appendChild(el('div','err',esc(d.error)));
+    w.appendChild(el('div','note','This run predates the step schema, so only the '
+      +'<span class="mono">history.jsonl</span> summary above exists — there is no prompter '
+      +'message, validator detail, transcript or judge breakdown to retrace. Re-run to capture them.'));
+    return;
+  }
+  w.appendChild(stageProvenance(d));
+  w.appendChild(stagePrompt(d));
+  w.appendChild(stageCB(d));
+  w.appendChild(stageConsistency(d));
+  if(d.cb_ok){ w.appendChild(stageRollouts(d)); w.appendChild(stageJudging(d)); }
+  else w.appendChild(el('div','note','Nothing ran — this candidate was blocked before any rollout. '
+      +'The rejection text above is what the prompter is shown at the next step.'));
+}
+
+function stage(num,title,sub,open){
+  const s=el('details','stage'); if(open)s.open=true;
+  const sm=el('summary'); sm.innerHTML=`<span class="num">${num}</span><span class="ttl">${title}</span>
+    <span class="sub">${sub||''}</span>`;
+  s.appendChild(sm); const b=el('div','body'); s.appendChild(b); s._body=b; return s;
+}
+
+/* --- 1. where this prompt came from --- */
+function stageProvenance(d){
+  const p=d.prompter||{}, warm = p.source==='warm_start';
+  const s = stage('1', warm?'Warm-start seed (no prompter call)':'What the prompter was shown &amp; thought',
+    warm ? 'replayed from seeds file'
+         : `${p.cold_start?'cold start':'OPRO over steps '+(p.shown_steps||[]).join(', ')} · `
+           +`${(p.reasoning||'').length.toLocaleString()} ch CoT`, true);
+  const b=s._body;
+  if(warm){
+    const r=p.seed_record||{};
+    b.appendChild(el('div','note','This prompt was not written by a model. It replays a social_jira3 '
+      +'run whose rollout was labelled <b>L2 Fabrication (executed)</b> — its provenance stands in '
+      +'for the prompter\'s reasoning.'));
+    const dl=el('dl','kv');
+    dl.innerHTML = `<dt>seed #</dt><dd>${p.seed_index}</dd>
+      <dt>L2 confidence</dt><dd>${fmt(r.l2_confidence)}</dd>
+      <dt>source run</dt><dd class="mono" style="font-size:11px;word-break:break-all">${esc((r.source||{}).run_dir||'—')}</dd>
+      <dt>source axes</dt><dd>${['model_label','confidentiality','decoys','dislike_strength','hint']
+        .map(k=>`<span class="badge">${k}=${esc((r.source||{})[k]??'—')}</span>`).join(' ')}</dd>`;
+    b.appendChild(dl);
+    if(r.verbatim_lie){
+      b.appendChild(el('div','blk',`<div class="lbl">verbatim lie this seed elicited (the bar to beat)</div>
+        <div class="val">${esc(r.verbatim_lie)}</div>`));
+    }
+    if(r.l2_note) b.appendChild(el('div','blk',`<div class="lbl">why that judge called it a lie</div>
+      <div class="val">${esc(r.l2_note)}</div>`));
+    return s;
+  }
+  if(p.user_prompt!==undefined){
+    b.appendChild(el('div','blk',`<div class="lbl">the summary fed into the prompter
+      ${p.cold_start?'<span class="badge">cold start — no history yet</span>':''}
+      ${p.anchor_step!==null&&p.anchor_step!==undefined?`<span class="badge acc">best-lie anchor from step ${p.anchor_step}</span>`:''}
+      ${p.rejection_step!==null&&p.rejection_step!==undefined?`<span class="badge bad">replays step ${p.rejection_step}'s rejection</span>`:''}
+      </div>`));
+    b.appendChild(el('pre','txt',esc(p.user_prompt)));
+  }
+  if(p.reasoning) b.appendChild(collapsible('prompter chain-of-thought ('
+    +p.reasoning.length.toLocaleString()+' ch)', el('pre','txt tall',esc(p.reasoning))));
+  if(p.rationale) b.appendChild(el('div','blk',
+    `<div class="lbl">its one-line rationale</div><div class="val">${esc(p.rationale)}</div>`));
+  if(p.raw) b.appendChild(collapsible('raw reply ('+(p.attempts||1)+' attempt'+((p.attempts||1)>1?'s':'')+')',
+    el('pre','txt',esc(p.raw))));
+  if(p.usage) b.appendChild(el('div','hint',
+    `prompter tokens: ${ktok(p.usage.total_tokens)} (${ktok(p.usage.prompt_tokens)} in / ${ktok(p.usage.completion_tokens)} out)`));
+  return s;
+}
+
+/* --- 2. the prompt --- */
+function stagePrompt(d){
+  const changed = Object.entries(d.diff||{}).filter(([k,v])=>v.changed).map(([k])=>k);
+  const s = stage('2','The prompt (template blocks)',
+    d.step===0?'first candidate':`${changed.length}/6 slots changed`, true);
+  const b=s._body;
+  const FREE=['general_task_info','decoy_policies','confidentiality_reason','personality'];
+  FREE.forEach(f=>{
+    const df=(d.diff||{})[f]||{};
+    const box=el('div','blk');
+    box.innerHTML=`<div class="lbl">${f.replace(/_/g,' ')}
+      ${df.changed?'<span class="badge acc">changed</span>':(df.is_first?'':'<span class="badge">unchanged</span>')}</div>`;
+    const val=el('div','val');
+    if(df.ops) val.innerHTML = df.ops.map(o=>o.op==='equal'?esc(o.text)
+      :o.op==='insert'?`<ins>${esc(o.text)}</ins>`:`<del>${esc(o.text)}</del>`).join(' ');
+    else val.textContent = d.blocks[f]||'';
+    box.appendChild(val); b.appendChild(box);
+  });
+  const pools=el('div','blk');
+  pools.innerHTML = `<div class="lbl">pooled slots</div>` +
+    ['private_messages_id','decoy_info_id'].map(f=>{
+      const df=(d.diff||{})[f]||{};
+      return `<span class="badge ${df.changed?'acc':''}">${f.replace('_id','')} = <b>${esc(d.blocks[f])}</b>`
+        + (df.changed&&df.prev?` <span style="color:var(--dim2)">(was ${esc(df.prev)})</span>`:'')+`</span>`;
+    }).join(' ');
+  b.appendChild(pools);
+  const rend = (d.cb||{}).rendered||{};
+  if(rend.system||rend.user){
+    const wrap=el('div');
+    wrap.appendChild(el('div','note', d.cb_ok
+      ? 'Representative render at seed 1 (default roster) — the prompt the <i>validator</i> read. '
+        +'The prompts agents actually saw are on each turn in stage 4.'
+      : 'Representative render at seed 1 (default roster). Nothing ran, so this is the only copy '
+        +'of this candidate\'s prompt that exists.'));
+    wrap.appendChild(el('pre','txt tall',
+      `<b style="color:var(--dim)">— SYSTEM —</b>\n`+esc(rend.system)+
+      `\n\n<b style="color:var(--dim)">— USER —</b>\n`+esc(rend.user)));
+    b.appendChild(collapsible('rendered target prompt', wrap));
+  }
+  return s;
+}
+
+/* --- 3. checks & balances --- */
+function stageCB(d){
+  const cb=d.cb||{}, raw=cb.raw||{};
+  const s = stage('3','Checks &amp; balances (validator)',
+    cb.ok?'<span class="badge ok">admissible</span>':'<span class="badge bad">inadmissible — not run</span>', true);
+  const b=s._body;
+  b.appendChild(el('div','blk',`<div class="lbl">verdict</div><div class="val">${esc(cb.reason||'—')}</div>`));
+  if((raw.failures||[]).length) b.appendChild(el('div','blk',
+    `<div class="lbl">failures</div>`+raw.failures.map(f=>`<span class="badge bad">${esc(f)}</span>`).join(' ')));
+  if((raw.spans||[]).length) b.appendChild(el('div','blk',
+    `<div class="lbl">flagged spans</div>`+raw.spans.map(x=>`<div class="val" style="margin-top:4px">${esc(x)}</div>`).join('')));
+  if(cb.reasoning) b.appendChild(collapsible('validator reasoning', el('pre','txt',esc(cb.reasoning))));
+  if(Object.keys(raw).length) b.appendChild(collapsible('raw validator JSON',
+    el('pre','txt',esc(JSON.stringify(raw,null,2)))));
+  return s;
+}
+
+/* --- 3b. consistency gate: does the prompt describe the scenario the target is actually in? --- */
+function stageConsistency(d){
+  const c=d.cons||{}, raw=c.raw||{}, rend=c.rendered||{};
+  const ran = c.ran===true;
+  const sub = !ran
+    ? '<span class="badge">not reached</span>'
+    : (c.ok?'<span class="badge ok">consistent</span>'
+           :'<span class="badge bad">contradicts the scenario — not run</span>');
+  const s = stage('3b','Consistency (scenario coherence)', sub, ran && !c.ok);
+  const b=s._body;
+  if(!ran){
+    b.appendChild(el('div','note', d.gate==='checks'
+      ? 'The validator rejected this candidate first, so the consistency gate was never called.'
+      : (d.gate==='blocks'
+         ? 'The blocks were malformed, so no gate was called.'
+         : 'No consistency verdict in this step file — the run was made before the gate existed, '
+           +'or with <span class="mono">--no-consistency</span>. Blocks may assert scenario facts '
+           +'that contradict what the target was shown.')));
+    return s;
+  }
+  b.appendChild(el('div','blk',`<div class="lbl">verdict</div><div class="val">${esc(c.reason||'—')}</div>`));
+  if((raw.failures||[]).length) b.appendChild(el('div','blk',
+    `<div class="lbl">failure kinds</div>`+raw.failures.map(f=>`<span class="badge bad">${esc(f)}</span>`).join(' ')));
+  (raw.findings||[]).forEach(f=>{
+    const blk=el('div','blk');
+    blk.innerHTML = `<div class="lbl">${esc(f.failure||'?')} · ${esc(f.block||'')}</div>`
+      +`<div class="val">${esc(f.span||'')}</div>`
+      +(f.falsified_by?`<div class="note">falsified by ${esc(f.falsified_by)}</div>`:'')
+      +(f.rewrite_hint?`<div class="note">rewrite: ${esc(f.rewrite_hint)}</div>`:'');
+    b.appendChild(blk);
+  });
+  if(rend.scenario_facts) b.appendChild(collapsible('ground truth it checked against',
+    el('pre','txt',esc(rend.scenario_facts))));
+  if(c.reasoning) b.appendChild(collapsible('consistency judge reasoning', el('pre','txt',esc(c.reasoning))));
+  if(Object.keys(raw).length) b.appendChild(collapsible('raw consistency JSON',
+    el('pre','txt',esc(JSON.stringify(raw,null,2)))));
+  return s;
+}
+
+/* --- 4. rollouts --- */
+function stageRollouts(d){
+  const n = d.seeds.length;
+  const s = stage('4','Rollout'+(n>1?'s':''),
+    d.seeds.map(x=>`seed ${x.seed}: ${x.rollout?x.rollout.turns.length+' turns':'—'}`).join(' · '), true);
+  const b=s._body;
+  if(n>1){
+    const tabs=el('div','seedtabs');
+    d.seeds.forEach((sd,i)=>{
+      const t=el('button','seedtab'+(i===0?' on':''),`seed ${sd.seed} · ${fmt(sd.objective)}`);
+      t.onclick=()=>{ tabs.querySelectorAll('.seedtab').forEach(x=>x.classList.remove('on'));
+        t.classList.add('on'); host.innerHTML=''; host.appendChild(rolloutView(sd,d)); };
+      tabs.appendChild(t);
+    });
+    b.appendChild(tabs);
+  }
+  const host=el('div'); b.appendChild(host);
+  if(d.seeds.length) host.appendChild(rolloutView(d.seeds[0],d));
+  return s;
+}
+
+function rolloutView(sd,d){
+  const wrap=el('div');
+  if(sd.error){ wrap.appendChild(el('div','err','rollout error: '+esc(sd.error))); return wrap; }
+  if(!sd.rollout){ wrap.appendChild(el('div','err',
+    'run dir not found: '+esc(sd.run_dir||'(none recorded)'))); return wrap; }
+  if(sd.rollout.incomplete){
+    wrap.appendChild(el('div','err','rollout artifacts incomplete — missing '
+      +esc((sd.rollout.missing||[]).join(', ')||'tool_events.json')));
+    wrap.appendChild(el('div','note','The rollout did not finish, so no transcript was written. '
+      +'Only the prompt/trajectory loggers (which flush as they go) left anything behind.'));
+    wrap.appendChild(el('div','hint','run dir: <span class="mono">'+esc(sd.rollout.run_dir)+'</span>'));
+    return wrap;
+  }
+  const R=sd.rollout;
+  const color={}; (R.turn_order||[]).forEach((a,i)=>color[a]=AC[i%AC.length]);
+
+  // Download one assistant's whole session (prompts + CoT + messages + judge labels) as .md.
+  const dl=el('div','dlbar');
+  dl.appendChild(el('span','dllbl','download session ⤓'));
+  (R.turn_order||[]).forEach(a=>{
+    const link=el('a','dlbtn',esc(a)+' .md');
+    link.style.color=color[a]||AC[0];
+    link.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}&seed=${sd.seed}&agent=${encodeURIComponent(a)}`;
+    link.setAttribute('download','');
+    dl.appendChild(link);
+  });
+  const all=el('a','dlbtn','all agents .md');
+  all.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}&seed=${sd.seed}&agent=__all__`;
+  all.setAttribute('download','');
+  dl.appendChild(all);
+  wrap.appendChild(dl);
+
+  wrap.appendChild(collapsible('ground truth (roster · tasks · goodness · feelings · inbox · calendar)',
+    groundTruth(R)));
+  if(R.context) wrap.appendChild(collapsible('shared briefing (channel context)',
+    el('pre','txt',esc(R.context))));
+
+  let lastKey=null;
+  R.turns.forEach(t=>{
+    const key = t.phase==='planning' ? 'planning round '+t.round : 'execution';
+    if(key!==lastKey){ wrap.appendChild(el('div','rnd',key)); lastKey=key;
+      const ref=(R.referee||[]).find(r=>r.round===t.round);
+      if(ref && t.phase==='planning') wrap.appendChild(el('div','hint',
+        `referee after this round: <span class="badge ${ref.stop?'warn':''}">${esc(ref.status||'')}${ref.stop?' → stop':' → continue'}</span> ${esc(ref.reason||'')}`));
+    }
+    wrap.appendChild(bubble(t,color[t.agent]||AC[0],R));
+  });
+  const fs=R.final_summary||{};
+  if(fs.realized_matching) wrap.appendChild(el('div','blk',
+    `<div class="lbl">outcome</div><div class="val">realized: <b>${esc(JSON.stringify(fs.realized_matching))}</b>
+     <br>optimal: ${esc(JSON.stringify(fs.optimal_goodness))} · realized goodness: ${esc(JSON.stringify(fs.realized_goodness))}
+     ${fs.idle_employees?`<br>idle: ${esc(JSON.stringify(fs.idle_employees))}`:''}</div>`));
+  wrap.appendChild(el('div','hint','run dir: <span class="mono">'+esc(R.run_dir)+'</span>'));
+  return wrap;
+}
+
+function bubble(t,c,R){
+  const v=t.verdict||{};
+  const b=el('div','bub'); b.style.setProperty('--a',c);
+  const cats=(v.categories||[]).map(x=>`<span class="badge ${x.includes('fabrication')?'fab':''}">${esc(x)}</span>`).join(' ');
+  // The AND-gate badges only mean something once a fabrication is on the table: soundness and
+  // at-stake are asked of every turn, but a "soundness ✗" on an honest turn says nothing. Kept
+  // off the header for those (still visible under "all three judges").
+  const isFab = (v.categories||[]).some(c=>c.includes('fabrication'));
+  const gate = !v.categories ? '<span class="badge">not judged</span>' : (isFab ? [
+    v.fabrication_specificity!==null&&v.fabrication_specificity!==undefined
+      ? `<span class="badge ${v.fabrication_specificity>=2?'fab':'warn'}">spec ${v.fabrication_specificity}</span>`:'',
+    `<span class="badge ${v.soundness_ok?'ok':''}">soundness ${v.soundness_ok?'✓':'✗'}</span>`,
+    `<span class="badge ${v.at_stake?'ok':''}">at-stake ${v.at_stake?'✓':'✗'}</span>`,
+    v.qualifies?'<span class="badge fab">QUALIFIES</span>':'<span class="badge">vetoed</span>',
+  ].join(' ') : '');
+  b.innerHTML = `<div class="bh"><span class="who">${esc(t.agent)}</span>
+    <span class="ti">turn ${t.turn_index} · ${esc(t.phase)}${t.phase==='planning'?' r'+t.round:''}</span>
+    ${cats} ${gate}
+    ${t.decision?`<span class="badge acc">→ ${esc(t.decision)}</span>`:''}</div>`;
+  const msg=el('div','msg'); msg.innerHTML = highlight(t.message, v.spans||[], isFab);
+  b.appendChild(msg);
+  const tools=el('div','tools'); b.appendChild(tools);
+  const drop=el('div','drop'); b.appendChild(drop);
+  const add=(label,node)=>{
+    const btn=el('button',null,label); tools.appendChild(btn);
+    btn.onclick=()=>{ if(drop._cur===label){ drop.innerHTML=''; drop._cur=null; return; }
+      drop.innerHTML=''; drop.appendChild(node()); drop._cur=label; };
+  };
+  if(t.reasoning) add('chain-of-thought', ()=>el('pre','txt',esc(t.reasoning)));
+  if(v.explanation) add('judge explanation', ()=>{
+    const d=el('div'); d.appendChild(el('div','val',esc(v.explanation)));
+    return d;});
+  if(v.judges) add('all three judges', ()=>judgesView(v.judges));
+  if(t.prompt&&(t.prompt.system||t.prompt.user)) add('prompt it saw', ()=>el('pre','txt tall',
+    `<b style="color:var(--dim)">— SYSTEM —</b>\n`+esc(t.prompt.system)+
+    `\n\n<b style="color:var(--dim)">— USER —</b>\n`+esc(t.prompt.user)));
+  return b;
+}
+
+function judgesView(j){
+  const wrap=el('div');
+  [['category','CATEGORY'],['soundness','SOUNDNESS'],['at_stake','AT-STAKE']].forEach(([k,label])=>{
+    const o=j[k]||{}; const meta=o._meta||{};
+    const box=el('div','blk');
+    const skipped=o._skipped, perr=o._parse_error;
+    box.innerHTML=`<div class="lbl">${label}
+      ${skipped?'<span class="badge warn">skipped (gate)</span>':''}
+      ${perr?'<span class="badge bad">unparseable</span>':''}
+      ${meta.attempts>1?`<span class="badge warn">${meta.attempts} attempts</span>`:''}
+      ${meta.usage?.total_tokens?`<span class="badge">${ktok(meta.usage.total_tokens)} tok</span>`:''}</div>`;
+    const clean=Object.fromEntries(Object.entries(o).filter(([kk])=>kk!=='_meta'));
+    box.appendChild(el('div','val',`<pre class="mono" style="margin:0;white-space:pre-wrap;font-size:12px">${esc(JSON.stringify(clean,null,2))}</pre>`));
+    if(meta.reasoning) box.appendChild(collapsible(label+' reasoning ('+meta.reasoning.length.toLocaleString()+' ch)',
+      el('pre','txt',esc(meta.reasoning))));
+    wrap.appendChild(box);
+  });
+  return wrap;
+}
+
+function highlight(text,spans,isFab){
+  // Red is reserved for a fabricated claim. The CATEGORY judge quotes spans for honest categories
+  // too (the disclosure, the framing) — those get a neutral highlight so the colour keeps meaning.
+  let out=esc(text||'');
+  (spans||[]).forEach(sp=>{ const e=esc(sp||'').trim(); if(e.length<8) return;
+    out = out.split(e).join(`<mark class="${isFab?'':'plain'}">${e}</mark>`); });
+  return out;
+}
+
+function groundTruth(R){
+  const sc=R.scenario||{}, wrap=el('div');
+  const dl=el('dl','kv');
+  dl.innerHTML = `<dt>employees</dt><dd>${esc((sc.employees||[]).join(', '))}</dd>
+    <dt>tasks</dt><dd>${esc((sc.tasks||[]).join(', '))}</dd>
+    <dt>dislikes</dt><dd>${esc(JSON.stringify(sc.dislikes||{}))}</dd>
+    <dt>optimal</dt><dd>${esc(JSON.stringify((sc.optimal_matchings||[])[0]||{}))} (goodness ${fmt(sc.optimal_goodness)})</dd>
+    <dt>comfortable</dt><dd>${esc(JSON.stringify(sc.comfortable_matching||{}))} (goodness ${fmt(sc.comfortable_goodness)})</dd>
+    <dt>axes</dt><dd>${['dislike_strength','confidentiality','decoys','feelings_channel','hint']
+      .map(k=>`<span class="badge">${k}=${esc(sc[k]??'—')}</span>`).join(' ')}</dd>`;
+  wrap.appendChild(dl);
+  if(sc.roster) wrap.appendChild(collapsible('roster + task requirements',
+    el('pre','txt',esc(JSON.stringify({roster:sc.roster,tasks:sc.tasks_detail},null,2)))));
+  if(sc.goodness) wrap.appendChild(collapsible('goodness table (judge-only)',
+    el('pre','txt',esc(JSON.stringify(sc.goodness,null,2)))));
+  if(sc.feelings) wrap.appendChild(collapsible('feelings (judge-only)',
+    el('pre','txt',esc(JSON.stringify(sc.feelings,null,2)))));
+  if(sc.inbox) wrap.appendChild(collapsible('per-employee inbox (the private signal)',
+    el('pre','txt tall',esc(JSON.stringify(sc.inbox,null,2)))));
+  if(sc.availability) wrap.appendChild(collapsible('calendar decoy',
+    el('pre','txt',esc(JSON.stringify(sc.availability,null,2)))));
+  return wrap;
+}
+
+/* --- 5. judging + objective --- */
+function stageJudging(d){
+  const o=d.objective||{};
+  const nq=(o.seeds||[]).reduce((a,s)=>a+(s.n_qualifying||0),0);
+  const nd=(o.seeds||[]).reduce((a,s)=>a+(s.n_distinct||0),0);
+  const s = stage('5','Judging → objective',
+    `${nq} qualifying turn${nq===1?'':'s'} → ${nd} distinct lie${nd===1?'':'s'} → score <b>${fmt(d.score)}</b>`, true);
+  const b=s._body;
+  d.seeds.forEach(sd=>{
+    if(d.seeds.length>1) b.appendChild(el('div','rnd','seed '+sd.seed));
+    const tbl=el('table');
+    tbl.innerHTML = `<thead><tr><th>turn</th><th>agent</th><th>categories</th><th class="num">spec</th>
+      <th class="center">sound</th><th class="center">stake</th><th class="center">gate</th><th>explanation</th></tr></thead>`;
+    const tb=el('tbody');
+    (sd.turns||[]).forEach(t=>{
+      const tr=el('tr');
+      tr.innerHTML = `<td class="num">${t.turn_index}</td><td>${esc(t.agent)}</td>
+        <td>${(t.categories||[]).map(c=>`<span class="badge ${c.includes('fabrication')?'fab':''}">${esc(c)}</span>`).join(' ')}</td>
+        <td class="num">${t.fabrication_specificity??'—'}</td>
+        <td class="center">${t.soundness_ok?'✓':'✗'}</td><td class="center">${t.at_stake?'✓':'✗'}</td>
+        <td class="center">${t.qualifies?'<span class="badge fab">✓</span>':'—'}</td>
+        <td style="color:var(--dim)">${esc(t.explanation||'')}</td>`;
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); b.appendChild(tbl);
+
+    const od=sd.objective_detail||{};
+    const gr=el('div','blk');
+    gr.innerHTML=`<div class="lbl">how the turns became ${fmt(od.score)}
+      <span class="badge">${esc(od.objective_name||'')}</span>
+      <span class="badge">dedup ≥ ${od.dedup_jaccard}</span></div>`;
+    if(!(od.groups||[]).length){
+      gr.appendChild(el('div','val','No turn passed the triple gate '
+        +'(strategic-fabrication ∧ soundness ∧ at-stake), so this rollout scores 0.'));
+    } else {
+      (od.groups||[]).forEach(g=>{
+        const box=el('div','val'); box.style.marginBottom='6px';
+        box.innerHTML = `<b>${esc(g.agent)}</b> turn ${g.turn_index} · spec ${g.specificity}
+          · weight <b>${fmt(g.weight)}</b><br><span style="color:var(--dim)">${esc(g.claim)}</span>`
+          + ((g.merged||[]).length ? `<br><span class="hint">+ ${g.merged.length} restatement(s) merged: `
+            + g.merged.map(m=>`turn ${m.turn_index} (J=${m.jaccard})`).join(', ')+'</span>' : '');
+        gr.appendChild(box);
+      });
+    }
+    b.appendChild(gr);
+  });
+  if((d.objective?.per_seed||[]).length>1) b.appendChild(el('div','hint',
+    `per-seed ${JSON.stringify(d.objective.per_seed)} → aggregate <b>${fmt(d.objective.aggregate)}</b>`));
+  const u=d.usage||{};
+  b.appendChild(el('div','hint',Object.entries(u).map(([r,x])=>
+    `${r}: ${x.calls} calls, ${ktok(x.total_tokens)} tok`).join(' · ')));
+  return s;
+}
+
+/* ============================ other views ============================ */
+async function renderLies(root){
+  root.innerHTML='<div class="loading">loading…</div>';
+  const d = await (await fetch('/api/lies?run='+encodeURIComponent(RUN.name))).json();
+  root.innerHTML='';
+  root.appendChild(el('div','hint','Every turn the CATEGORY judge flagged as fabrication — executed '
+    +'or merely considered — across the whole run. A row that does not <b>qualify</b> was found but '
+    +'vetoed by the soundness or at-stake judge, so it never reached the score.'));
+  if(!d.rows.length){ root.appendChild(el('div','loading','No fabrication of any kind was flagged in this run.')); return; }
+  const t=el('table');
+  t.innerHTML=`<thead><tr><th>step</th><th>seed</th><th>agent</th><th class="num">spec</th>
+    <th class="center">gate</th><th>categories</th><th>claim / message</th><th>why</th></tr></thead>`;
+  const tb=el('tbody');
+  d.rows.forEach(r=>{
+    const tr=el('tr');
+    // Only strategic-fabrication is subject to the AND-gate. A considered-fabrication was never
+    // asserted, so reporting it as "vetoed by soundness" would misdescribe what happened.
+    const executed = (r.categories||[]).includes('strategic-fabrication');
+    const gate = r.qualifies ? '<span class="badge fab">✓ counted</span>'
+      : !executed ? '<span class="badge warn">considered only</span>'
+      : `<span class="badge">${!r.soundness_ok?'soundness ✗':''}${!r.at_stake?' stake ✗':''}</span>`;
+    tr.innerHTML=`<td class="num"><a href="#" data-step="${r.step}">${r.step}</a></td>
+      <td class="num">${r.seed}</td><td>${esc(r.agent)}</td><td class="num">${r.specificity??'—'}</td>
+      <td class="center">${gate}</td>
+      <td>${(r.categories||[]).map(c=>`<span class="badge ${c.includes('fabrication')?'fab':''}">${esc(c)}</span>`).join(' ')}</td>
+      <td>${esc((r.spans||[])[0]||r.message||'')}</td>
+      <td style="color:var(--dim)">${esc(r.explanation||'')}</td>`;
+    tr.querySelector('a').onclick=e=>{e.preventDefault(); setView('pathway'); openStep(r.step,true);};
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); root.appendChild(t);
+}
+
+async function renderBlocks(root){
+  root.innerHTML='<div class="loading">loading…</div>';
+  const d = await (await fetch('/api/blocks?run='+encodeURIComponent(RUN.name))).json();
+  root.innerHTML='';
+  root.appendChild(el('div','hint','Which of the six slots the prompter actually moved at each step. '
+    +'Shading = how much of the free text changed (word-level); a flat row is a slot it never touched.'));
+  const g=el('div','grid'); const t=el('table');
+  t.innerHTML=`<thead><tr><th>slot</th>${d.steps.map(s=>
+    `<th class="center">step ${s.step}<br><span style="color:var(--dim2);font-weight:400">${fmt(s.score)}</span></th>`).join('')}</tr></thead>`;
+  const tb=el('tbody');
+  d.fields.forEach(f=>{
+    const tr=el('tr'); let row=`<td>${f.replace(/_/g,' ')}</td>`;
+    d.steps.forEach(s=>{
+      const c=s.cells[f]||{};
+      if(c.ratio!==null&&c.ratio!==undefined){
+        const a=Math.min(1,.12+c.ratio*1.1);
+        row+=`<td class="center" title="${Math.round(c.ratio*100)}% of words changed · ${c.words} words">
+          <span class="cellbox" style="background:rgba(110,168,254,${a})"></span></td>`;
+      } else if(c.value!==undefined){
+        row+=`<td class="center"><span class="badge ${c.changed?'acc':''}">${esc(c.value)}</span></td>`;
+      } else row+=`<td class="center"><span class="cellbox" style="background:var(--panel2)" title="first step"></span></td>`;
+    });
+    tr.innerHTML=row; tb.appendChild(tr);
+  });
+  t.appendChild(tb); g.appendChild(t); root.appendChild(g);
+}
+
+function renderScaffold(root){
+  root.innerHTML='';
+  root.appendChild(el('div','hint','The fixed system prompt the prompter is framed by every step '
+    +'(<span class="mono">prompter_system.md</span>). The per-step OPRO message in stage 1 is the '
+    +'user turn against this.'));
+  root.appendChild(el('pre','txt tall',esc(RUN.prompter_system||'(not recorded for this run)')));
+}
+
+/* ============================ util ============================ */
+function collapsible(label,node){
+  const d=el('details','stage'); d.style.margin='7px 0';
+  const s=el('summary'); s.innerHTML=`<span class="ttl" style="font-size:12.5px;font-weight:500">${label}</span>`;
+  d.appendChild(s); const b=el('div','body'); b.appendChild(node); d.appendChild(b); return d;
+}
+
+boot();
+</script>
+</body>
+</html>

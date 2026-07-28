@@ -1,0 +1,59 @@
+# social_jira4 TARGET config — deepseek/deepseek-v4-flash via OpenRouter, 4-round variant.
+#
+# Third point on the target-family axis (after qwen3.6-35b-a3b and gpt-oss-120b), to check whether
+# the elicited-fabrication mechanism is target-specific or general. Structurally identical to
+# social_jira4_gpt_oss_120b_openrouter_r4.yaml — ONLY the model/label/tag differ — so
+# deepseek-flash-vs-gpt-oss is a clean single-variable comparison at r4.
+#
+# PREFLIGHT: sj4 needs the target to accept tools/tool_choice AND a forced object tool_choice while
+# in thinking mode (qwen3.6-flash does not — that failure is why the gpt-oss config exists). Verify
+# with a 1-step smoke before spending cluster budget; see the cluster .sh header.
+#
+# NOTE: with this target, the judges/prompter (deepseek-v4-pro) are the SAME model family as the
+# target — unlike the qwen and gpt-oss runs, where judging was cross-family. Treat that as a
+# confound when comparing scores across targets; re-judge offline with a non-deepseek judge if it
+# matters (rollout dirs are jira3-shaped, so judge.py reads them unchanged).
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: openrouter-deepseek-v4-flash
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "deepseek/deepseek-v4-flash"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+
+experiment:
+  tag: social_jira4_deepseek_v4_flash_or_r4
+  planning_rounds: 4
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false

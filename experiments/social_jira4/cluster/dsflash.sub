@@ -1,0 +1,9 @@
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4.sh
+arguments = "experiments/social_jira4/configs/social_jira4_deepseek_v4_flash_openrouter_r4.yaml openrouter-deepseek-v4-flash experiments/social_jira4/outputs/cluster_dsflash_r4"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash.out
+error = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash.err
+log = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/dsflash.log
+request_cpus = 4
+request_memory = 8192
+request_disk = 4G
+queue

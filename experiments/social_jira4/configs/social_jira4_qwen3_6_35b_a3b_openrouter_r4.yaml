@@ -1,0 +1,51 @@
+# social_jira4 TARGET config — Qwen/Qwen3.6-35B-A3B via OpenRouter, FAST variant.
+#
+# Identical to social_jira4_qwen3_6_35b_a3b_openrouter.yaml EXCEPT max_planning_rounds = 2 (vs 3),
+# for quicker mechanism-test runs. Keeps the 35B target (so tool_choice + thinking + CoT all work,
+# unlike flash) and full judges. ~1/3 fewer target calls per rollout than the 3-round config.
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: openrouter-qwen3.6-35b-a3b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "qwen/qwen3.6-35b-a3b"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 120     # was 300 — fail fast on hung/rejected calls (qwen emits malformed
+        total_timeout: 180       # tool-call JSON that providers 400; bound the retry storm so a bad
+                                 # seed errors to 0 and the step advances instead of stalling ~35 min
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+
+experiment:
+  tag: social_jira4_qwen3_6_35b_or_r4
+  planning_rounds: 4              # up to 4 discussion rounds; referee can stop from round 2
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false

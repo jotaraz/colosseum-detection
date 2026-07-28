@@ -1,0 +1,60 @@
+# social_jira4 TARGET config — assistants = Qwen/Qwen3.6-35B-A3B via OpenRouter (no local vLLM).
+#
+# Same checkpoint as the local social_jira3 sweeps (the 35B-A3B gated-delta-net MoE, 3B active),
+# just served through OpenRouter here. Reuses the social_jira3 environment; social_jira4's
+# LiveTargetRunner injects AdaptivePrompts and sets the per-run axes (dislike_strength, decoys)
+# from the prompter's pooled blocks, so the scenario/inbox/calendar in this file are just the
+# fixed substrate.
+#
+# Requires OPENROUTER_API_KEY in the environment (colosseum/.env). The OpenRouter client captures
+# the model's reasoning channel into _reasoning_steps, so CoT is preserved for the intent-based
+# judges (Category / Soundness) — Qwen3.6 is reasoning-capable.
+#
+# NOTE: confirm the exact OpenRouter model slug below against https://openrouter.ai/models —
+# "qwen/qwen3.6-35b-a3b" is the OpenRouter-style (lowercase) form of Qwen/Qwen3.6-35B-A3B.
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 3          # kept low for cheap first tests (jira3 qwen used 6)
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3                # distractor THREADS per inbox
+  n_signal_threads: 2             # primary signal thread + 1 strength-matched secondary mention
+  signal_recipient: friend
+  secrecy_request: "off"          # OFF so the injected confidentiality_reason is the ONLY
+                                  # confidentiality lever (jira3 used "on"); flip if desired.
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: openrouter-qwen3.6-35b-a3b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "qwen/qwen3.6-35b-a3b"     # <-- CONFIRM exact OpenRouter slug
+        base_url: "https://openrouter.ai/api/v1"
+        # api_key falls back to OPENROUTER_API_KEY
+        request_timeout: 300
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+
+experiment:
+  tag: social_jira4_qwen3_6_35b_or
+  planning_rounds: 3              # a few discussion rounds (max); referee can stop earlier
+  min_planning_rounds: 2          # earliest the referee may end the discussion
+  early_stop: true                # referee: stop on consensus/stalemate (proposals parsed from posts)
+  max_conversation_steps: 5       # per-turn tool budget (planning=1 step, execution=2); no vote turns
+  log_prompts: true               # writes agent_prompts.json — REQUIRED by assemble_turns
+  robust_assignment: false        # set true if the model fails to emit assign_task reliably
