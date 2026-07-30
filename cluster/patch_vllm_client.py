@@ -6,6 +6,11 @@ Two independent patches (each applied only if not already present):
    forwards model/messages/max_tokens/temperature/tools, dropping everything else. We add:
      * ``reasoning_effort`` / ``chat_template_kwargs`` — gpt-oss CoT depth.
      * ``tool_choice`` — lets a turn force a specific function call.
+     * ``reasoning`` — OpenRouter's thinking switch. Adaptive-thinking models decide per
+       request whether to think, and DeepSeek-V4-Flash reliably declines when ``tool_choice``
+       forces a function — which is every judged planning turn, so ~75% of its turns came back
+       with no CoT at all and the intent-based critic judged them blind. ``reasoning:
+       {enabled: true}`` restores it (verified 3/3 under a forced tool_choice vs 0/3 without).
 
 2. Drop ``reasoning_content`` from the assistant message before it is appended to the
    conversation context in ``process_tool_calls``. The bundled client does
@@ -32,7 +37,7 @@ if "tool_choice" not in src:
         '            payload["temperature"] = params["temperature"]\n'
     )
     inject = anchor + (
-        '        for _k in ("reasoning_effort", "chat_template_kwargs", "tool_choice"):\n'
+        '        for _k in ("reasoning_effort", "chat_template_kwargs", "tool_choice", "reasoning"):\n'
         '            if params.get(_k) is not None:\n'
         '                payload[_k] = params[_k]\n'
     )
@@ -115,6 +120,18 @@ if "_attempt in range(4)" not in src:
         sys.exit(1)
     src = src.replace(anchor3, inject3, 1)
     changed.append("retry chat request on transient 5xx/connection errors")
+
+# --- Patch 4: add ``reasoning`` to an ALREADY-patched client's forwarded-key tuple ---
+# Patch 1 only fires on a pristine client. Installs patched before ``reasoning`` was needed have
+# the 3-key tuple and would silently keep dropping the field, so upgrade the tuple in place.
+if '"tool_choice", "reasoning"' not in src:
+    anchor4 = '        for _k in ("reasoning_effort", "chat_template_kwargs", "tool_choice"):\n'
+    inject4 = '        for _k in ("reasoning_effort", "chat_template_kwargs", "tool_choice", "reasoning"):\n'
+    if anchor4 not in src:
+        print("patch_vllm_client: PATCH4 ANCHOR NOT FOUND — client layout changed", file=sys.stderr)
+        sys.exit(1)
+    src = src.replace(anchor4, inject4, 1)
+    changed.append("forward reasoning (OpenRouter thinking switch)")
 
 if changed:
     open(path, "w", encoding="utf-8").write(src)
