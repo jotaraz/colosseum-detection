@@ -1,0 +1,28 @@
+# social_jira4 — consistency-gate replay: does asking for reasoning change the gate's verdict?
+#
+# Not an optimizer run. It re-asks the gate about candidates that were ALREADY judged, using the
+# blocks + scenario_facts stored verbatim in each step file, and varies one thing: whether
+# `reasoning_effort` is sent. Arm "" reproduces the behaviour every v3 run was measured under (the
+# knob unset, DeepSeek-V4-Pro deciding per request whether to think — it declined on ~19% of gate
+# calls, and 3 of the 4 consistency rejections came from those); arm "medium" is the new
+# llm.make_judge_caller default.
+#
+# 43 stored candidates x 2 arms x 10 trials = 860 calls, ~$6-8 on OpenRouter. The 37 candidates
+# that originally PASSED are the control group: if the medium arm starts rejecting them, the fix
+# has bought stability at the cost of a stricter gate, and that shows up here rather than in a
+# 9-step run three days from now.
+#
+# Results: outputs/_replay_cons/{calls.jsonl,inputs.json,summary.json}. The span-level table in
+# summary.json is the payoff — a sentence flagged in 1 of 10 trials was a misreading, one flagged
+# in 9 of 10 is an objection the gate genuinely holds.
+#
+# CPU-only: all model calls leave the node over the HTTP proxy. Submit with `condor_submit_bid 100`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_replay_cons.sh
+arguments = "experiments/social_jira4/outputs/_replay_cons"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/replay_cons.out
+error = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/replay_cons.err
+log = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/replay_cons.log
+request_cpus = 4
+request_memory = 8192
+request_disk = 4G
+queue

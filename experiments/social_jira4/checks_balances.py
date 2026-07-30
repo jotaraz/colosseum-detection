@@ -137,8 +137,18 @@ class LlmConsistency:
         self._body = load_prompt_template(_CONSISTENCY_PATH)
 
     def check(self, blocks: Blocks, seeds: Sequence[int]) -> CBVerdict:
-        judged = _blocks_markdown(blocks)
-        facts = scenario_facts_markdown(blocks, seeds, num_tasks=self._num_tasks)
+        return self.check_rendered(
+            _blocks_markdown(blocks),
+            scenario_facts_markdown(blocks, seeds, num_tasks=self._num_tasks),
+        )
+
+    def check_rendered(self, judged: str, facts: str) -> CBVerdict:
+        """The gate, taking the two rendered strings directly instead of deriving them.
+
+        ``check`` is the production entry point; this one exists so ``replay_consistency.py`` can
+        re-ask the gate about a *stored* candidate byte-for-byte. Replaying via ``check`` would
+        re-derive ``scenario_facts`` from today's ``render``/``decoys`` code, which silently stops
+        being a replay the moment either changes."""
         filled = (
             self._body
             .replace("{prompter_blocks}", judged)

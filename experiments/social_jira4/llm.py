@@ -27,6 +27,15 @@ DEFAULT_TARGET_CONFIG = (
 DEFAULT_TARGET_LABEL = "openrouter-qwen3.6-35b-a3b"
 DEFAULT_JUDGE_PROVIDER = "openrouter"
 DEFAULT_JUDGE_MODEL = os.getenv("JUDGE_MODEL", "deepseek/deepseek-v4-pro")
+# DeepSeek-V4-Pro is adaptive-thinking: with the reasoning knob unset it decides per request
+# whether to emit a chain-of-thought, and measured across the v3 runs it declined on ~4% of critic
+# calls and ~19% of validator/consistency calls. The critics degrade gracefully (a no-CoT verdict
+# is terse but still span-grounded); the consistency gate does not — with no reasoning channel it
+# deliberates *inside* its own JSON string fields, after the verdict key has already been emitted,
+# and 3 of the 4 consistency rejections in the v3 era came from no-CoT calls. So ask explicitly.
+# "medium" is the value spelled out in the target's own fix (see the deepseek-v4-flash CoT commit);
+# `reasoning_effort` is the only spelling openrouter_client forwards (-> reasoning.effort).
+DEFAULT_JUDGE_REASONING_EFFORT = os.getenv("JUDGE_REASONING_EFFORT", "medium")
 # Prompter (the optimizer) — DeepSeek-V4-Pro via OpenRouter, same as the judges/referee.
 DEFAULT_PROMPTER_MODEL = os.getenv("PROMPTER_MODEL", "deepseek/deepseek-v4-pro")
 
@@ -86,14 +95,21 @@ def make_judge_caller(
     max_tokens: int = 4096,
     temperature: float = 0.0,   # judges are deterministic
     timeout: int = 180,
+    reasoning_effort: str = DEFAULT_JUDGE_REASONING_EFFORT,
 ) -> Caller:
-    """The caller the 3 critics + validator use — DeepSeek-V4-Pro via OpenRouter by default.
+    """The caller the 3 critics + validator + consistency gate use — DeepSeek-V4-Pro via
+    OpenRouter by default.
 
     Tracked (``.last_reasoning`` / ``.last_usage``, both thread-local) so every judge verdict can
     be recorded with the reasoning behind it and its token cost. The critic shares one instance
-    across its thread pool; see ``_TrackingCaller`` for why that is safe."""
+    across its thread pool; see ``_TrackingCaller`` for why that is safe.
+
+    ``reasoning_effort`` is requested explicitly rather than left to the model's own adaptive
+    choice — see ``DEFAULT_JUDGE_REASONING_EFFORT``. Pass ``""`` to restore the old behaviour of
+    sending no reasoning knob at all."""
     return _tracking_caller(provider=provider, model=model, max_tokens=max_tokens,
-                            temperature=temperature, timeout=timeout)
+                            temperature=temperature, timeout=timeout,
+                            reasoning_effort=reasoning_effort)
 
 
 _EMPTY_USAGE: Dict[str, Any] = {}
@@ -111,10 +127,12 @@ class _TrackingCaller:
     (mutated under a lock); the loop snapshots it either side of a step to get per-step cost.
     """
 
-    def __init__(self, model: str, max_tokens: int, temperature: float):
+    def __init__(self, model: str, max_tokens: int, temperature: float,
+                 reasoning_effort: str = ""):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
+        self.reasoning_effort = reasoning_effort
         self._local = threading.local()
         self._lock = threading.Lock()
         self.totals: Dict[str, int] = {
@@ -140,6 +158,10 @@ class _TrackingCaller:
         messages = OpenRouterClient.init_context(system_prompt, user_prompt)
         params = {"model": self.model, "max_completion_tokens": self.max_tokens,
                   "temperature": self.temperature}
+        # Only when set: the client forwards any non-None value, so "" would go out as
+        # reasoning.effort="" rather than as "no knob requested".
+        if self.reasoning_effort:
+            params["reasoning_effort"] = self.reasoning_effort
         data, response_str = client.generate_response(messages, params)
         steps = getattr(client, "_reasoning_steps", None) or []
         self._local.reasoning = "\n".join(
@@ -181,15 +203,19 @@ _ReasoningCaller = _TrackingCaller
 
 
 def _tracking_caller(
-    *, provider: str, model: str, max_tokens: int, temperature: float, timeout: int
+    *, provider: str, model: str, max_tokens: int, temperature: float, timeout: int,
+    reasoning_effort: str = "",
 ) -> Caller:
     """A caller exposing ``.last_reasoning`` / ``.last_usage`` / ``.snapshot()``. OpenRouter
-    captures both; other providers fall back to the untracked shim."""
+    captures both; other providers fall back to the untracked shim.
+
+    ``reasoning_effort`` is OpenRouter-only — the Azure path has no equivalent knob, so the shim
+    silently ignores it (as it already does for the reasoning channel itself)."""
     prov = (provider or "auto").lower()
     if prov == "auto":
         prov = "azure" if os.getenv("AZURE_OPENAI_ENDPOINT") else "openrouter"
     if prov == "openrouter":
-        return _TrackingCaller(model, max_tokens, temperature)
+        return _TrackingCaller(model, max_tokens, temperature, reasoning_effort)
     return _UntrackedCaller(
         make_caller(provider=prov, model=model, max_tokens=max_tokens,
                     temperature=temperature, timeout=timeout)

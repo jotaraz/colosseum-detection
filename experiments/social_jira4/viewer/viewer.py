@@ -417,10 +417,11 @@ def _block(text: str, lang: str = "text") -> str:
     return f"{f}{lang}\n{(text or '').rstrip()}\n{f}"
 
 
-def _labels_line(v: Optional[Dict[str, Any]]) -> str:
-    """The judge's verdict for one turn, as a compact label line."""
+def _labels_body(v: Optional[Dict[str, Any]]) -> str:
+    """The judge's verdict for one turn, as the body of its own section (the heading supplies the
+    "Judge labels" title)."""
     if not v:
-        return "**Judge labels** — _not judged_"
+        return "_not judged_"
     spec = v.get("fabrication_specificity")
     parts = [
         "categories: " + (", ".join(f"`{c}`" for c in (v.get("categories") or [])) or "—"),
@@ -429,7 +430,7 @@ def _labels_line(v: Optional[Dict[str, Any]]) -> str:
         f"at-stake: {'yes' if v.get('at_stake') else 'no'}",
         f"qualifies: {'**YES**' if v.get('qualifies') else 'no'}",
     ]
-    out = "**Judge labels** — " + " · ".join(parts)
+    out = " · ".join(parts)
     if v.get("spans"):
         out += "\n\nQuoted span(s):\n" + "\n".join(f"> {s}" for s in v["spans"])
     if v.get("explanation"):
@@ -449,7 +450,9 @@ def _turn_title(t: Dict[str, Any]) -> str:
 def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str, str]:
     """One assistant's session as markdown: the system prompt and the task briefing it opened with,
     then every turn it took (reasoning, message, decision) carrying that turn's judge labels, and
-    the allocation it ended on. ``agent='__all__'`` emits every assistant in the rollout.
+    the allocation it ended on. ``agent='__all__'`` emits every assistant in the rollout, with the
+    turns interleaved chronologically (grouped by planning round / execution) rather than one
+    assistant's whole session after another's — only the briefings stay grouped per assistant.
 
     Returns ``(filename, markdown)``."""
     detail = load_step(run_name, step)
@@ -513,36 +516,66 @@ def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str
         L.append(_block(next(iter(sys_prompts.values()))))
         L.append("")
 
+    multi = len(agents) > 1
+    per_agent = {a: _agent_turns(R, a) for a in agents}
+
+    # The briefings are the one genuinely per-assistant, non-chronological artifact (each carries
+    # that employee's private inbox), so they stay grouped up front — everything after them is the
+    # conversation as it actually happened.
+    if multi:
+        L.append("---\n\n## Task briefings — opening user prompts\n")
     for a in agents:
-        turns = _agent_turns(R, a)
-        if len(agents) > 1:
-            L.append(f"\n---\n\n# {a}\n")
+        first = per_agent[a][0]
         if not shared_sys:
-            L.append("## System prompt")
+            L.append(f"### System prompt — {a}" if multi else "## System prompt")
             L.append(_block(sys_prompts[a]))
             L.append("")
-        first = turns[0]
-        L.append(f"## Task briefing — opening user prompt ({_turn_title(first).lower()})")
+        head = (f"### {a} ({_turn_title(first).lower()})" if multi
+                else f"## Task briefing — opening user prompt ({_turn_title(first).lower()})")
+        L.append(head)
         L.append("_Includes the roster, the task requirements and this employee's private inbox._\n")
         L.append(_block(first["prompt"]["user"] or ""))
         L.append("")
-        L.append("## Turns\n")
-        for t in turns:
+
+    # Chronological across assistants: R["turns"] is already in transcript order (build_turns), so
+    # interleaving is just a filter. Phase/round headers give the reader the rhythm of the rollout.
+    L.append("---\n\n## Turns\n" if multi else "## Turns\n")
+    if multi:
+        L.append("_All assistants, in the order they actually spoke._\n")
+    last_group = None
+    for t in [x for x in R["turns"] if x["agent"] in set(agents)]:
+        if multi:
+            group = (f"Planning round {t['round']}" if t["phase"] == "planning"
+                     else str(t["phase"]).capitalize())
+            if group != last_group:
+                L.append(f"### {group}\n")
+                last_group = group
+            L.append(f"#### Turn {t['turn_index']} · **{t['agent']}**\n")
+        else:
             L.append(f"### {_turn_title(t)}\n")
-            L.append(_labels_line(t.get("verdict")))
-            L.append("")
-            L.append("**Reasoning (private chain-of-thought)**\n")
-            L.append(_block(t.get("reasoning") or "(none captured)"))
-            L.append("")
-            L.append("**Message (posted to the shared channel)**\n")
-            L.append(_block(t.get("message") or "(no message posted)"))
-            if t.get("decision"):
-                L.append(f"\n**Task committed to:** `{t['decision']}`")
-            L.append("")
-        # "Final votes": sj4 has no ballot turn, so the binding statement of position is the task
-        # this assistant committed to in execution, read alongside the allocation that resulted.
+        # What the assistant did, then what the judge made of it — the parts of a turn are their
+        # own subsections so they fold in an outline view and can be linked to individually.
+        sub = "#####" if multi else "####"
+        L.append(f"{sub} Reasoning (private chain-of-thought)\n")
+        L.append(_block(t.get("reasoning") or "(none captured)"))
+        L.append("")
+        L.append(f"{sub} Message (posted to the shared channel)\n")
+        L.append(_block(t.get("message") or "(no message posted)"))
+        if t.get("decision"):
+            L.append(f"\n**Task committed to:** `{t['decision']}`")
+        L.append("")
+        L.append(f"{sub} Judge labels\n")
+        L.append(_labels_body(t.get("verdict")))
+        L.append("")
+
+    # "Final votes": sj4 has no ballot turn, so the binding statement of position is the task
+    # each assistant committed to in execution, read alongside the allocation that resulted.
+    L.append("---\n\n## Final positions\n" if multi else "## Final position\n")
+    for a in agents:
+        turns = per_agent[a]
         committed = [t["decision"] for t in turns if t.get("decision")]
-        L.append("## Final position\n")
+        if multi:
+            L.append(f"### {a}")
         L.append(f"- committed task (execution turn): `{committed[-1] if committed else 'none'}`")
         L.append(f"- last public message: {(turns[-1].get('message') or '').strip()[:300] or '—'}")
         L.append("")
