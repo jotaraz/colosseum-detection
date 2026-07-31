@@ -1,0 +1,18 @@
+# Brief CoT-capture probe for Qwen3.6-35B-A3B via local vLLM (2x H100 80GB, TP=2).
+# Short job: model load + 2 generations, then exits. Submit:  condor_submit_bid 100 test_reasoning.sub
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/test_reasoning_vllm.sh
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/test_reasoning.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/test_reasoning.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/test_reasoning.log
+
+environment = "VLLM_TP=2"
+
+request_cpus   = 16
+request_memory = 131072
+request_gpus   = 2
+requirements   = TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3"
+request_disk   = 100G
++BypassLXCfs   = "true"
+
+queue

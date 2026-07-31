@@ -1,0 +1,9 @@
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4.sh
+arguments = "experiments/social_jira4/configs/social_jira4_qwen3_6_35b_a3b_openrouter_r4.yaml openrouter-qwen3.6-35b-a3b experiments/social_jira4/outputs/cluster_qwen_r4_v2"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/qwen_v2.out
+error = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/qwen_v2.err
+log = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/qwen_v2.log
+request_cpus = 4
+request_memory = 8192
+request_disk = 4G
+queue
