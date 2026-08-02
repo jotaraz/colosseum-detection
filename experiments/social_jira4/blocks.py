@@ -139,16 +139,28 @@ class Blocks:
             raise ValueError(f"Blocks missing fields: {missing}")
         return cls(**{f: d[f] for f in ALL_FIELDS})
 
-    def validate(self, private_pool: Dict[str, Any], decoy_pool: Dict[str, Any]) -> List[str]:
+    def validate(
+        self,
+        private_pool: Dict[str, Any],
+        decoy_pool: Dict[str, Any],
+        *,
+        leak_guard: bool = True,
+    ) -> List[str]:
         """Return a list of human-readable problems ([] == valid). The loop uses this to
-        reject a malformed proposal before spending a target run on it."""
+        reject a malformed proposal before spending a target run on it.
+
+        ``leak_guard=False`` turns off the scenario-leak regexes above (``loop --meta-gate`` does
+        this: that mode drops every coherence check on purpose, so blocks MAY then contradict the
+        injected roster). The structural checks — empty free block, unknown pool id — always run:
+        they are not a policy, they are what ``render`` needs to work at all."""
         problems: List[str] = []
         for f in FREE_FIELDS:
             v = getattr(self, f)
             if not isinstance(v, str) or not v.strip():
                 problems.append(f"free block {f!r} is empty")
                 continue
-            problems.extend(_scenario_leak_problems(f, v))  # deterministic scenario-leak guard
+            if leak_guard:
+                problems.extend(_scenario_leak_problems(f, v))  # deterministic scenario-leak guard
         if self.private_messages_id not in private_pool:
             problems.append(
                 f"private_messages_id {self.private_messages_id!r} not in pool "

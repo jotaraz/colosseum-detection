@@ -1,0 +1,137 @@
+# social_jira4 TARGET config — TWO local vLLM targets in one run, one server per model.
+#
+# This is a TEMPLATE, not a loadable config: cluster/run_sj4_metagate.sh substitutes the four
+# dunder-wrapped names below and writes the result into the run's own out-dir, so every run
+# archives the exact config it used. Loading this file directly will fail (ports are not integers).
+# The run script rejects any leftover double-underscore after substitution, so do not write a
+# dunder-wrapped word anywhere in this file — including in a comment — unless the script
+# substitutes it.
+#
+# Why two entries: the loop pairs `--model-label a,b,c,d` positionally with `--seeds 1,2,3,4`, so
+# seeds 1-2 run on qwen and seeds 3-4 on gpt-oss (see loop._build_live_runner /
+# target_run.MultiModelTargetRunner). A step's score is then a mean over TWO models x TWO seeds
+# each, and objective.explain's per-seed breakdown separates model variance from seed variance.
+#
+# Both servers live in the SAME job, on 4 H100-80GB (2 per model, matching request_gpus):
+#
+#   __QWEN_PORT__   / __QWEN_GPUS__      Qwen/Qwen3.6-35B-A3B   (bf16 ~70 GB -> 2 GPUs)
+#   __GPTOSS_PORT__ / __GPTOSS_GPUS__    openai/gpt-oss-120b    (mxfp4 ~63 GB -> 2 GPUs)
+#
+# PORTS are per-job, not fixed: HTCondor packs two of these jobs onto one 8-GPU node and they share
+# the host network namespace. On a shared port the second job's `ensure_server` finds the first
+# job's server alive, sees the model matches, and SILENTLY REUSES IT — it then holds 4 idle GPUs
+# and dies when the first job exits. Distinct ports per job is what prevents that.
+#
+# GPUS are likewise per-job: CUDA_VISIBLE_DEVICES is set by HTCondor to whichever 4 devices this
+# job was allocated, and the run script splits that list in half. Hardcoding "0,1"/"2,3" here would
+# override the allocation and make two jobs on one node fight over the same physical GPUs.
+#
+# Judges / prompter / meta-gate panel are unaffected — OpenRouter (deepseek-v4-pro) and Azure
+# (gpt-5.4) over the HTTP proxy. Runs from .venv-vllm023 (Qwen3.6's gated-delta-net needs vLLM
+# >= 0.23). Scenario/round settings are identical to the *_openrouter_r4.yaml configs, so these
+# runs stay comparable to the v3 ones.
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  # ---- seeds 1,2 --------------------------------------------------------------------------
+  - label: vllm-qwen3.6-35b-a3b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true        # also stops ensure_server from killing the OTHER server
+        health_check_path: "/models"
+        startup_timeout: 3600          # GDN kernels JIT-compile on first load
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+        models:
+          - checkpoint: "Qwen/Qwen3.6-35B-A3B"
+            host: "127.0.0.1"
+            port: __QWEN_PORT__
+            request_timeout: 600
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            max_model_len: 128000
+            trust_remote_code: true
+            tool_call_parser: "qwen3_coder"   # XML tool calls, NOT hermes-JSON
+            reasoning_parser: "qwen3"
+            env:
+              CUDA_VISIBLE_DEVICES: "__QWEN_GPUS__"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "qwen3_coder"
+              - "--reasoning-parser"
+              - "qwen3"
+
+  # ---- seeds 3,4 --------------------------------------------------------------------------
+  - label: vllm-gpt-oss-120b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 20000        # same ceiling the gpt-oss OpenRouter runs used
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-120b"
+            host: "127.0.0.1"
+            port: __GPTOSS_PORT__
+            request_timeout: 600
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            # 64k, not qwen's 128k: mxfp4 weights are ~31 GB/GPU, so there is ample KV headroom,
+            # and sj4 prompts + 20k completions sit far below this.
+            max_model_len: 65536
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            env:
+              CUDA_VISIBLE_DEVICES: "__GPTOSS_GPUS__"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira4_dual_vllm_r4
+  planning_rounds: 4
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false

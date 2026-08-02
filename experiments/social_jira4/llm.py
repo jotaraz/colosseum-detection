@@ -12,7 +12,8 @@ no implicit path dependency. Provider is chosen by env: ``azure`` if Azure vars 
 
 import os
 import threading
-from typing import Any, Callable, Dict
+import time
+from typing import Any, Callable, Dict, Optional
 
 Caller = Callable[[str, str], str]
 
@@ -114,6 +115,37 @@ def make_judge_caller(
 
 _EMPTY_USAGE: Dict[str, Any] = {}
 
+# ---- cost accounting ------------------------------------------------------------------------
+# OpenRouter prices each call itself: with ``usage: {include: true}`` on the request (see
+# openrouter_client.generate_response) the reply's ``usage.cost`` is the amount actually charged,
+# in credits (1 credit == 1 USD). Nothing is estimated for that provider.
+#
+# Azure returns token counts but never a price, so its cost has to be computed from a table.
+# USD per 1M tokens, (input, output), keyed by deployment name; override at runtime with
+# AZURE_PRICE_<DEPLOYMENT>="<in>,<out>" (dots/dashes in the name become underscores) when a
+# deployment is billed at a rate this table does not know. An unknown deployment records tokens
+# with cost_usd 0.0 and is listed under ``cost.unpriced`` in the run's cost.json, so a missing
+# price is visible rather than silently free.
+AZURE_PRICES: Dict[str, tuple] = {
+    "gpt-5.4": (1.25, 10.0),
+}
+
+
+def azure_price(deployment: str) -> Optional[tuple]:
+    env = os.getenv("AZURE_PRICE_" + str(deployment).replace("-", "_").replace(".", "_").upper())
+    if env:
+        try:
+            a, b = (float(x) for x in env.split(","))
+            return (a, b)
+        except ValueError:
+            pass
+    return AZURE_PRICES.get(str(deployment))
+
+
+def _blank_totals() -> Dict[str, Any]:
+    return {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
+            "cost_usd": 0.0}
+
 
 class _TrackingCaller:
     """A caller (OpenRouter) that also captures, per call, the model's **reasoning channel** and
@@ -135,9 +167,8 @@ class _TrackingCaller:
         self.reasoning_effort = reasoning_effort
         self._local = threading.local()
         self._lock = threading.Lock()
-        self.totals: Dict[str, int] = {
-            "calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
-        }
+        self.totals: Dict[str, Any] = _blank_totals()
+        self.provider = "openrouter"
 
     # last_* are per-thread views of the most recent call made *by this thread*.
     @property
@@ -148,7 +179,7 @@ class _TrackingCaller:
     def last_usage(self) -> Dict[str, Any]:
         return getattr(self._local, "usage", _EMPTY_USAGE)
 
-    def snapshot(self) -> Dict[str, int]:
+    def snapshot(self) -> Dict[str, Any]:
         with self._lock:
             return dict(self.totals)
 
@@ -167,7 +198,13 @@ class _TrackingCaller:
         self._local.reasoning = "\n".join(
             str(s.get("reasoning_content") or "") for s in steps
         ).strip()
-        usage = (data or {}).get("usage") or {}
+        usage = dict((data or {}).get("usage") or {})
+        # OpenRouter's own charge for this call, in credits (== USD), present because the client
+        # sends ``usage: {include: true}``. Normalised to ``cost_usd`` so a step's usage block reads
+        # the same whatever the provider.
+        cost = usage.get("cost")
+        if isinstance(cost, (int, float)):
+            usage["cost_usd"] = float(cost)
         self._local.usage = usage
         with self._lock:
             self.totals["calls"] += 1
@@ -175,27 +212,153 @@ class _TrackingCaller:
                 v = usage.get(k)
                 if isinstance(v, (int, float)):
                     self.totals[k] += int(v)
+            if isinstance(cost, (int, float)):
+                self.totals["cost_usd"] = round(self.totals["cost_usd"] + float(cost), 8)
         return response_str
 
 
 class _UntrackedCaller:
-    """Same surface as ``_TrackingCaller`` for providers whose client we do not instrument
-    (Azure): the reasoning/usage accessors exist but stay empty, so callers never branch."""
+    """Same surface as ``_TrackingCaller`` for providers whose client we do not instrument: the
+    reasoning/usage accessors exist but stay empty, so callers never branch. Nothing routes here
+    today — Azure has its own tracking caller below — but a new provider can land safely."""
 
     def __init__(self, base: Caller):
         self._base = base
         self.last_reasoning = ""
         self.last_usage: Dict[str, Any] = {}
-        self.totals: Dict[str, int] = {
-            "calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0,
-        }
+        self.totals: Dict[str, Any] = _blank_totals()
+        self.provider = "unknown"
 
-    def snapshot(self) -> Dict[str, int]:
+    def snapshot(self) -> Dict[str, Any]:
         return dict(self.totals)
 
     def __call__(self, s: str, u: str) -> str:
         self.totals["calls"] += 1
         return self._base(s, u)
+
+
+class _AzureTrackingCaller:
+    """Azure OpenAI chat-completions with token accounting and a priced cost.
+
+    ``social_jira3._azure_chat`` — the path the Azure judges used until now — drops the response's
+    ``usage`` block, and social_jira3 is frozen (see ``target_run.py``), so this issues its own
+    request rather than patching it. Same conventions: deployment + api-version from the env,
+    ``max_completion_tokens``, retry on 429/5xx with a Retry-After-aware backoff.
+
+    Cost is COMPUTED (Azure never returns one) from :func:`azure_price`; an unpriced deployment
+    still records its tokens and leaves ``cost_usd`` at 0, flagged via ``unpriced``. Reasoning
+    tokens, when the deployment reports them, are billed at the output rate — that is how Azure
+    charges for them and they are already included in ``completion_tokens``.
+
+    Thread-local ``last_*`` like ``_TrackingCaller``: the meta-gate panel calls its judges
+    concurrently through one caller per judge, and the critic shares one across its pool.
+    """
+
+    def __init__(self, deployment: str, max_tokens: int, timeout: int = 180,
+                 max_retries: int = 8):
+        self.model = deployment
+        self.max_tokens = max_tokens
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.provider = "azure"
+        self.price = azure_price(deployment)      # (usd_per_1M_in, usd_per_1M_out) or None
+        self._local = threading.local()
+        self._lock = threading.Lock()
+        self.totals: Dict[str, Any] = _blank_totals()
+        self.totals["unpriced"] = self.price is None
+
+    @property
+    def last_reasoning(self) -> str:
+        return getattr(self._local, "reasoning", "")
+
+    @property
+    def last_usage(self) -> Dict[str, Any]:
+        return getattr(self._local, "usage", _EMPTY_USAGE)
+
+    def snapshot(self) -> Dict[str, Any]:
+        with self._lock:
+            return dict(self.totals)
+
+    def _cost(self, usage: Dict[str, Any]) -> float:
+        if not self.price:
+            return 0.0
+        pin, pout = self.price
+        p = float(usage.get("prompt_tokens") or 0)
+        c = float(usage.get("completion_tokens") or 0)
+        return (p * pin + c * pout) / 1_000_000.0
+
+    def __call__(self, system_prompt: str, user_prompt: str) -> str:
+        import random
+        import requests
+
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+        if not endpoint or not api_key:
+            raise RuntimeError(
+                "AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY not set "
+                "(on the cluster: source /fast/jtaraz/syco-bench/.env)."
+            )
+        url = (f"{endpoint.rstrip('/')}/openai/deployments/{self.model}"
+               f"/chat/completions?api-version={api_version}")
+        body: Dict[str, Any] = {
+            "messages": [{"role": "system", "content": system_prompt},
+                         {"role": "user", "content": user_prompt}],
+        }
+        if self.max_tokens > 0:
+            body["max_completion_tokens"] = int(self.max_tokens)
+
+        last_err = None
+        for attempt in range(self.max_retries):
+            backoff = min(2.0 * (2 ** attempt), 60.0) + random.uniform(0, 2.0)
+            try:
+                r = requests.post(url, headers={"api-key": api_key,
+                                                "Content-Type": "application/json"},
+                                  json=body, timeout=self.timeout)
+                if r.status_code == 429:
+                    ra = r.headers.get("retry-after") or r.headers.get("Retry-After")
+                    try:
+                        delay = float(ra)
+                    except (TypeError, ValueError):
+                        delay = backoff
+                    last_err = f"HTTP 429 rate-limited (retry-after={ra})"
+                    time.sleep(delay + random.uniform(0, 1.0))
+                    continue
+                if r.status_code != 200:
+                    last_err = f"HTTP {r.status_code}: {r.text[:300]}"
+                    time.sleep(backoff)
+                    continue
+                data = r.json()
+                if "error" in data:
+                    last_err = f"api error: {data['error']}"
+                    time.sleep(backoff)
+                    continue
+                choices = data.get("choices") or []
+                if not choices:
+                    last_err = f"no choices: {str(data)[:300]}"
+                    time.sleep(backoff)
+                    continue
+            except Exception as exc:  # noqa: BLE001 — retry any transport/parse error
+                last_err = f"{type(exc).__name__}: {exc}"
+                time.sleep(backoff)
+                continue
+
+            message = choices[0].get("message", {}) or {}
+            usage = dict(data.get("usage") or {})
+            usage["cost_usd"] = self._cost(usage)
+            self._local.usage = usage
+            # Some deployments surface the CoT summary here; absent for most, hence "" not None.
+            self._local.reasoning = str(message.get("reasoning_content") or "")
+            with self._lock:
+                self.totals["calls"] += 1
+                for k in ("prompt_tokens", "completion_tokens", "total_tokens"):
+                    v = usage.get(k)
+                    if isinstance(v, (int, float)):
+                        self.totals[k] += int(v)
+                self.totals["cost_usd"] = round(self.totals["cost_usd"] + usage["cost_usd"], 8)
+            return message.get("content") or ""
+
+        raise RuntimeError(f"azure call failed after {self.max_retries} attempts: {last_err}")
 
 
 # Back-compat alias: the prompter caller was named this before usage tracking was added.
@@ -206,16 +369,19 @@ def _tracking_caller(
     *, provider: str, model: str, max_tokens: int, temperature: float, timeout: int,
     reasoning_effort: str = "",
 ) -> Caller:
-    """A caller exposing ``.last_reasoning`` / ``.last_usage`` / ``.snapshot()``. OpenRouter
-    captures both; other providers fall back to the untracked shim.
+    """A caller exposing ``.last_reasoning`` / ``.last_usage`` / ``.snapshot()``, with tokens and
+    cost tracked for both providers — OpenRouter's charge as reported, Azure's computed from
+    :data:`AZURE_PRICES`. Anything else falls back to the untracked shim.
 
-    ``reasoning_effort`` is OpenRouter-only — the Azure path has no equivalent knob, so the shim
-    silently ignores it (as it already does for the reasoning channel itself)."""
+    ``reasoning_effort`` is OpenRouter-only — the Azure path has no equivalent knob, so it is
+    silently ignored there (as the reasoning channel already is)."""
     prov = (provider or "auto").lower()
     if prov == "auto":
         prov = "azure" if os.getenv("AZURE_OPENAI_ENDPOINT") else "openrouter"
     if prov == "openrouter":
         return _TrackingCaller(model, max_tokens, temperature, reasoning_effort)
+    if prov == "azure":
+        return _AzureTrackingCaller(model, max_tokens, timeout=timeout)
     return _UntrackedCaller(
         make_caller(provider=prov, model=model, max_tokens=max_tokens,
                     temperature=temperature, timeout=timeout)

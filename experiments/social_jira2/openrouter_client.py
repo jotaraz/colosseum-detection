@@ -207,6 +207,11 @@ class OpenRouterClient(AbstractClient):
         payload: Dict[str, Any] = {
             "model": params.get("model"),
             "messages": input,
+            # Ask OpenRouter to price the call: the response's ``usage`` then also carries ``cost``
+            # (credits, == USD) and ``cost_details``. Purely additive — the token fields every
+            # caller already reads are unchanged — and it is the only way to get the actual charged
+            # amount without a second /generation lookup per call.
+            "usage": {"include": True},
         }
 
         max_tokens = params.get("max_completion_tokens") or params.get("max_output_tokens")

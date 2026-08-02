@@ -431,3 +431,64 @@ class LiveTargetRunner:
         return RunArtifacts(
             blocks=blocks, seed=seed, run_dir=str(run_dir), turns=assemble_turns(run_dir),
         )
+
+
+class MultiModelTargetRunner:
+    """One TARGET MODEL PER SEED, instead of one model across all seeds.
+
+    ``seed_models`` maps each seed the loop will run to its own ``(label, llm_cfg)`` — so a step's
+    three rollouts exercise three different targets and the step's score is an average ACROSS
+    MODELS rather than across three samples of one model. That changes what the optimizer climbs:
+    a prompt only scores well if it transfers, so the search is pushed away from quirks of a single
+    target's decoding and toward pressure that works on all three.
+
+    Read the artifacts accordingly — with one seed per model, seed variance and model variance are
+    deliberately confounded (``objective.explain``'s per-seed breakdown is also a per-model
+    breakdown, and ``run_config.json`` in each rollout dir names the model that produced it). Use
+    more seeds per model if the two need separating.
+
+    Mixed providers are fine: each seed carries its whole ``llm`` block, so one seed can be served
+    by local vLLM while another goes out to OpenRouter. Rollouts still run concurrently, one
+    thread per seed.
+    """
+
+    def __init__(
+        self,
+        *,
+        base_cfg: Dict[str, Any],
+        seed_models: Dict[int, Any],
+        out_dir: Path,
+        **rollout_kwargs: Any,
+    ):
+        if not seed_models:
+            raise ValueError("MultiModelTargetRunner needs at least one seed -> model mapping")
+        self.base_cfg = base_cfg
+        self.seed_models = dict(seed_models)
+        self.out_dir = Path(out_dir)
+        self.rollout_kwargs = rollout_kwargs
+        # Same one-time, single-threaded patch install as LiveTargetRunner (see there).
+        _install_reasoning_capture()
+        _install_single_post_per_planning_turn()
+        _install_forced_post_in_planning()
+
+    @property
+    def description(self) -> str:
+        return ", ".join(f"seed {s}={m['label']}" for s, m in sorted(self.seed_models.items()))
+
+    def run(self, blocks: Blocks, seed: int, step: int = 0) -> RunArtifacts:
+        entry = self.seed_models.get(seed)
+        if entry is None:
+            return RunArtifacts(blocks=blocks, seed=seed,
+                                error=f"no target model mapped to seed {seed} "
+                                      f"(have {sorted(self.seed_models)})")
+        try:
+            run_dir = asyncio.run(_rollout(
+                base_cfg=self.base_cfg, model_label=entry["label"],
+                model_llm_cfg=entry["llm"], blocks=blocks, seed=seed, step=step,
+                out_dir=self.out_dir, **self.rollout_kwargs,
+            ))
+        except Exception as exc:
+            return RunArtifacts(blocks=blocks, seed=seed, error=str(exc))
+        return RunArtifacts(
+            blocks=blocks, seed=seed, run_dir=str(run_dir), turns=assemble_turns(run_dir),
+        )
