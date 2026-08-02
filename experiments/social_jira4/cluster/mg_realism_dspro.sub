@@ -33,7 +33,10 @@
 # COLD start — no warm-start replay: the prompter writes its opening block-set from the anchors
 # alone.
 #
-# 4x H100-80GB (2 per server, == tensor_parallel_size in the config template). Ports are per-job
+# 4x H100-80GB (2 per server, == tensor_parallel_size in the config template). 320 GB of host RAM:
+# single-model vLLM jobs for these very checkpoints were held at 144 GB (qwen) and 176 GB
+# (gpt-oss), and this job runs BOTH servers. Nodes carry ~3 TB, so the headroom is free.
+# Ports are per-job
 # (8140/8141): HTCondor packs two of these jobs onto one 8-GPU node, and on a shared port the
 # second job would silently reuse the first job's server. Submit with `condor_submit_bid 100`.
 executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
@@ -47,7 +50,7 @@ log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster
 
 request_gpus   = 4
 requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3")
-request_memory = 131072
+request_memory = 327680
 request_cpus   = 8
 request_disk   = 200G
 +BypassLXCfs   = "true"
