@@ -1,0 +1,27 @@
+# Diagnostic: reproduce the v4c qwen server failure with a private log directory.
+#
+# Four of six v4c runs lost EVERY qwen rollout to "vLLM server ... exited prematurely with code 1",
+# and the cause was never visible because all jobs shared one CWD and therefore one
+# logs/vllm/<model>.log, opened with mode "w". This job runs the identical startup path from its own
+# directory and prints the tail of whichever server's log belongs to the failure.
+#
+# 4x H100-80GB, same as a real run, so co-tenancy and the GPU split are reproduced faithfully.
+# i101/i104 excluded (confirmed bad GPUs); i201/i205 NOT excluded — the failure happened there and
+# the point is to reproduce it.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_diag_vllm.sh
+arguments  = "8300"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/diag_vllm.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/diag_vllm.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/diag_vllm.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet")
+request_memory = 327680
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue

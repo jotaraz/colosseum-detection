@@ -130,7 +130,26 @@ sed -e "s/__QWEN_PORT__/$QWEN_PORT/" \
     "$TMPL" > "$PROJECT/$CONFIG"
 grep -q "__" "$PROJECT/$CONFIG" && { echo "ERROR: unsubstituted placeholder in $CONFIG" >&2; exit 1; }
 
+# ---- per-job working directory -----------------------------------------------------------------
+# The vendored llm_server runtime hardcodes its vLLM log path to `logs/vllm/<model>.log`, RELATIVE
+# TO THE CWD, and opens it with mode "w". Every job used to cd to $PROJECT, so six concurrent jobs
+# truncated and interleaved one file and the log of whichever server crashed was always gone by the
+# time anyone looked — which is why the qwen failures in v4c could not be diagnosed. Giving each job
+# its own CWD puts its server logs in <out-dir>/jobcwd/logs/vllm/, next to the run they belong to.
+#
+# Everything the loop is handed from here on must therefore be ABSOLUTE, not repo-relative.
+JOBCWD="$PROJECT/$OUT/jobcwd"
+mkdir -p "$JOBCWD"
+ABS_CONFIG="$PROJECT/$CONFIG"
+ABS_OUT="$PROJECT/$OUT"
+cd "$JOBCWD"
+
 # ---- credentials ------------------------------------------------------------------------------
+# Sourced explicitly rather than left to OpenRouterClient's load_dotenv(), which finds .env by
+# walking up from the CWD — a search this job's new working directory would still satisfy, but only
+# by accident. `|| true` so a malformed line cannot kill the job under `set -e`.
+set -a; source "$PROJECT/.env" 2>/dev/null || true; set +a
+
 AZURE_ENV=/fast/jtaraz/syco-bench/.env
 if [ -f "$AZURE_ENV" ]; then
     set -a; source "$AZURE_ENV"; set +a
@@ -158,22 +177,23 @@ case "$PROMPTER" in
         ;;
 esac
 
-echo "node=$(hostname) start=$(date) git=$(git rev-parse --short HEAD)"
+echo "node=$(hostname) start=$(date) git=$(git -C "$PROJECT" rev-parse --short HEAD)"
+echo "cwd=$JOBCWD (vllm server logs land here)"
 echo "out=$OUT question=$QUESTION steps=$STEPS prompter=$PROMPTER panel=$PANEL extra=$*"
 echo "gpus: alloc=$ALLOC qwen=$QWEN_GPUS:$QWEN_PORT gptoss=$GPTOSS_GPUS:$GPTOSS_PORT"
 echo "azure_endpoint=${AZURE_OPENAI_ENDPOINT:-unset} azure_deployment=${AZURE_JUDGE_DEPLOYMENT:-gpt-5.4}"
 echo "azure_key=$([ -n "${AZURE_OPENAI_API_KEY:-}" ] && echo set || echo MISSING)"
-echo "openrouter_key=$(grep -q OPENROUTER_API_KEY .env && echo "set (repo .env)" || echo MISSING)"
+echo "openrouter_key=$([ -n "${OPENROUTER_API_KEY:-}" ] && echo set || echo MISSING)"
 
 exec python -u -m experiments.social_jira4.loop --mode live \
     --steps "$STEPS" \
     --seeds 1,2,3,4 \
-    --config "$CONFIG" \
+    --config "$ABS_CONFIG" \
     --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b \
     "${PROMPTER_ARGS[@]}" \
     --meta-gate "$PANEL" \
     --meta-gate-question "$QUESTION" \
     --meta-gate-view system_user \
     --repair-attempts 5 \
-    --out-dir "$OUT" \
+    --out-dir "$ABS_OUT" \
     "$@"
