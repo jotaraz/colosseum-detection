@@ -24,7 +24,7 @@ set, so it can sit alongside a calendar or an access register). ``[]`` — or th
 import json
 import re
 from dataclasses import asdict, dataclass, field as dc_field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from experiments.social_jira4.decoys import NONE_ID, normalize_ids
 
@@ -130,14 +130,40 @@ class Blocks:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Blocks":
+    def from_dict(cls, d: Dict[str, Any], *, defaults: Optional[Dict[str, Any]] = None) -> "Blocks":
+        """Parse a block-set. ``defaults`` supplies POOLED fields the caller does not expect to be
+        present — with a fixed environment (``pools.Environment``) those are struck from the
+        prompter's output schema, so a well-behaved reply legitimately arrives without them. The
+        four FREE blocks stay strictly required either way: a missing one is a real malformation."""
         d = dict(d)
         if "decoy_info_ids" not in d and _LEGACY_DECOY_FIELD in d:
             d["decoy_info_ids"] = [d.pop(_LEGACY_DECOY_FIELD)]
+        for f, v in (defaults or {}).items():
+            if f in POOL_FIELDS and d.get(f) is None:
+                d[f] = list(v) if isinstance(v, list) else v
         missing = [f for f in ALL_FIELDS if f not in d]
         if missing:
             raise ValueError(f"Blocks missing fields: {missing}")
         return cls(**{f: d[f] for f in ALL_FIELDS})
+
+    def with_environment(self, env: Any) -> "Blocks":
+        """A copy with the pinned environment axes forced onto it.
+
+        ``env`` is duck-typed (a ``pools.Environment``) to keep this module free of a ``pools``
+        import — ``pools`` already imports this one. An axis whose value is ``None`` is the
+        prompter's to choose and is left untouched.
+
+        Forcing rather than rejecting is deliberate: a prompter that emits a pooled id it was told
+        not to send — a stale scaffold, a warm-start record from a different condition — then costs
+        nothing, instead of burning a repair attempt on a field that is not its decision anyway."""
+        d = self.to_dict()
+        pid = getattr(env, "private_messages_id", None)
+        dids = getattr(env, "decoy_info_ids", None)
+        if pid is not None:
+            d["private_messages_id"] = pid
+        if dids is not None:
+            d["decoy_info_ids"] = list(dids)
+        return Blocks(**d)
 
     def validate(
         self,

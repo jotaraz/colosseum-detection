@@ -8,7 +8,10 @@ insufficient for the 6h task."
 
 **Status.** `calendar` (social_jira3) plus `ops_feed`, `access`, `skills`, `equipment` and
 `manager_note` (`decoys.py`) are **implemented**. `decoy_info_ids` is multi-select — substrates
-compose, so a run may carry any combination, or `["none"]`. The recipe invariants below are not
+compose, so a run may carry any combination, or `["none"]`. **Who selects it:** by default the
+*run* does, via `--decoys` (pinned to `calendar+ops_feed+access+equipment`), not the prompter —
+the substrate is the environment the prompt is scored in, so holding it fixed is what makes two
+steps comparable. `--decoys prompter` restores per-step selection. The recipe invariants below are not
 merely asserted: `check_decoys.py` verifies them across seeds and roster sizes, and fails the build
 if a substrate stops being symmetric, private or inert.
 

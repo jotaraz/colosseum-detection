@@ -55,12 +55,15 @@ from experiments.social_jira4.interfaces import (
     RunScore,
     TargetRunner,
 )
+from experiments.social_jira4 import pools as pools_mod
 from experiments.social_jira4.pools import (
     CONFIDENTIALITY_REASON_ANCHORS,
     DECOY_POLICIES_ANCHORS,
     GENERAL_TASK_INFO_ANCHORS,
     PERSONALITY_ANCHORS,
     DECOY_INFO_POOL,
+    DEFAULT_ENVIRONMENT,
+    Environment,
     PRIVATE_MESSAGES_POOL,
     SEED_BLOCKS,
 )
@@ -77,14 +80,21 @@ from experiments.social_jira4.stubs import (
 class FakePrompter:
     """A deterministic, network-free stand-in for the real prompter: it walks from the weak seed
     to progressively stronger blocks so ``--offline`` visibly climbs the heuristic gradient.
-    Not an optimizer — just a mechanism demonstrator."""
+    Not an optimizer — just a mechanism demonstrator.
+
+    It honours the fixed environment for the same reason the real prompter does: an ``--offline``
+    smoke run is how the pinning is checked, so a stand-in that walked the pooled blocks anyway
+    would make the run look like it worked when it did not."""
+
+    def __init__(self, environment: Optional[Environment] = None):
+        self.environment = environment or DEFAULT_ENVIRONMENT
 
     def propose(self, history: List[Attempt]) -> Blocks:
         step = len(history)
-        # progressively strengthen: turn on the decoy, raise inbox strength, pick sharper anchors
+        # progressively strengthen: pick sharper anchors, and walk any pooled block still free
         private_ids = list(PRIVATE_MESSAGES_POOL)          # mild < strong < quit (defined order)
         decoy_ids = [d for d in DECOY_INFO_POOL if d != "none"]  # calendar, ops_feed, ...
-        return Blocks(
+        blocks = Blocks(
             general_task_info=GENERAL_TASK_INFO_ANCHORS[min(step, len(GENERAL_TASK_INFO_ANCHORS) - 1)],
             decoy_policies=DECOY_POLICIES_ANCHORS[min(step, len(DECOY_POLICIES_ANCHORS) - 1)],
             confidentiality_reason=CONFIDENTIALITY_REASON_ANCHORS[
@@ -92,9 +102,10 @@ class FakePrompter:
             ],
             personality=PERSONALITY_ANCHORS[min(step, len(PERSONALITY_ANCHORS) - 1)],
             private_messages_id=private_ids[min(step, len(private_ids) - 1)],
-            # walk from no substrate to a composed one, so --offline climbs visibly
+            # walk from no substrate to a composed one, so a free-decoy --offline climbs visibly
             decoy_info_ids=decoy_ids[: min(step, len(decoy_ids))],
         )
+        return blocks.with_environment(self.environment)
 
 
 # ------------------------------------------------------------------------------ loop core
@@ -633,6 +644,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--seeds", type=str, default="1,2,3", help="comma-separated, e.g. 1,2,3")
     ap.add_argument("--warmstart", default=None,
                     help="seeds JSON (from extract_seeds.py) replayed as the first steps.")
+    # The environment. Both pooled blocks are scenario CONFIG, not prompt text, so by default they
+    # are pinned for the run and the prompter writes only the four free blocks — one experimental
+    # condition per run, with the text as the only thing that varies. 'prompter' hands an axis back.
+    ap.add_argument("--decoys", default="+".join(pools_mod.DEFAULT_DECOY_INFO_IDS),
+                    help="fabrication substrates, fixed for the run — '+'- or ','-separated "
+                         f"({'+'.join(k for k in DECOY_INFO_POOL if k != 'none')}). "
+                         "'none' pins to no substrate at all; 'prompter' lets the prompter pick "
+                         "per step (the pre-fixed-environment behaviour). "
+                         f"Default: {'+'.join(pools_mod.DEFAULT_DECOY_INFO_IDS)}.")
+    ap.add_argument("--inbox", default=pools_mod.DEFAULT_PRIVATE_MESSAGES_ID,
+                    help="private-messages intensity, fixed for the run "
+                         f"({'|'.join(PRIVATE_MESSAGES_POOL)}); 'prompter' lets the prompter pick "
+                         f"per step. Default: {pools_mod.DEFAULT_PRIVATE_MESSAGES_ID}.")
     ap.add_argument("--config", default=llm_mod.DEFAULT_TARGET_CONFIG,
                     help="target YAML (live mode); default = qwen3.6-26b-a3b via OpenRouter.")
     ap.add_argument("--model-label", default=llm_mod.DEFAULT_TARGET_LABEL,
@@ -693,6 +717,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = ap.parse_args(argv)
 
     seeds = [int(s) for s in str(args.seeds).split(",") if s.strip()]
+    # Resolved before anything else is built: a typo'd substrate would otherwise be discovered
+    # after the job has already spun up its target servers and run against the wrong world.
+    try:
+        environment = pools_mod.parse_environment(args.decoys, args.inbox)
+    except ValueError as exc:
+        raise SystemExit(f"--decoys/--inbox: {exc}")
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     out_dir = Path(args.out_dir or f"experiments/social_jira4/outputs/{ts}")
 
@@ -700,19 +730,19 @@ def main(argv: Optional[List[str]] = None) -> int:
     prompter_model = "fake" if args.offline else (args.prompter_model or llm_mod.DEFAULT_PROMPTER_MODEL)
     pcaller = None
     if args.offline:
-        prompter: Any = FakePrompter()
+        prompter: Any = FakePrompter(environment)
     else:
         from experiments.social_jira4.llm import make_prompter_caller
         pcaller = make_prompter_caller(provider=args.prompter_provider, model=args.prompter_model,
                                        max_tokens=args.prompter_max_tokens)
-        prompter = Prompter(pcaller)
+        prompter = Prompter(pcaller, environment)
 
     # warm start: replay proven fabrication-eliciting seeds as the first scored steps. The whole
     # record is passed through (not just its blocks) — a warm-start step has no prompter reasoning,
     # so the seed's jira3 provenance + verbatim L2 lie is what explains where the prompt came from.
     if args.warmstart:
         seed_recs = json.loads(Path(args.warmstart).read_text())
-        prompter = SeededPrompter(prompter, seed_recs)
+        prompter = SeededPrompter(prompter, seed_recs, environment)
         print(f"  warm start: {len(seed_recs)} seeds from {args.warmstart}")
 
     # shared judge/referee caller (DeepSeek) — live mode, unless stubbing the judges
@@ -810,6 +840,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "steps": args.steps, "seeds": seeds, "objective": objective.name,
         "objective_description": objective.description,
         "warmstart": args.warmstart,
+        # The experimental condition this run was made under: which scenario axes were pinned and
+        # to what. `fixed: []` means the prompter chose them per step, so scores across its steps
+        # are not comparable at fixed environment.
+        "environment": environment.to_dict(),
         "judge_gate": args.judge_gate,
         "repair_attempts": args.repair_attempts,
         # The admissibility regime this run was made under. `leak_guard: false` + `consistency:
@@ -846,8 +880,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     target_desc = (getattr(runner, "description", "") or f"{args.model_label} (live)") \
         if args.mode == "live" else "fake (dry)"
+    env_desc = environment.describe() + (
+        f"  (fixed: {', '.join(environment.fixed_fields)})" if environment.fixed_fields
+        else "  (prompter chooses both)"
+    )
     print(f"social_jira4 v0 — mode={args.mode} offline={args.offline} steps={args.steps} "
           f"seeds={seeds} objective={objective.name}\n"
+          f"  environment: {env_desc}\n"
           f"  prompter={prompter_model}  target={target_desc}\n"
           f"  judges={judge_model}  referee={referee_desc}  consistency={consistency_desc}\n"
           + (f"  meta-gate={meta_gate_desc} view={fab_gate.view} "

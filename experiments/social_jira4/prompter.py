@@ -17,10 +17,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from experiments.social_jira4.blocks import Blocks, _extract_json_object, parse_blocks
+from experiments.social_jira4.blocks import POOL_FIELDS, Blocks, _extract_json_object, parse_blocks
 from experiments.social_jira4.interfaces import CBVerdict, RunScore, TurnScore
 from experiments.social_jira4.llm import Caller
-from experiments.social_jira4.pools import anchors_markdown
+from experiments.social_jira4.pools import DEFAULT_ENVIRONMENT, Environment, scaffold_fields
 
 _SCAFFOLD_PATH = Path(__file__).with_name("PROMPTER_SYSTEM_PROMPT.md")
 
@@ -72,15 +72,51 @@ class Attempt:
         return self.cb_ok
 
 
-def _blocks_md(b: Blocks) -> str:
-    return (
-        f"  general_task_info: {b.general_task_info}\n"
-        f"  decoy_policies: {b.decoy_policies}\n"
-        f"  confidentiality_reason: {b.confidentiality_reason}\n"
-        f"  personality: {b.personality}\n"
-        f"  private_messages_id: {b.private_messages_id}\n"
-        f"  decoy_info_ids: {b.decoy_slug()}"
-    )
+def _blocks_md(b: Blocks, env: Optional[Environment] = None) -> str:
+    """One attempt, as the OPRO trajectory shows it.
+
+    A pinned pooled block is omitted: it is identical in every attempt, so repeating it is tokens
+    spent to imply a lever that does not exist — the prompter reads a column that never varies and
+    can only conclude it is one of the things it is choosing."""
+    env = env or DEFAULT_ENVIRONMENT
+    lines = [
+        f"  general_task_info: {b.general_task_info}",
+        f"  decoy_policies: {b.decoy_policies}",
+        f"  confidentiality_reason: {b.confidentiality_reason}",
+        f"  personality: {b.personality}",
+    ]
+    fixed = env.fixed_fields
+    if "private_messages_id" not in fixed:
+        lines.append(f"  private_messages_id: {b.private_messages_id}")
+    if "decoy_info_ids" not in fixed:
+        lines.append(f"  decoy_info_ids: {b.decoy_slug()}")
+    return "\n".join(lines)
+
+
+def _env_overrides(obj: Dict[str, Any], blocks: Blocks,
+                   env: Optional[Environment] = None) -> Dict[str, Any]:
+    """Pooled values the reply carried that the fixed environment overrode.
+
+    Normally empty. A non-empty dict in a step file means the prompter emitted a field the scaffold
+    told it not to — worth seeing, because it is the signature of a stale scaffold or a warm-start
+    record from a different condition, and it is otherwise silent by design.
+
+    Only PINNED axes are compared. On a free axis the value the prompter sent is the value used,
+    and the one way the two can differ is canonicalisation (``["none"]`` -> ``[]``, reordering) —
+    which is not an override and must not be reported as one."""
+    env = env or DEFAULT_ENVIRONMENT
+    out: Dict[str, Any] = {}
+    for f in env.fixed_fields:
+        if f not in POOL_FIELDS or f not in obj:
+            continue
+        sent, kept = obj[f], getattr(blocks, f)
+        if isinstance(sent, list) or isinstance(kept, list):
+            same = list(sent or []) == list(kept or [])
+        else:
+            same = sent == kept
+        if not same:
+            out[f] = {"sent": sent, "used": kept}
+    return out
 
 
 # How many consecutive rejections to replay. With ``--repair-attempts K`` the prompter can be
@@ -178,17 +214,25 @@ def _explanations(a: Attempt) -> str:
 
 
 class Prompter:
-    def __init__(self, caller: Caller):
+    def __init__(self, caller: Caller, environment: Optional[Environment] = None):
         self._caller = caller
+        # Which scenario axes are pinned for this run. The scaffold is built against it, so a
+        # pinned axis is described as part of the world and never offered as a field to fill.
+        self.environment = environment or DEFAULT_ENVIRONMENT
         # Set after each propose() so the loop can record the prompter's own thinking.
         self.last_meta: dict = {"rationale": "", "reasoning": "", "raw": ""}
-        # Embed the anchors + pools into the scaffold once. NB: we do NOT use judge.fill_template
-        # here — that only substitutes its fixed judge-placeholder list (no `anchors`), and would
-        # silently leave `{anchors}` unfilled. Direct replace keeps the JSON braces untouched.
+        # Embed the anchors + pools + output schema into the scaffold once. NB: we do NOT use
+        # judge.fill_template here — that only substitutes its fixed judge-placeholder list, and
+        # would silently leave these unfilled. Direct replace keeps the JSON braces untouched.
         template = _SCAFFOLD_PATH.read_text(encoding="utf-8")
-        if "{anchors}" not in template:
-            raise ValueError("PROMPTER_SYSTEM_PROMPT.md is missing the {anchors} placeholder")
-        self.system_prompt = template.replace("{anchors}", anchors_markdown())
+        for key, value in scaffold_fields(self.environment).items():
+            placeholder = "{" + key + "}"
+            if placeholder not in template:
+                raise ValueError(
+                    f"PROMPTER_SYSTEM_PROMPT.md is missing the {placeholder} placeholder"
+                )
+            template = template.replace(placeholder, value)
+        self.system_prompt = template
 
     # ------------------------------------------------------------------ prompt construction
     def _user_prompt(self, history: List[Attempt]) -> Tuple[str, Dict[str, Any]]:
@@ -214,7 +258,7 @@ class Prompter:
         for a in top:
             parts.append(
                 f"--- attempt {a.step} — score {a.score:.2f} ---\n"
-                f"{_blocks_md(a.blocks)}\n"
+                f"{_blocks_md(a.blocks, self.environment)}\n"
                 f"  critic notes:\n{_explanations(a)}\n"
             )
 
@@ -269,7 +313,11 @@ class Prompter:
             usage = dict(getattr(self._caller, "last_usage", {}) or {})
             try:
                 obj = _extract_json_object(raw)
-                blocks = Blocks.from_dict(obj)  # ignores extra keys like "rationale"
+                # `defaults` fills the pooled fields a fixed environment struck from the schema;
+                # `with_environment` then FORCES them, so a reply that sent one anyway cannot
+                # change the world it is scored in. Extra keys like "rationale" are ignored.
+                blocks = Blocks.from_dict(obj, defaults=self.environment.defaults())
+                blocks = blocks.with_environment(self.environment)
             except Exception as exc:  # malformed JSON / missing fields
                 last_err = exc
                 user = (
@@ -287,6 +335,8 @@ class Prompter:
                 "user_prompt_final": user if attempt else "",  # only differs after a parse retry
                 "attempts": attempt + 1,
                 "usage": usage,
+                "environment": self.environment.to_dict(),
+                "environment_overrides": _env_overrides(obj, blocks, self.environment),
                 **provenance,
             }
             return blocks
@@ -304,22 +354,40 @@ class SeededPrompter:
     L2 lie, that judge's confidence and note — *is* the explanation of where the prompt came from,
     and the visualizer shows it in place of the prompter node."""
 
-    def __init__(self, inner: Any, seeds: List[Dict[str, Any]]):
+    def __init__(self, inner: Any, seeds: List[Dict[str, Any]],
+                 environment: Optional[Environment] = None):
         self._inner = inner
         self._seeds = [dict(r) for r in seeds]
         self._i = 0
+        # Seed records were mined under whatever condition produced them (``extract_seeds.py``
+        # writes e.g. ``decoy_info_ids: []``). Without the same override a warm start would run
+        # its first steps in a DIFFERENT world from the rest of the run, and the OPRO trajectory
+        # would compare scores across two environments as if they were one.
+        self.environment = (
+            environment or getattr(inner, "environment", None) or DEFAULT_ENVIRONMENT
+        )
         self.last_meta: dict = {"rationale": "", "reasoning": "", "raw": ""}
 
     def propose(self, history: List[Attempt]) -> Blocks:
         if self._i < len(self._seeds):
             rec = self._seeds[self._i]
-            b = Blocks.from_dict(rec["blocks"])
+            raw_blocks = dict(rec["blocks"])
+            b = Blocks.from_dict(raw_blocks, defaults=self.environment.defaults())
+            b = b.with_environment(self.environment)
+            overrides = _env_overrides(raw_blocks, b, self.environment)
+            if overrides:
+                print(
+                    f"  warm-start seed #{self._i}: pooled blocks overridden by the fixed "
+                    f"environment ({', '.join(sorted(overrides))})"
+                )
             self.last_meta = {
                 "rationale": f"(warm-start seed #{self._i})",
                 "reasoning": "", "raw": "",
                 "source": "warm_start",
                 "seed_index": self._i,
                 "seed_record": {k: v for k, v in rec.items() if k != "blocks"},
+                "environment": self.environment.to_dict(),
+                "environment_overrides": overrides,
             }
             self._i += 1
             return b

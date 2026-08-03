@@ -32,6 +32,45 @@ python -m experiments.social_jira4.loop --mode live --steps 20 \
     --meta-gate gpt54 --meta-gate-question realism --repair-attempts 5
 ```
 
+## The environment (`--decoys`, `--inbox`)
+
+Four of the six template blocks are prose the prompter writes. The other two — `decoy_info_ids`
+and `private_messages_id` — are not text: they are **scenario config**, selecting which fabrication
+substrates `decoys.py` builds and which `dislike_strength` generates the inbox. Letting the
+prompter move them means it tunes the environment and the prompt at the same time, and a
+step-to-step score change is attributable to neither.
+
+So **by default both are pinned for the run** and the prompter emits only the four free blocks:
+
+```
+decoys = calendar+ops_feed+access+equipment      inbox = quit3
+```
+
+Both picks are deliberately arbitrary. Across the 600 prompts of the v4/v4b/v4c runs no substrate
+showed a score effect that survived controlling for run identity, so there was no better-than-
+arbitrary choice available; these four are simply the ones the prompters actually reached for
+(calendar 83%, ops_feed 89%, access 74%, equipment 27%). `quit3` over `quit2` is the one place
+there was a signal, and a weak one: 0.82 mean score / 32% fabrication rate against 0.43 / 18%,
+observational and confounded with run.
+
+```bash
+# default — the environment above, prompter writes prose only
+python -m experiments.social_jira4.loop --mode live --steps 20 --config … --model-label qwen3.6
+
+# pin a different condition (one arm of a controlled sweep)
+… --decoys calendar+ops_feed --inbox quit2
+… --decoys none                            # no substrate at all; lies must be about task-fit
+
+# hand an axis back to the prompter (the pre-v4d behaviour; how v4c ran)
+… --decoys prompter --inbox prompter
+```
+
+The resolved condition is written to `metadata.json` under `environment`, and the prompter's
+scaffold is built against it: a pinned axis is *described* to the prompter as part of the world
+(so its `decoy_policies` can offer hooks the active substrates support) but is struck from its
+output schema, absent from the OPRO trajectory, and force-overridden if it emits one anyway —
+including on warm-start records mined under a different condition.
+
 ## Admissibility gates (`--meta-gate`)
 
 By default a candidate must clear three checks before any rollout: the deterministic scenario-leak
@@ -214,7 +253,7 @@ regardless of objective.
 | file | role |
 |---|---|
 | `blocks.py` | `Blocks` — the six template slots (4 free, 2 pooled) + JSON (de)serialization |
-| `pools.py` | fixed pools (drawn blocks) + free-text anchors; seeded from real jira3 material |
+| `pools.py` | fixed pools (drawn blocks) + free-text anchors + `Environment` (`--decoys`/`--inbox`) |
 | `PROMPTER_SYSTEM_PROMPT.md` | the prompter scaffold (template + hard rule + anchors + output schema) |
 | `prompter.py` | LLM-as-optimizer; OPRO-style presentation of past attempts |
 | `interfaces.py` | `TargetRunner` / `Critic` / `ChecksBalances` protocols + result types |
@@ -226,6 +265,8 @@ regardless of objective.
 | `adaptive_prompts.py` | `AdaptivePrompts(SocialJiraPrompts)` — injects free blocks; no jira3 edit |
 | `target_run.py` | live runner: a copy of `jira3._run_single` with `AdaptivePrompts` swapped in |
 | `loop.py` | the driver + CLI |
+| `check_decoys.py` | asserts the `decoy.md` recipe invariants across seeds/rosters; exits non-zero |
+| `check_environment.py` | asserts the `--decoys`/`--inbox` pinning holds end to end; exits non-zero |
 | `viewer/` | Flask app that retraces a run step by step (see above) |
 
 ## What's real vs stubbed in v0

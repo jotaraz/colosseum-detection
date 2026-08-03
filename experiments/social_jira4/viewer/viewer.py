@@ -495,8 +495,13 @@ def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str
     _decoys = b.get("decoy_info_ids")
     if _decoys is None:
         _decoys = [b["decoy_info_id"]] if b.get("decoy_info_id") else []
-    L.append(f"| pooled blocks | private_messages=`{b.get('private_messages_id')}` · "
-             f"decoy_info=`{'+'.join(_decoys) or 'none'}` |")
+    # Whether the prompter chose these or the run pinned them changes how a step-to-step score
+    # difference reads, so say which. Absent on runs made before `--decoys`/`--inbox` existed.
+    _fixed = set((meta.get("environment") or {}).get("fixed") or [])
+    _mark = lambda f: " *(fixed)*" if f in _fixed else ""
+    L.append(f"| pooled blocks | private_messages=`{b.get('private_messages_id')}`"
+             f"{_mark('private_messages_id')} · "
+             f"decoy_info=`{'+'.join(_decoys) or 'none'}`{_mark('decoy_info_ids')} |")
     L.append("")
     L.append("Ground truth (judge-only — the assistants never saw this):")
     L.append(f"- team: {', '.join(sc.get('employees') or [])}")
