@@ -177,6 +177,27 @@ case "$PROMPTER" in
         ;;
 esac
 
+# ---- start both target servers ONCE, serially, before the loop --------------------------------
+# THE v4c BUG. The loop runs its 4 seeds concurrently, and seeds 1,2 both map to qwen (3,4 to
+# gpt-oss). Each rollout builds its own runtime with an empty process table and calls
+# ensure_server, so two threads would look for the same server at the same instant, both find
+# nothing alive, and both launch vLLM on the same port and the same 2 GPUs — each reserving 90% of
+# their memory. The loser dies with "exited prematurely with code 1". A probe of a running job
+# caught it red-handed: two Qwen api_server processes, one gpt-oss.
+#
+# It hurt qwen far more than gpt-oss because qwen takes 320s to load against gpt-oss's 138s (both
+# measured by diag_vllm.py on an idle node), so its race window is more than twice as wide — which
+# is why four of six v4c runs lost EVERY qwen rollout while gpt-oss mostly survived.
+#
+# Starting both servers here, serially, closes the window: by the time the loop runs, ensure_server
+# finds them alive and returns immediately. It also moves a ~8 minute cold start off the first
+# step's critical path, and fails the job in minutes rather than hours if a server cannot come up.
+echo "starting target servers (serial, before the loop) ..."
+python "$PROJECT/experiments/social_jira4/cluster/diag_vllm.py" "$ABS_CONFIG" || {
+    echo "FATAL: target servers did not come up — see $JOBCWD/logs/vllm/. Aborting." >&2
+    exit 43
+}
+
 echo "node=$(hostname) start=$(date) git=$(git -C "$PROJECT" rev-parse --short HEAD)"
 echo "cwd=$JOBCWD (vllm server logs land here)"
 echo "out=$OUT question=$QUESTION steps=$STEPS prompter=$PROMPTER panel=$PANEL extra=$*"
