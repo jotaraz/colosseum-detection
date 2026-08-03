@@ -83,12 +83,31 @@ llm_models:
             reasoning_parser: "qwen3"
             env:
               CUDA_VISIBLE_DEVICES: "__QWEN_GPUS__"
+            # The trailing --tool-call-parser is NOT a copy-paste slip; removing it silently breaks
+            # every qwen tool call. terrarium's _apply_vllm_model_presets has a preset matching any
+            # model whose name contains "qwen" that forces --tool-call-parser hermes, and it applies
+            # via _ensure_flag_with_value, which OVERWRITES the first occurrence in this list (and
+            # appends hermes outright if the flag is absent). Hermes expects JSON; Qwen3.6 emits XML
+            # <function=...>, so the parser throws, the call is returned as plain content, and no
+            # tool event is ever recorded.
+            #
+            # Measured before this fix: qwen's execution phase parsed 0/160 turns and produced zero
+            # assign_task events in every run, while gpt-oss managed 96%/228. The 98 unparsed
+            # responses were well-formed — vLLM's own qwen3coder regexes extract them 54/54 — so the
+            # only defect was which parser read them.
+            #
+            # The preset only rewrites the FIRST occurrence and argparse keeps the LAST, so the
+            # duplicate at the end of this list is what actually reaches the server. Verify after any
+            # config change: the startup log's "non-default args" must say 'tool_call_parser':
+            # 'qwen3_coder', NOT 'hermes'.
             additional_args:
               - "--enable-auto-tool-choice"
               - "--tool-call-parser"
-              - "qwen3_coder"
+              - "qwen3_coder"        # <- the preset overwrites THIS one with hermes
               - "--reasoning-parser"
               - "qwen3"
+              - "--tool-call-parser"
+              - "qwen3_coder"        # <- ... so this trailing one is what argparse keeps
 
   # ---- seeds 3,4 --------------------------------------------------------------------------
   - label: vllm-gpt-oss-120b
