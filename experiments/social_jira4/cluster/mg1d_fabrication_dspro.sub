@@ -47,11 +47,28 @@
 # a prompt may reach the target describing a roster it does not have. The gate judge is spent as a
 # post-hoc evaluator here -- judge the results with the meta-judges this loop never saw.
 #
-# TARGETS. 4 seeds over TWO local vLLM models: seeds 1,2 -> Qwen3.6-35B-A3B, seeds 3,4 ->
-# gpt-oss-120b, one server each on this job's 4 H100s, pre-started serially before the loop.
+# TARGETS. SIX seeds over TWO local vLLM models -- seeds 1,2,3 -> Qwen3.6-35B-A3B, seeds 4,5,6 ->
+# gpt-oss-120b -- one server each on this job's 4 H100s, pre-started serially before the loop.
+# Three per model rather than two, so a per-model mean rests on 3 rollouts and one bad draw no
+# longer moves it by half.
 #
-# COST. v4c ran $11-12 per run. Expect the same or a little more: qwen rollouts now complete
-# instead of erroring out early, and a rollout costs more than a rejection.
+# HOW THE SEED COUNT IS SET, and why it looks odd. run_sj4_metagate.sh hardcodes
+# `--seeds 1,2,3,4` and the matching 4-entry `--model-label`; only <steps> is a positional. But
+# the script forwards "$@" as the LAST words of the loop invocation, and argparse keeps the last
+# occurrence of a non-append option, so the two flags at the end of `arguments` below override the
+# hardcoded pair. That is the documented [extra...] extension point, not a trick -- but it does
+# mean the effective seed set is NOT what the script's own body says. If you change the seed list
+# here, change --model-label with it: loop._build_live_runner requires exactly one model per seed,
+# paired positionally, and exits rather than cycling.
+#
+# CONCURRENCY. The loop runs all six seeds at once (ThreadPoolExecutor(max_workers=len(seeds))),
+# so each vLLM server now serves 3 concurrent rollouts instead of 2. No extra GPUs or servers --
+# vLLM batches them -- but per-step wall-clock will be a little longer than v4c's.
+#
+# COST. Roughly DOUBLE v4c's $11-12: 16 steps x 6 seeds = 96 rollouts against v4c's 12 x 4 = 48,
+# and qwen rollouts now complete instead of erroring out early. Budget $25-35 for this run alone.
+# It is also the deepest run in the batch at 16 steps -- v4c used 12 -- because the fabrication
+# gate is the strictest and eats optimization steps in repairs.
 #
 # 4x H100-80GB (2 per server). 320 GB host RAM: single-model vLLM jobs for these very checkpoints
 # were held at 144 GB (qwen) and 176 GB (gpt-oss), and this job runs BOTH servers. Ports are
@@ -61,7 +78,7 @@
 # v4b batch two entire runs. run_sj4_metagate.sh now preflights and exits 42 in seconds, so drop
 # the exclusion if cluster support confirms those nodes are repaired.
 executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
-arguments  = "experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro 8234 fabrication 12 dspro dspro --decoys calendar+ops_feed+access+equipment --inbox quit3"
+arguments  = "experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro 8234 fabrication 16 dspro dspro --decoys calendar+ops_feed+access+equipment --inbox quit3 --seeds 1,2,3,4,5,6 --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b,vllm-gpt-oss-120b"
 
 environment = "HF_TOKEN=$ENV(HF_TOKEN)"
 
