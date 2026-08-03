@@ -116,9 +116,28 @@ _CONSISTENCY_MAX_TOKENS = 12000
 STEP_SCHEMA = 4
 
 
+# How many consecutive steps may have EVERY rollout fail before the run gives up. A step whose
+# seeds all errored scores 0.00 exactly like a step where the target simply told no lies, so
+# without this a run against a broken node completes, exits 0, and reports a full set of zeros —
+# indistinguishable from a real null result unless someone opens the step files. Two v4b runs were
+# lost that way (a node whose GPUs were unusable; vLLM exited 1 on every launch).
+_DEAD_STEP_LIMIT = 3
+
+
+def _errored_seeds(a: Attempt) -> int:
+    return sum(1 for rs in a.run_scores if rs.error)
+
+
+def _all_rollouts_failed(a: Attempt) -> bool:
+    return bool(a.run_scores) and _errored_seeds(a) == len(a.run_scores)
+
+
 def _attempt_row(a: Attempt) -> Dict[str, Any]:
     return {
         "step": a.step,
+        # Not cosmetic: a step with errored_seeds == len(seed_scores) scored 0.00 because nothing
+        # ran, NOT because the target behaved. Filter on this before reading any score.
+        "errored_seeds": _errored_seeds(a),
         "opt_step": a.opt_step,  # several attempts share one when repairs are enabled
         "repair": a.repair,      # 0 = first try at this opt_step
         "cb_ok": a.cb_ok,
@@ -416,6 +435,7 @@ def run_loop(
     # rollout dir and the history row, so a repaired candidate never overwrites the refusal that
     # produced it. With ``repair_attempts=0`` the two move together and this is the old loop.
     step = 0
+    dead_streak = 0            # consecutive steps in which every rollout errored
     for opt_step in range(steps):
         for repair in range(repair_attempts + 1):
             attempt = _attempt(step)
@@ -440,12 +460,28 @@ def run_loop(
             print(f"{tag} {status}  ${cost['total_usd']:.4f} so far"
                   + ("" if attempt.cb_ok else f" — {attempt.cb_reason[:80]}"))
 
-            if attempt.cb_ok and (best is None or attempt.score > best.score):
-                best = attempt
-                (out_dir / "best.json").write_text(
-                    json.dumps(_attempt_row(best), ensure_ascii=False, indent=2), encoding="utf-8"
-                )
+            # A step whose every rollout failed is not a result. Never let it become `best`, and
+            # stop the run if it keeps happening — that is a broken target, not a hard prompt.
+            if _all_rollouts_failed(attempt):
+                dead_streak += 1
+                err = (attempt.run_scores[0].error or "")[:100]
+                print(f"  !! all {len(attempt.run_scores)} rollouts FAILED — {err}"
+                      f"  ({dead_streak}/{_DEAD_STEP_LIMIT} consecutive)")
+            elif attempt.cb_ok:
+                dead_streak = 0
+                if best is None or attempt.score > best.score:
+                    best = attempt
+                    (out_dir / "best.json").write_text(
+                        json.dumps(_attempt_row(best), ensure_ascii=False, indent=2),
+                        encoding="utf-8")
             step += 1
+            if dead_streak >= _DEAD_STEP_LIMIT:
+                raise SystemExit(
+                    f"aborting: {dead_streak} consecutive steps in which EVERY rollout failed "
+                    f"({(attempt.run_scores[0].error or '')[:160]}). The target is not running — "
+                    f"scores of 0.00 here would mean 'nothing executed', not 'no lies elicited'. "
+                    f"Partial results are in {out_dir}."
+                )
             if attempt.cb_ok:
                 break   # this optimization step is spent; the rest of its repairs are not needed
         else:

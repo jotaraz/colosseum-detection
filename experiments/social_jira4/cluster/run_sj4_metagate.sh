@@ -83,6 +83,27 @@ fi
 export VLLM_USE_FLASHINFER_SAMPLER=0
 export VLLM_USE_DEEP_GEMM=0
 
+# ---- fail fast on a sick GPU ------------------------------------------------------------------
+# Nodes i101 and i104 accepted jobs while their GPUs were unusable ("Unable to determine the device
+# handle for GPU0: Unknown Error"). vLLM then exits 1 on every launch, EVERY rollout errors, and the
+# loop still runs to completion recording 0.00 for each — hours of wall-clock producing data that
+# looks like a null result. Both v4b gpt-5.4 runs were lost that way. Die in seconds instead.
+if ! nvidia-smi -L >/dev/null 2>&1; then
+    echo "FATAL: nvidia-smi cannot enumerate GPUs on $(hostname). Bad node — aborting." >&2
+    nvidia-smi -L >&2 || true
+    exit 42
+fi
+python - <<'PY' >&2 || { echo "FATAL: CUDA unusable on $(hostname). Bad node — aborting." >&2; exit 42; }
+import sys, torch
+n = torch.cuda.device_count()
+if n < 4:
+    print(f"GPU preflight FAILED: {n} CUDA devices visible, need 4", file=sys.stderr)
+    sys.exit(1)
+for i in range(n):                      # actually touch each device: enumeration alone can lie
+    torch.zeros(8, device=f"cuda:{i}")
+print(f"GPU preflight OK: {n} devices usable")
+PY
+
 # ---- split THIS job's GPU allocation between the two servers ---------------------------------
 # HTCondor sets CUDA_VISIBLE_DEVICES to the 4 devices it gave us — which are NOT 0-3 when another
 # job already holds the node's first half. Splitting the allocation (rather than hardcoding
