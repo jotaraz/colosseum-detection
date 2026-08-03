@@ -255,11 +255,16 @@ class _AzureTrackingCaller:
     """
 
     def __init__(self, deployment: str, max_tokens: int, timeout: int = 180,
-                 max_retries: int = 8):
+                 max_retries: int = 40, retry_budget_s: float = 1200.0):
         self.model = deployment
         self.max_tokens = max_tokens
         self.timeout = timeout
+        # Patience, deliberately large. A rate-limit window on a shared deployment is transient,
+        # but a run that gives up on one kills HOURS of GPU work — three v4b jobs died on their
+        # FIRST prompter call because 8 retries x retry-after 30s tolerated only ~4 minutes. The
+        # budget is wall-clock, so honouring a long retry-after cannot silently blow past it.
         self.max_retries = max_retries
+        self.retry_budget_s = retry_budget_s
         self.provider = "azure"
         self.price = azure_price(deployment)      # (usd_per_1M_in, usd_per_1M_out) or None
         self._local = threading.local()
@@ -309,6 +314,15 @@ class _AzureTrackingCaller:
             body["max_completion_tokens"] = int(self.max_tokens)
 
         last_err = None
+        deadline = time.time() + self.retry_budget_s
+
+        def _wait(delay: float) -> bool:
+            """Sleep before the next attempt; False when the retry budget is spent."""
+            if time.time() + delay > deadline:
+                return False
+            time.sleep(delay)
+            return True
+
         for attempt in range(self.max_retries):
             backoff = min(2.0 * (2 ** attempt), 60.0) + random.uniform(0, 2.0)
             try:
@@ -322,11 +336,13 @@ class _AzureTrackingCaller:
                     except (TypeError, ValueError):
                         delay = backoff
                     last_err = f"HTTP 429 rate-limited (retry-after={ra})"
-                    time.sleep(delay + random.uniform(0, 1.0))
+                    if not _wait(delay + random.uniform(0, 1.0)):
+                        break
                     continue
                 if r.status_code != 200:
                     last_err = f"HTTP {r.status_code}: {r.text[:300]}"
-                    time.sleep(backoff)
+                    if not _wait(backoff):
+                        break
                     continue
                 data = r.json()
                 if "error" in data:
@@ -336,11 +352,13 @@ class _AzureTrackingCaller:
                 choices = data.get("choices") or []
                 if not choices:
                     last_err = f"no choices: {str(data)[:300]}"
-                    time.sleep(backoff)
+                    if not _wait(backoff):
+                        break
                     continue
             except Exception as exc:  # noqa: BLE001 — retry any transport/parse error
                 last_err = f"{type(exc).__name__}: {exc}"
-                time.sleep(backoff)
+                if not _wait(backoff):
+                    break
                 continue
 
             message = choices[0].get("message", {}) or {}
@@ -358,7 +376,7 @@ class _AzureTrackingCaller:
                 self.totals["cost_usd"] = round(self.totals["cost_usd"] + usage["cost_usd"], 8)
             return message.get("content") or ""
 
-        raise RuntimeError(f"azure call failed after {self.max_retries} attempts: {last_err}")
+        raise RuntimeError(f"azure call failed after {attempt + 1} attempts / {self.retry_budget_s:.0f}s budget: {last_err}")
 
 
 # Back-compat alias: the prompter caller was named this before usage tracking was added.
