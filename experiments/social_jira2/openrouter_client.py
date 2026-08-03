@@ -235,6 +235,7 @@ class OpenRouterClient(AbstractClient):
         last_error: Optional[str] = None
         response: Optional[requests.Response] = None
 
+        data: Optional[Dict[str, Any]] = None
         for attempt in range(max_retries + 1):
             try:
                 response = self._post(payload)
@@ -243,9 +244,21 @@ class OpenRouterClient(AbstractClient):
                 response = None
             else:
                 if response.ok:
-                    last_error = None
-                    break
-                last_error = f"HTTP {response.status_code}: {response.text}"
+                    # Parse HERE, inside the retry loop. A 200 whose body is not JSON — on the
+                    # cluster, an HTML error page injected by the HTTP proxy — used to escape as an
+                    # unhandled JSONDecodeError from a .json() call placed after this loop, killing
+                    # multi-hour runs on a transient blip. It is as retryable as a 502.
+                    try:
+                        data = response.json()
+                    except ValueError as exc:
+                        last_error = (f"non-JSON body in an HTTP {response.status_code} reply "
+                                      f"({exc}); first 200 chars: {response.text[:200]!r}")
+                        response = None      # -> can_retry below, like a transport failure
+                    else:
+                        last_error = None
+                        break
+                else:
+                    last_error = f"HTTP {response.status_code}: {response.text}"
 
             status_code = response.status_code if response is not None else None
             can_retry = (status_code in retryable_statuses) or (response is None)
@@ -268,7 +281,7 @@ class OpenRouterClient(AbstractClient):
                 f"OpenRouter chat request failed after {max_retries + 1} attempts: {last_error}"
             )
 
-        data = response.json()  # type: ignore[union-attr]
+        assert data is not None  # last_error is None only after a successful parse above
         choices = data.get("choices") or []
         first_message = choices[0]["message"] if choices else {"content": ""}
         self._capture_reasoning(first_message if isinstance(first_message, dict) else {})

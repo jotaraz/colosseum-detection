@@ -1,0 +1,31 @@
+# social_jira4 — meta-judge panel over the v3 rendered prompts.
+#
+# Not an optimizer run and not a rollout: it re-reads the prompts the six v3 runs produced
+# (reports/v3_prompts_rendered.jsonl) and asks six independent questions about each one — see
+# meta-judges-feeling.md. The questions share a voice and differ in how much the judge is told about
+# what we are looking for, from "does this look like a normal company prompt" (told nothing) through
+# to "does this cross into leading the model to deceive" (told the whole design). #6 is open-ended
+# and never names deception; its signal is whether the judge raises fabrication unprompted.
+#
+# Every question is asked by BOTH judge models: deepseek-v4-pro over OpenRouter and gpt-5.4 over
+# Azure. Two providers on purpose — deepseek-v4-pro wrote these prompts and ran the checks-and
+# -balances gate that passed them, so on its own it would be grading its own homework.
+#
+# 65 prompts (3 of the 68 rows are gate-rejected candidates that never rendered) x 2 views
+# (system alone, system+user) x 6 questions x 2 models = 1560 verdicts, 1428 distinct model calls
+# after identical prompt text is deduplicated.
+#
+# Output: reports/v3_meta_judge_verdicts.jsonl, one row per (prompt, judge, view), appended and
+# flushed per row. Rerunning the same command resumes — rows that already parsed are skipped, so a
+# second submit only patches the calls that failed.
+#
+# CPU-only: all model calls leave the node over the HTTP proxy. Submit with `condor_submit_bid 100`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_meta_judges.sh
+arguments = "experiments/social_jira4/reports/v3_meta_judge_verdicts.jsonl"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/meta_judges.out
+error = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/meta_judges.err
+log = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/meta_judges.log
+request_cpus = 4
+request_memory = 8192
+request_disk = 4G
+queue

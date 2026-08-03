@@ -2,7 +2,7 @@
 # social_jira4 — ONE meta-gate optimization loop: 4 seeds across TWO local vLLM targets, gated by
 # one meta-judge question asked of deepseek-v4-pro (OpenRouter) + gpt-5.4 (Azure).
 #
-#   usage: run_sj4_metagate.sh <out-dir> <port-base> <question> <steps> <prompter> [extra flags...]
+#   usage: run_sj4_metagate.sh <out-dir> <port-base> <question> <steps> <prompter> [panel] [extra...]
 #
 #     out-dir     repo-relative; the generated config and cost.json land here
 #     port-base   two consecutive free ports for THIS job's servers (qwen=base, gpt-oss=base+1).
@@ -13,10 +13,12 @@
 #     steps       optimization steps (16 cold; 17 warm, so the prompter still gets 16 real
 #                 attempts after the replayed seed)
 #     prompter    dspro (deepseek-v4-pro / OpenRouter) | gpt54 (Azure)
-#
-# EITHER prompter is also one of the two seats on the meta-gate panel, so one gate seat always
-# grades its own author's work — with dspro in the OpenRouter arm and gpt54 in the Azure arm. The
-# two arms are mirror images of that confound, which is the point of running both.
+#     panel       meta-gate judges, comma-separated (default "dspro,gpt54"). A ONE-judge panel is
+#                 valid — the AND-rule degenerates to it — but note what it does to independence:
+#                 with panel=dspro and prompter=dspro, the same model writes the prompt AND is the
+#                 sole gate on it, which is pure self-grading. With panel=dspro and prompter=gpt54
+#                 the gate is fully independent of the author. The two arms are no longer
+#                 symmetric, unlike with the two-judge panel.
 #
 # Seeds 1,2 -> qwen3.6-35b-a3b and seeds 3,4 -> gpt-oss-120b, both served locally on this node's
 # 4 GPUs. Everything else is remote: prompter + 3 critics + referee on OpenRouter, and the two-model
@@ -44,6 +46,13 @@ QUESTION="${3:?meta-gate question}"
 STEPS="${4:?steps}"
 PROMPTER="${5:?prompter: dspro | gpt54}"
 shift 5
+# Optional 6th positional: the panel. Anything starting with "-" is a loop flag, not a panel, so
+# the older submit files that pass extra flags straight after <prompter> keep working.
+PANEL="dspro,gpt54"
+if [ "$#" -gt 0 ] && [ "${1#-}" = "$1" ]; then
+    PANEL="$1"
+    shift
+fi
 
 PROJECT=/fast/jtaraz/LIARS/colosseum-detection
 VENV="$PROJECT/.venv-vllm023"        # vLLM 0.23 — Qwen3.6 gated-delta-net needs >=0.23
@@ -129,7 +138,7 @@ case "$PROMPTER" in
 esac
 
 echo "node=$(hostname) start=$(date) git=$(git rev-parse --short HEAD)"
-echo "out=$OUT question=$QUESTION steps=$STEPS prompter=$PROMPTER extra=$*"
+echo "out=$OUT question=$QUESTION steps=$STEPS prompter=$PROMPTER panel=$PANEL extra=$*"
 echo "gpus: alloc=$ALLOC qwen=$QWEN_GPUS:$QWEN_PORT gptoss=$GPTOSS_GPUS:$GPTOSS_PORT"
 echo "azure_endpoint=${AZURE_OPENAI_ENDPOINT:-unset} azure_deployment=${AZURE_JUDGE_DEPLOYMENT:-gpt-5.4}"
 echo "azure_key=$([ -n "${AZURE_OPENAI_API_KEY:-}" ] && echo set || echo MISSING)"
@@ -141,7 +150,7 @@ exec python -u -m experiments.social_jira4.loop --mode live \
     --config "$CONFIG" \
     --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b \
     "${PROMPTER_ARGS[@]}" \
-    --meta-gate dspro,gpt54 \
+    --meta-gate "$PANEL" \
     --meta-gate-question "$QUESTION" \
     --meta-gate-view system_user \
     --repair-attempts 5 \
