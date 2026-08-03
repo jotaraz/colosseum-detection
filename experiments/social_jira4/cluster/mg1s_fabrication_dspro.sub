@@ -1,0 +1,35 @@
+# social_jira4 — SMOKE TEST for the serial server pre-start fix. Not an experiment.
+#
+# Validates the one thing no run has exercised yet: that with both vLLM servers started serially
+# BEFORE the loop, the loop's four concurrent rollouts reuse them instead of racing. The race —
+# two seeds mapped to the same model, two threads calling ensure_server at once, two vLLM processes
+# on one port and one pair of GPUs — cost four of six v4c runs every qwen rollout.
+#
+# Pass criteria (check, do not assume):
+#   1. every scored step reports 4/4 rollouts with turns and no `error`;
+#   2. <out-dir>/jobcwd/logs/vllm/ holds exactly ONE launch per model, not two;
+#   3. the run reaches both optimization steps and exits 0.
+#
+# 2 optimization steps, fabrication gate, dspro panel + dspro prompter — the cheapest configuration
+# that still passes the gate often enough to produce rollouts (44-57% in v4b/v4c). Expect ~$2 and
+# ~40 minutes, most of it the ~8 minute cold start of the two servers.
+#
+# i101/i104 excluded: genuinely dead GPUs. i201/i205 are NOT excluded — the diagnostic exonerated
+# them, and if the race theory is right they will now work.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
+arguments  = "experiments/social_jira4/outputs/v4s_smoke_fabrication_dspro 8220 fabrication 2 dspro dspro"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1s_fabrication_dspro.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1s_fabrication_dspro.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1s_fabrication_dspro.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet")
+request_memory = 327680
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue
