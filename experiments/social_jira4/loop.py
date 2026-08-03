@@ -123,6 +123,34 @@ STEP_SCHEMA = 4
 # lost that way (a node whose GPUs were unusable; vLLM exited 1 on every launch).
 _DEAD_STEP_LIMIT = 3
 
+# The same trap one level down. When seeds map to DIFFERENT models, a step in which one model's
+# rollouts all failed still scores — the other model carries it — so the run completes, exits 0 and
+# reports numbers that silently describe one model instead of two. That is exactly what happened in
+# v4b/v4c: four runs lost every qwen rollout to a server race and were read as "qwen never lies",
+# when qwen had never run. A model starved this many scored steps in a row stops the run.
+_DEAD_MODEL_LIMIT = 3
+
+
+def _seed_model_map(runner: Any, seeds: List[int]) -> Dict[int, str]:
+    """seed -> target model label. Multi-model runners publish the mapping; a single-target run
+    reports one label for every seed, and then per-model starvation is just ``_DEAD_STEP_LIMIT``."""
+    mapping = getattr(runner, "seed_models", None)
+    if isinstance(mapping, dict) and mapping:
+        return {s: str((mapping.get(s) or {}).get("label") or "?") for s in seeds}
+    label = str(getattr(runner, "model_label", "") or "target")
+    return {s: label for s in seeds}
+
+
+def _errors_by_model(a: Attempt, seed_model: Dict[int, str]) -> Dict[str, Dict[str, int]]:
+    """Per model: how many of its rollouts ran and how many errored, this step."""
+    out: Dict[str, Dict[str, int]] = {}
+    for rs in a.run_scores:
+        m = seed_model.get(rs.seed, "?")
+        row = out.setdefault(m, {"total": 0, "errored": 0})
+        row["total"] += 1
+        row["errored"] += 1 if rs.error else 0
+    return out
+
 
 def _errored_seeds(a: Attempt) -> int:
     return sum(1 for rs in a.run_scores if rs.error)
@@ -138,6 +166,9 @@ def _attempt_row(a: Attempt) -> Dict[str, Any]:
         # Not cosmetic: a step with errored_seeds == len(seed_scores) scored 0.00 because nothing
         # ran, NOT because the target behaved. Filter on this before reading any score.
         "errored_seeds": _errored_seeds(a),
+        # Per model, so "which model actually produced this score" is answerable from the compact
+        # history alone — the question v4b/v4c could only be answered by opening every step file.
+        "errored_by_model": a.errored_by_model,
         "opt_step": a.opt_step,  # several attempts share one when repairs are enabled
         "repair": a.repair,      # 0 = first try at this opt_step
         "cb_ok": a.cb_ok,
@@ -436,10 +467,16 @@ def run_loop(
     # produced it. With ``repair_attempts=0`` the two move together and this is the old loop.
     step = 0
     dead_streak = 0            # consecutive steps in which every rollout errored
+    seed_model = _seed_model_map(runner, seeds)
+    model_dead: Dict[str, int] = {m: 0 for m in set(seed_model.values())}
+    if len(model_dead) > 1:
+        print(f"  targets: " + ", ".join(f"seed {s}={m}" for s, m in sorted(seed_model.items())))
     for opt_step in range(steps):
         for repair in range(repair_attempts + 1):
             attempt = _attempt(step)
             attempt.opt_step, attempt.repair = opt_step, repair
+            by_model = _errors_by_model(attempt, seed_model)
+            attempt.errored_by_model = {m: v["errored"] for m, v in by_model.items() if v["errored"]}
             history.append(attempt)
             with hist_path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(_attempt_row(attempt), ensure_ascii=False) + "\n")
@@ -469,12 +506,33 @@ def run_loop(
                       f"  ({dead_streak}/{_DEAD_STEP_LIMIT} consecutive)")
             elif attempt.cb_ok:
                 dead_streak = 0
+                # Per-model starvation: this step DID score, but if one model contributed nothing
+                # the score describes the survivors only. Counted per model, reset the moment that
+                # model manages a single rollout.
+                for m, v in by_model.items():
+                    if v["errored"] == v["total"]:
+                        model_dead[m] = model_dead.get(m, 0) + 1
+                        print(f"  !! target {m!r} produced NOTHING this step "
+                              f"({v['errored']}/{v['total']} rollouts failed) — "
+                              f"{model_dead[m]}/{_DEAD_MODEL_LIMIT} consecutive; "
+                              f"this step's score reflects the other target(s) only")
+                    else:
+                        model_dead[m] = 0
                 if best is None or attempt.score > best.score:
                     best = attempt
                     (out_dir / "best.json").write_text(
                         json.dumps(_attempt_row(best), ensure_ascii=False, indent=2),
                         encoding="utf-8")
             step += 1
+            starved = [m for m, n in model_dead.items() if n >= _DEAD_MODEL_LIMIT]
+            if starved:
+                raise SystemExit(
+                    f"aborting: target(s) {starved} produced no rollout at all for "
+                    f"{_DEAD_MODEL_LIMIT} consecutive scored steps, while the run kept scoring off "
+                    f"the others. Those scores describe the surviving target(s), not the intended "
+                    f"set — the v4b/v4c failure, where 'qwen never lies' meant 'qwen never ran'. "
+                    f"Partial results are in {out_dir}."
+                )
             if dead_streak >= _DEAD_STEP_LIMIT:
                 raise SystemExit(
                     f"aborting: {dead_streak} consecutive steps in which EVERY rollout failed "

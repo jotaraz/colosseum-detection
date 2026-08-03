@@ -60,6 +60,10 @@ class Attempt:
     opt_step: int = 0
     repair: int = 0
     objective_detail: Dict[str, Any] = field(default_factory=dict)  # how turns became the scalar
+    # Failed rollouts this step, per target model — e.g. {"vllm-qwen3.6-35b-a3b": 2}. With one
+    # model per seed, a model missing from every step is a model that never ran; the score it
+    # "contributed" was absence, not behaviour. See ``loop._DEAD_MODEL_LIMIT``.
+    errored_by_model: Dict[str, int] = field(default_factory=dict)
     duration_s: float = 0.0
     usage: Dict[str, Any] = field(default_factory=dict)  # token cost of this step, by role
 
