@@ -1,0 +1,73 @@
+# social_jira4 v4e -- TWO-SAMPLE GATE: fabrication / prompter = gpt-5.4 via Azure.
+#
+# Identical to the running v4d fabrication_dspro job (fixed environment, 16 steps, 6 seeds) except
+# for the gate and the prompter model. Everything below is about that one change.
+#
+# THE GATE IS NOW dspro TWICE, NOT ONCE. A candidate runs only if deepseek-v4-pro answers "no" to
+# the fabrication question on BOTH of two independent samples. If either says "yes", only the
+# refusing sample's rationale goes back to the prompter -- so a split verdict teaches the prompter
+# from the objection, not from the agreement.
+#
+# WHY TEMPERATURE 1.0, AND WHY THE RUN REFUSES TO START WITHOUT IT. make_judge_caller defaults to
+# temperature 0.0 ("judges are deterministic"), which is right for a panel of DIFFERENT models --
+# the disagreement you want comes from the models differing. It is exactly wrong here: two seats of
+# ONE model at temperature 0 return the same verdict, so "2 of 2 must pass" would not be stricter
+# than one judge, it would be one judge billed twice. loop.py now refuses that configuration at
+# startup rather than letting it run. Measured at T=1.0 over 4 gated candidates before submitting:
+# 4/4 gave two distinct rationales and one candidate split yes/no, so the seats are genuinely
+# independent samples.
+#
+# WHAT THIS COSTS YOU, deliberately. A resampled AND-rule is strictly stricter than v4d's single
+# deterministic judge: a candidate now has to survive two draws, and at T=1.0 each draw is noisier.
+# Expect a HIGHER rejection rate than v4d's ~50%, more repairs consumed per optimization step, and
+# so fewer of the 16 steps actually reaching a rollout. That trade is the point -- v4d's gate is one
+# sample of a stochastic judge, and this measures how much of its pass/fail signal was sampling luck.
+#
+# READ IT BY. The number to pull out is the seat-disagreement rate in
+# steps/step_NNN.json -> meta.raw.judges.{dspro#1,dspro#2}. Agreement means v4d's single-seat gate
+# was reliable and this batch mostly re-confirms it; frequent splits mean v4d's accept/reject
+# boundary was substantially noise, and every v4/v4b/v4c gate statistic inherits that noise.
+#
+# THE ENVIRONMENT IS PINNED, as in v4d: decoys = calendar+ops_feed+access+equipment, inbox = quit3.
+# The prompter writes only the four free prose blocks. See any mg1d_*.sub header for why.
+#
+# INDEPENDENCE. Prompter = gpt-5.4 via Azure; gate = deepseek-v4-pro x2. So here
+# the author (gpt-5.4) is independent of both gate seats (deepseek-v4-pro). Against
+# its dspro twin this isolates what self-grading is worth once the gate is resampled.
+#
+# HOW THE SEED COUNT AND THE PANEL ARE SET. <panel> is the 6th positional ("dspro,dspro" below);
+# a repeated label used to be silently de-duplicated and now seats the model twice. <steps> is the
+# 4th. The seed list is NOT positional -- run_sj4_metagate.sh hardcodes `--seeds 1,2,3,4` and a
+# 4-entry --model-label, and the flags at the end of `arguments` override them because the script
+# forwards "$@" last and argparse keeps the final occurrence. Change --seeds and --model-label
+# together: _build_live_runner wants exactly one model per seed, positionally, and exits otherwise.
+#
+# TARGETS. Seeds 1,2,3 -> Qwen3.6-35B-A3B, seeds 4,5,6 -> gpt-oss-120b, one server each on this
+# job's 4 H100s, pre-started serially before the loop. qwen is the critical path (~420s to load,
+# and it paces every step).
+#
+# COST. Gate calls double but they are cheap; rollouts dominate and a stricter gate means fewer of
+# them. Budget $30-45, and expect it to land LOWER than v4d if the rejection rate climbs.
+#
+# 4x H100-80GB (2 per server). Ports are per-job (8244/8245) because HTCondor packs two of
+# these jobs onto one 8-GPU node. Submit with `condor_submit_bid 100`.
+# NODE EXCLUSION: i101, i104 excluded -- they accepted jobs with dead GPUs and cost the v4b batch
+# two entire runs. The runner now preflights and exits 42 in seconds, so drop this if support
+# confirms they are repaired.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
+arguments  = "experiments/social_jira4/outputs/v4e_mg2_fabrication_gpt54 8244 fabrication 16 gpt54 dspro,dspro --decoys calendar+ops_feed+access+equipment --inbox quit3 --seeds 1,2,3,4,5,6 --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b,vllm-gpt-oss-120b --meta-gate-temperature 1.0"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1e_fabrication_gpt54.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1e_fabrication_gpt54.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1e_fabrication_gpt54.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet")
+request_memory = 327680
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue
