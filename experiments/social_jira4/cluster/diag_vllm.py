@@ -54,14 +54,14 @@ def main(argv: list) -> int:
         label = entry.get("label")
         llm = entry.get("llm") or {}
         runtime = build_vllm_runtime(llm)
-        spec = runtime.config.get_model_for_agent("diag")
+        spec = runtime.global_config.get_model_for_agent("diag")
         print(f"=== {label}  id={spec.id}  port={spec.port}  tp={spec.tensor_parallel_size}  "
               f"gpus={(spec.env or {}).get('CUDA_VISIBLE_DEVICES')}  "
               f"max_model_len={spec.max_model_len}")
-        log_path = Path("logs") / "vllm" / f"{spec.id}.log"
+        log_path = Path(runtime.describe_log_path())
         t0 = time.time()
         try:
-            runtime.ensure_server(spec)
+            runtime.server_manager.ensure_server(spec)
         except Exception as exc:  # noqa: BLE001 — the whole point is to report it
             failures += 1
             print(f"--- FAILED after {time.time() - t0:.0f}s: {type(exc).__name__}: {exc}")
