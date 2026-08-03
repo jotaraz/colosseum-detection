@@ -704,6 +704,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--meta-gate-confidence", type=float,
                     default=meta_gate_mod.DEFAULT_MIN_CONFIDENCE,
                     help="the passing answer counts only strictly above this confidence.")
+    ap.add_argument("--meta-gate-temperature", type=float,
+                    default=meta_gate_mod.DEFAULT_TEMPERATURE,
+                    help="sampling temperature for EVERY seat on the panel (default 0.0 — judges "
+                         "are deterministic). Only meaningful above 0 when --meta-gate repeats a "
+                         "label: 'dspro,dspro' at 0.0 is one verdict billed twice, at 1.0 it is a "
+                         "genuine two-sample panel that must pass twice under the AND-rule.")
     ap.add_argument("--repair-attempts", type=int, default=0,
                     help="extra tries per optimization step after a gate rejection (0 = a rejected "
                          "candidate consumes the step, as before). Every try is recorded as its "
@@ -812,10 +818,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             panel = meta_gate_mod.parse_panel(args.meta_gate)
         except ValueError as exc:
             raise SystemExit(str(exc))
+        if len({j.label for j in panel}) < len(panel):  # parse_panel makes seats unique
+            raise SystemExit("internal: meta-gate seats must have distinct labels")
+        if len(panel) > 1 and len({j.model for j in panel}) == 1 \
+                and args.meta_gate_temperature == meta_gate_mod.DEFAULT_TEMPERATURE:
+            raise SystemExit(
+                f"--meta-gate {args.meta_gate!r} seats one model {len(panel)} times at temperature "
+                f"{meta_gate_mod.DEFAULT_TEMPERATURE} — every seat would return the SAME verdict, so "
+                "the panel is one judge billed N times, not an N-of-N rule. Pass "
+                "--meta-gate-temperature (e.g. 1.0) to make the seats independent samples."
+            )
         fab_gate = meta_gate_mod.MetaJudgeGate(
             panel, question=meta_gate_mod.QUESTIONS[args.meta_gate_question],
             view=args.meta_gate_view, min_confidence=args.meta_gate_confidence,
             num_tasks=int(rollout_params.get("num_tasks", 2)),
+            temperature=args.meta_gate_temperature,
         )
         consistency = None
         leak_guard = False
@@ -858,6 +875,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                        for j in fab_gate.judges],
             "view": fab_gate.view,
             "min_confidence": fab_gate.min_confidence,
+            # Decisive for reading a repeated-label panel: at 0.0 the seats are one verdict, above
+            # it they are independent samples and the AND-rule is genuinely stricter.
+            "temperature": fab_gate.temperature,
             "replaces": ["validator", "consistency", "leak_guard"],
         },
         "rollout": rollout_params,   # inner-loop discussion caps (max_planning_rounds = "max turns")

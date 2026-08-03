@@ -112,18 +112,50 @@ PANEL: Dict[str, MetaJudge] = {
     "gpt54": MetaJudge("gpt54", "azure", os.getenv("AZURE_JUDGE_DEPLOYMENT", "gpt-5.4")),
 }
 
+# Sampling temperature for every seat. 0.0 is the historical value and what ``llm.make_judge_caller``
+# defaults to ("judges are deterministic") — right for a panel of DISTINCT models, where the
+# disagreement you want comes from the models differing, not from sampling.
+#
+# It is the wrong default the moment a label is repeated: two seats of one model at temperature 0
+# return the same verdict, so a "2 of 2 must pass" rule is not stricter than one judge, it is the
+# same judge billed twice. Raise it (``--meta-gate-temperature 1.0``) whenever the panel repeats a
+# label, and read the two rationales in the step file to check they are genuinely independent.
+DEFAULT_TEMPERATURE = 0.0
+
 
 def parse_panel(spec: str) -> List[MetaJudge]:
-    """``"dspro,gpt54"`` -> the judges, in the order given. ``""`` -> ``[]`` (gate off)."""
+    """``"dspro,gpt54"`` -> the judges, in the order given. ``""`` -> ``[]`` (gate off).
+
+    A label may be REPEATED to seat the same model more than once — ``"dspro,dspro"`` is a
+    two-sample panel of one judge, which under the AND-rule means "runs only if it says pass
+    twice". Repeats are given distinct labels (``dspro#1``, ``dspro#2``) because the label is the
+    key of the per-judge record AND of the verdict cache: shared labels would overwrite one
+    rationale with the other and make the second call a cache hit that never reaches the API.
+
+    A label used ONCE keeps its bare name, so single- and mixed-model panels are byte-identical to
+    what they were before repeats were allowed, and existing artifacts keyed on ``judges["dspro"]``
+    still read.
+
+    NB a repeated seat is only a second opinion at non-zero temperature — see
+    ``MetaJudgeGate(temperature=...)``, which defaults to the deterministic 0.0.
+    """
     labels = [s.strip() for s in (spec or "").split(",") if s.strip()]
     unknown = [lb for lb in labels if lb not in PANEL]
     if unknown:
         raise ValueError(f"unknown meta-gate judge(s) {unknown} (known: {sorted(PANEL)})")
-    seen: List[MetaJudge] = []
-    for lb in labels:  # de-duplicate, keep order
-        if all(j.label != lb for j in seen):
-            seen.append(PANEL[lb])
-    return seen
+    totals: Dict[str, int] = {}
+    for lb in labels:
+        totals[lb] = totals.get(lb, 0) + 1
+    seats: List[MetaJudge] = []
+    used: Dict[str, int] = {}
+    for lb in labels:
+        base = PANEL[lb]
+        if totals[lb] == 1:
+            seats.append(base)
+            continue
+        used[lb] = used.get(lb, 0) + 1
+        seats.append(MetaJudge(f"{lb}#{used[lb]}", base.provider, base.model))
+    return seats
 
 
 def _as_float(v: Any) -> Optional[float]:
@@ -170,6 +202,7 @@ class MetaJudgeGate:
         num_tasks: int = 2,
         min_confidence: float = DEFAULT_MIN_CONFIDENCE,
         retries: int = 2,
+        temperature: float = DEFAULT_TEMPERATURE,
     ):
         if not judges:
             raise ValueError("MetaJudgeGate needs at least one judge")
@@ -179,12 +212,18 @@ class MetaJudgeGate:
         self.question = question
         self.view = view
         self.min_confidence = float(min_confidence)
+        self.temperature = float(temperature)
         self._seed = seed
         self._num_tasks = num_tasks
         self._retries = retries
         self._body = load_prompt_template(question.prompt_file)
+        # One caller per SEAT, not per model: two seats of the same model are two independent
+        # samples, and at temperature 0 they would be the same call billed twice (see
+        # DEFAULT_TEMPERATURE).
         self.callers = {
-            j.label: make_judge_caller(provider=j.provider, model=j.model) for j in self.judges
+            j.label: make_judge_caller(provider=j.provider, model=j.model,
+                                       temperature=self.temperature)
+            for j in self.judges
         }
         self._cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
@@ -281,7 +320,11 @@ class MetaJudgeGate:
     @property
     def description(self) -> str:
         panel = "+".join(f"{j.label}({j.model})" for j in self.judges)
-        return f"{self.question.name}[pass={self.question.pass_answer}] via {panel}"
+        # Temperature is named only when it is not the historical 0.0, so existing run banners and
+        # metadata strings are unchanged — but a resampling panel always says so, because "dspro
+        # twice" means nothing without it.
+        temp = "" if self.temperature == DEFAULT_TEMPERATURE else f" @T={self.temperature:g}"
+        return f"{self.question.name}[pass={self.question.pass_answer}] via {panel}{temp}"
 
 
 # The gate was fabrication-only when it was written; keep the old name importable.
