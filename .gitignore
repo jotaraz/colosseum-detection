@@ -18,3 +18,7 @@ build/
 **/plots_outputs/
 **/*.log
 **/logs/
+
+# archived rollouts — too large for git (GitHub rejects blobs >100MB)
+**/outputs*.zip
+**/*.tar.gz
