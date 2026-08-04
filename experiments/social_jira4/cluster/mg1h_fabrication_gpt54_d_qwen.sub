@@ -1,0 +1,40 @@
+# social_jira4 v4h -- 2-GPU SPLIT: Qwen3.6-35B-A3B only, seeds 1,2,3.
+# prompter = gpt54, 3 steps, K=5 repairs, inbox quit3, gate dspro x2 @T=1.0.
+# decoys = calendar+ops_feed
+#
+# THIS IS HALF A RUN. v4h_fabrication_gpt54_d used to be one 4-GPU job serving
+# both targets over 6 seeds; it is now this job plus v4h_fabrication_gpt54_d_gptoss. Scores here are over
+# seeds 1,2,3 of Qwen3.6-35B-A3B ALONE.
+#
+# WHY. The 4-GPU jobs stopped placing -- 24 H100s free pool-wide but fragmented across nodes with
+# 3, 2 and 1 free, so no 4-GPU hole existed. Two 2-GPU jobs fit where one 4-GPU job could not.
+#
+# WHAT IT COSTS. The dual runs scored each candidate across 6 seeds spanning both models, and the
+# prompter optimized against both at once. This loop optimizes against one model's three seeds, so
+# its SCORES ARE NOT COMPARABLE to v4f/v4g/v4h/v4i dual runs. Meta-gate pass rates remain
+# comparable: the gate reads the prompt and never sees a rollout. Compare the two halves to each
+# other for a per-model read, and to the dual runs only on gate behaviour.
+#
+# The split is by MODEL, not by seed within a model, because neither target fits on one 80 GB card
+# at these context lengths -- qwen is ~70 GB bf16 at 128k, gpt-oss ~63 GB mxfp4 at 64k -- so each
+# server still needs tensor_parallel_size 2. Seeds and model-label are set by the runner, not here.
+#
+# 2x H100-80GB, one server on both. Port 8314. request_memory 65536 (dual runs peaked 17-22 GB).
+# Submit with `condor_submit_bid 200`. Node exclusion: i101, i104, i201.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate_1model.sh
+arguments  = "experiments/social_jira4/outputs/v4h_fabrication_gpt54_d_qwen 8314 fabrication 3 gpt54 qwen dspro,dspro --decoys calendar+ops_feed --inbox quit3 --meta-gate-temperature 1.0"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d_qwen.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d_qwen.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d_qwen.log
+
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue

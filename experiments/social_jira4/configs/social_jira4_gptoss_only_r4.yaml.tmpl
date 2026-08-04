@@ -1,0 +1,89 @@
+# social_jira4 TARGET config — ONE local vLLM target (openai/gpt-oss-120b), for the 2-GPU split.
+#
+# DERIVED FROM social_jira4_dual_vllm_r4.yaml.tmpl — do not edit by hand; regenerate if that file
+# changes. The dual template puts both models in one 4-GPU job; this one keeps only openai/gpt-oss-120b and is
+# used by cluster/run_sj4_metagate_1model.sh, which requests 2 GPUs and gives both of them to this
+# single server at tensor_parallel_size 2.
+#
+# WHY THE SPLIT EXISTS. Jobs asking for 4 GPUs on one node stopped placing: the pool had 24 H100s
+# free but fragmented across nodes with 3, 2 and 1 free, so no 4-GPU hole existed anywhere. Two
+# 2-GPU jobs place into holes a 4-GPU job cannot.
+#
+# WHAT IT COSTS, and it is not free. The dual config scores each candidate over 6 seeds spanning
+# TWO models, so a step's score mixes model variance with seed variance. Split, each loop sees 3
+# seeds of openai/gpt-oss-120b alone and optimizes against that one model. Scores from these runs are NOT
+# comparable to v4f/v4g/v4h/v4i, which were cross-model. Meta-gate pass rates still are — the gate
+# judges the prompt text and never sees a rollout.
+#
+# This is a TEMPLATE: the run script substitutes the dunder names and rejects any that survive.
+# __GPTOSS_PORT__ / __GPTOSS_GPUS__   (mxfp4 ~63 GB, both GPUs of the pair)
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  # ---- seeds 3,4 --------------------------------------------------------------------------
+  - label: vllm-gpt-oss-120b
+    llm:
+      provider: vllm
+      vllm:
+        auto_start_server: true
+        persistent_server: true
+        health_check_path: "/models"
+        startup_timeout: 3600
+        connection_timeout: 600
+        env:
+          HF_HOME: "/fast/jtaraz/hf_cache"
+        params:
+          max_tokens: 20000        # same ceiling the gpt-oss OpenRouter runs used
+          temperature: 0.7
+        models:
+          - checkpoint: "openai/gpt-oss-120b"
+            host: "127.0.0.1"
+            port: __GPTOSS_PORT__
+            request_timeout: 600
+            tensor_parallel_size: 2
+            gpu_memory_utilization: 0.9
+            # 64k, not qwen's 128k: mxfp4 weights are ~31 GB/GPU, so there is ample KV headroom,
+            # and sj4 prompts + 20k completions sit far below this.
+            max_model_len: 65536
+            trust_remote_code: true
+            tool_call_parser: "openai"
+            reasoning_parser: "openai_gptoss"
+            env:
+              CUDA_VISIBLE_DEVICES: "__GPTOSS_GPUS__"
+            additional_args:
+              - "--enable-auto-tool-choice"
+              - "--tool-call-parser"
+              - "openai"
+              - "--reasoning-parser"
+              - "openai_gptoss"
+
+experiment:
+  tag: social_jira4_dual_vllm_r4
+  planning_rounds: 4
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false
