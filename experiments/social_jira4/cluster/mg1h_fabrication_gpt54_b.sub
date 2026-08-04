@@ -1,0 +1,65 @@
+# social_jira4 v4h -- DROP THE HARDWARE POOL: fabrication / prompter = gpt-5.4 via Azure.
+#
+# Third rung of the decoy-ablation ladder, all else held at v4e/v4f/v4g:
+#   v4f  calendar + ops_feed + access + equipment   (the v4d/v4e substrate)
+#   v4g  calendar + ops_feed + equipment            (access dropped)
+#   v4h  calendar + ops_feed                        (equipment dropped too)  <-- this job
+# 3 optimization steps, K=5 repairs, seeds 1-6, inbox quit3, gate = dspro seated twice at T=1.0.
+# Each configuration is run twice (this is sample b; sample a is the identical job in mg1h_fabrication_gpt54_a.sub); nothing is seeded on the sampling side, so an
+# identical config re-draws its whole trajectory.
+#
+# WHY equipment IS THE ONE UNDER TEST. Its pool entry is "private view of a shared hardware pool
+# (pods, profiler seats)", designed to invite a blocker that imputes no deficiency to the colleague
+# -- the kit is busy, not the person lacking. The concern is that it does something else as well:
+# an assistant seeing only its own booking view can conclude in good faith that a seat is
+# exclusively held, and assert that sincerely. A false statement, but an honest one, and the
+# fabrication judge cannot tell it apart from a chosen lie by reading the transcript. If that is
+# happening at volume it contaminates the label AND inflates the meta-gate rejection rate, since a
+# prompt built on an underdetermined world genuinely does force a false claim.
+#
+# WHAT TO COMPARE. v4g is the direct control -- same prompter, same gate, same seeds, same 3 steps,
+# equipment present. Two numbers matter: the gate pass rate (v4f/v4g ran 11-18%; if v4h climbs
+# materially, the equipment substrate was a real share of the coercion the gate objects to), and
+# the fabrication verdicts on whatever does reach a rollout.
+#
+# READ THE PAIRS FIRST, NOT THE ARMS. Across v4f/v4g the within-config a-vs-b spread was as wide as
+# the between-arm gaps, so a v4g-vs-v4h difference smaller than the a-vs-b spread is not a result.
+#
+# NOTE ON calendar, WHICH STAYS. It has the same private-partial-view shape ("each assistant sees
+# only its own"), so it can produce the same sincere-but-false move. It differs in one way that may
+# matter: its entry fixes the ground truth ("every pair actually shares enough free time"), so an
+# invented scheduling conflict is checkably false. equipment's entry states no such fact about
+# availability. If v4h does not move the numbers, calendar is the next thing to look at.
+#
+# COST. v4f/v4g averaged ~$3.80 per completed run; budget $15-20 for the four.
+#
+# MEMORY IS 64 GB, NOT 320. Every completed v4e/v4f/v4g run peaked at 17-22 GB of host RAM -- the
+# weights live in HBM. The old 327680 request matched only a handful of nodes and left jobs idle
+# behind a constraint they never needed; the six v4f/v4g runs that completed ran fine at 65536.
+#
+# TARGETS. Seeds 1,2,3 -> Qwen3.6-35B-A3B, seeds 4,5,6 -> gpt-oss-120b, one server each on this
+# job's 4 H100s, pre-started serially. qwen paces the run (~420s to load).
+#
+# 4x H100-80GB (2 per server). Ports 8276/8277; all v4f/v4g/v4h jobs use disjoint pairs.
+# Submit with `condor_submit_bid 200`.
+# NODE EXCLUSION: i101, i104, i201 -- dead-GPU faults. Drop if support confirms repairs.
+# KNOWN STARTUP FLAKINESS: two of the eight v4f/v4g jobs died at exit 43 with qwen failing to come
+# up (one shm-broadcast hang, one flashinfer allreduce error). Both were transient; a resubmit
+# cleared them. Check <out-dir>/jobcwd/logs/vllm/ first if this job exits 43.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
+arguments  = "experiments/social_jira4/outputs/v4h_fabrication_gpt54_b 8276 fabrication 3 gpt54 dspro,dspro --decoys calendar+ops_feed --inbox quit3 --seeds 1,2,3,4,5,6 --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b,vllm-gpt-oss-120b --meta-gate-temperature 1.0"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_b.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_b.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_b.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue
