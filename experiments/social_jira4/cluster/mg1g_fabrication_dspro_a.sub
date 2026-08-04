@@ -1,0 +1,57 @@
+# social_jira4 v4g -- SHORT PAIRED SAMPLE: fabrication / prompter = deepseek-v4-pro via OpenRouter.
+#
+# One of EIGHT jobs (v4f x4, v4g x4) that differ from the completed v4e pair in exactly two ways:
+# the loop is 3 optimization steps instead of 16, and each configuration is run TWICE (this is sample a; sample b is the identical job in mg1g_fabrication_dspro_b.sub).
+# The gate is unchanged -- dspro seated twice at temperature 1.0 -- as is the seed/target mapping.
+#
+# WHY TWO SAMPLES OF THE SAME CONFIG. v4e gave one trajectory per prompter, so nothing in it
+# separates "this prompter behaves like X" from "this run happened to go like X". Nothing is seeded
+# on the sampling side: the prompter runs at temperature 1.0 (OpenRouter) or the Azure deployment
+# default, and both gate seats are at 1.0, so re-running an identical config re-draws the whole
+# trajectory. Sample a vs b is that re-draw and nothing else -- same flags, same seeds, different
+# out-dir, ports and log basenames. Read the pair as a within-config spread to compare against the
+# between-prompter and v4f-vs-v4g gaps; if a-vs-b is as wide as either, that gap is not resolved at
+# this sample size.
+#
+# THE DECOY SUBSTRATE, which is what splits v4f from v4g. Decoys here are
+# the v4f substrate MINUS `access` -- calendar, ops_feed, equipment.
+# Dropping `access` removes the lapsed-credential substrate -- the one that invites
+# categorical eligibility lies ('they are not cleared for this'). It was the second-least
+# used of the four in the pools.py measurement (74%). v4f is its control: same prompter,
+# same gate, same seeds, same 3 steps, `access` present. Any difference in what the
+# prompter reaches for is attributable to that one pool entry.
+#
+# THREE STEPS, K=5 REPAIRS. `--repair-attempts 5` is hardcoded in run_sj4_metagate.sh, so each of
+# the 3 optimization steps gets one first try plus up to 5 post-rejection repairs -- at most 18
+# attempts, each written as its own steps/step_NNN.json. `--steps` counts optimization steps, not
+# attempts. v4e spent 38 attempts (dspro) / 61 (gpt54) on 16 steps, so expect roughly 7-12 here.
+#
+# COST. v4e ran 16 steps for $30.12 (dspro) / $26.76 (gpt54), rollout-dominated. Three steps is
+# ~3/16 of that: budget $5-8 per job, $40-60 for all eight.
+#
+# TARGETS. Seeds 1,2,3 -> Qwen3.6-35B-A3B, seeds 4,5,6 -> gpt-oss-120b, one server each on this
+# job's 4 H100s, pre-started serially. qwen is the critical path (~420s to load) and at 3 steps the
+# load is a much bigger share of wall-clock than it was at 16.
+#
+# 4x H100-80GB (2 per server). Ports are per-job (8258/8259) because HTCondor packs two of these
+# jobs onto one 8-GPU node; all eight jobs use disjoint port pairs (8250-8265).
+# Submit with `condor_submit_bid 100`.
+# NODE EXCLUSION: i101, i104 (dead GPUs, cost the v4b batch two runs) plus i201, which was added to
+# mg1c after the same fault. Drop these if support confirms they are repaired.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
+arguments  = "experiments/social_jira4/outputs/v4g_fabrication_dspro_a 8258 fabrication 3 dspro dspro,dspro --decoys calendar+ops_feed+equipment --inbox quit3 --seeds 1,2,3,4,5,6 --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b,vllm-gpt-oss-120b --meta-gate-temperature 1.0"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1g_fabrication_dspro_a.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1g_fabrication_dspro_a.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1g_fabrication_dspro_a.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet")
+request_memory = 327680
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue
