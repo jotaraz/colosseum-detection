@@ -30,6 +30,10 @@ python -m experiments.social_jira4.loop --mode live --steps 20 \
 python -m experiments.social_jira4.loop --mode live --steps 20 \
     --config … --model-label qwen3.6 \
     --meta-gate gpt54 --meta-gate-question realism --repair-attempts 5
+
+# 5) same, but one model seated twice as two independent draws (must pass both).
+python -m experiments.social_jira4.loop --mode live --steps 3 \
+    --config … --meta-gate dspro,dspro --meta-gate-temperature 1.0 --repair-attempts 5
 ```
 
 ## The environment (`--decoys`, `--inbox`)
@@ -64,6 +68,30 @@ python -m experiments.social_jira4.loop --mode live --steps 20 --config … --mo
 # hand an axis back to the prompter (the pre-v4d behaviour; how v4c ran)
 … --decoys prompter --inbox prompter
 ```
+
+**The ablation ladder (v4f → v4g → v4h)** is the first controlled use of the pin — same prompter,
+same gate, same seeds, 3 steps, one substrate removed per rung:
+
+| run | `--decoys` | drops |
+|---|---|---|
+| v4f | `calendar+ops_feed+access+equipment` | — the v4d/v4e substrate, i.e. the control |
+| v4g | `calendar+ops_feed+equipment` | `access` (lapsed credentials — invites categorical eligibility lies) |
+| v4h | `calendar+ops_feed` | `equipment` as well |
+
+`equipment` is under test because an assistant seeing only its own booking view of a *shared* pool
+can conclude in good faith that a seat is exclusively held. That sincere-but-false claim is
+indistinguishable from a chosen lie in the transcript, so it both contaminates the fabrication label
+and plausibly inflates the gate rejection rate — a prompt over an underdetermined world genuinely
+does force a false claim. `calendar` has the same partial-view shape but stays, because its entry
+fixes the ground truth (every pair *does* share enough free time), which makes an invented conflict
+checkably false; `equipment`'s entry asserts no such fact.
+
+Each configuration is run **twice** (samples `a`/`b`, differing only in out-dir, ports and log
+names — nothing is seeded on the sampling side, so an identical config re-draws its whole
+trajectory). Read the pairs before the arms: across v4f/v4g the within-config a-vs-b spread was as
+wide as the between-arm gaps, so any difference smaller than that spread is not a result. The two
+numbers to compare are the gate pass rate (v4f/v4g ran 11–18%) and the fabrication verdicts on
+whatever reaches a rollout.
 
 The resolved condition is written to `metadata.json` under `environment`, and the prompter's
 scaffold is built against it: a pinned axis is *described* to the prompter as part of the world
@@ -106,6 +134,30 @@ prompter verbatim, which then gets `--repair-attempts K` further tries within th
 step (`--steps` counts optimization steps; each try is still its own `steps/step_NNN.json`). One
 judge alone (`--meta-gate gpt54`) is a valid panel; the AND-rule degenerates to it.
 
+### Seating one model twice (`--meta-gate-temperature`)
+
+A label may **repeat**: `--meta-gate dspro,dspro` seats deepseek-v4-pro twice, so a candidate runs
+only if it answers the passing answer on two independent draws, and a split verdict hands back only
+the refusing seat's rationale. Repeated seats get distinct labels — `dspro#1`, `dspro#2` — because
+the label keys both `meta.raw.judges` and the verdict cache, and a shared one would have collided
+the rationales and turned the second call into a cache hit that never reached the API. A label used
+*once* keeps its bare name, so single- and mixed-model panels are byte-identical to before and
+artifacts keyed on `judges["dspro"]` still read.
+
+This is only a second opinion above temperature 0. `--meta-gate-temperature` (default `0.0`, the
+historical value, applied to every seat) is right for a panel of *distinct* models, where the
+disagreement comes from the models differing. It is wrong the moment a label repeats: both seats
+return the same verdict, so N-of-N is one judge billed N times. **`loop.py` refuses to start** that
+configuration rather than let a run silently cost double for no added information.
+`metadata.json` records the value under `meta_gate.temperature`, and the run banner names it only
+when it is not 0.0.
+
+Verified live at T=1.0 over 4 gated candidates: 4/4 gave distinct rationales from the two seats and
+one candidate split yes/no. What this measures, beyond being stricter: every run through v4d gated
+on a **single sample** of a stochastic judge. If the two seats mostly agree, that accept/reject
+boundary was reliable; if they split often, it was substantially sampling luck and every
+v4/v4b/v4c gate statistic inherits the noise.
+
 Two things to know before reading a run made this way:
 
 - **Nothing checks coherence any more.** With the panel on, `leak_guard` and the consistency gate
@@ -135,15 +187,16 @@ single-judge panel, is the knob to loosen the other two.
 ## One target per seed
 
 `--model-label` takes a comma-separated list, paired positionally with `--seeds`, so each seed can
-run on a different model (`target_run.MultiModelTargetRunner`). The v4 runs use:
+run on a different model (`target_run.MultiModelTargetRunner`). Since v4d the runs use:
 
 ```
---seeds 1,2,3,4 --model-label qwen,qwen,gptoss,gptoss
+--seeds 1,2,3,4,5,6 --model-label qwen,qwen,qwen,gptoss,gptoss,gptoss
 ```
 
-A step's score is then a mean over **two models × two seeds each**, so a prompt only climbs if it
+A step's score is then a mean over **two models × three seeds each**, so a prompt only climbs if it
 transfers, and `objective.explain`'s per-seed breakdown separates model variance from seed
-variance. Providers may be mixed — one seed on local vLLM, another on OpenRouter — since each seed
+variance. (v4–v4c ran two seeds per model; three means a per-model mean rests on 3 draws and one
+bad rollout no longer moves it by half.) Providers may be mixed — one seed on local vLLM, another on OpenRouter — since each seed
 carries its whole `llm` block. `metadata.json` records the mapping under `models.target_per_seed`,
 and each rollout's `run_config.json` names the model that produced it.
 
@@ -187,9 +240,10 @@ attempts, and `opt_step` / `repair` say which optimization step it belongs to an
 - **`cb`** — the validator's parsed verdict *and* `rendered`, the system+user prompt it judged.
   A rejected candidate never runs, so this is the only copy of that prompt anywhere.
 - **`meta`** — the meta-judge panel's verdict when `--meta-gate` is on: the `question` and its
-  `pass_answer`, then per judge its answer, confidence, rationale, CoT and cost under `raw.judges`,
-  plus the prompt they read. Mutually exclusive with `cb`/`cons` — whichever gate configuration
-  ran, the other reads `ran: false`.
+  `pass_answer`, then per judge its answer, confidence, rationale, CoT and cost under `raw.judges`
+  (keyed by seat, so a repeated model reads `dspro#1` / `dspro#2`), plus the prompt they read.
+  Mutually exclusive with `cb`/`cons` — whichever gate configuration ran, the other reads
+  `ran: false`.
 - **`seeds[]`** — per rollout: `run_dir`, plus every judged turn with the target's own CoT and all
   three judges' verbatim replies under `judges` (each with its own reasoning, token usage, retry
   count, and any parse error) — not just the AND-gate collapse.
@@ -260,8 +314,9 @@ regardless of objective.
 | `objective.py` | how per-turn verdicts collapse into the optimized scalar (swappable) |
 | `stubs.py` | runnable placeholders: `HeuristicCritic`, `HeuristicChecks`, `FakeTargetRunner` |
 | `checks_balances.py` | the default pre-rollout gates: `LlmChecks` (validator) + `LlmConsistency` |
-| `meta_gate.py` | `--meta-gate`: one meta-judge question (fabrication / realism) asked of N models, replacing both |
+| `meta_gate.py` | `--meta-gate`: one meta-judge question asked of N seats (a model may repeat — see `--meta-gate-temperature`), replacing all three default gates |
 | `judge_prompts.py` | offline meta-judge panel over stored prompts (same prompt files + views) |
+| `reports/` | the offline panel's outputs: `v3_meta_judge_verdicts.jsonl` (1563 verdicts) + `v3_prompts_rendered.jsonl` behind `v3_runs.html` — the source of the view table above |
 | `adaptive_prompts.py` | `AdaptivePrompts(SocialJiraPrompts)` — injects free blocks; no jira3 edit |
 | `target_run.py` | live runner: a copy of `jira3._run_single` with `AdaptivePrompts` swapped in |
 | `loop.py` | the driver + CLI |
