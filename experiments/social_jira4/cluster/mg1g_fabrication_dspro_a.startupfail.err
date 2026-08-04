@@ -1,0 +1,2 @@
+GPU preflight OK: 4 devices usable
+FATAL: target servers did not come up — see /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/outputs/v4g_fabrication_dspro_a/jobcwd/logs/vllm/. Aborting.

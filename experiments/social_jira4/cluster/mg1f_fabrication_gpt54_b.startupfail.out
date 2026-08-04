@@ -1,0 +1,71 @@
+OK: vllm 0.23.0
+patch_vllm_client: already patched
+starting target servers (serial, before the loop) ...
+config: /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/outputs/v4f_fabrication_gpt54_b/target_config.yaml
+cwd:    /lustre/fast/fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/outputs/v4f_fabrication_gpt54_b/jobcwd  (server logs -> ./logs/vllm/)
+visible GPUs (job): None
+
+=== vllm-qwen3.6-35b-a3b  id=qwen_qwen3_6_35b_a3b  port=8256  tp=2  gpus=0,1  max_model_len=128000
+--- FAILED after 3601s: TimeoutError: Timed out waiting for vLLM server 'qwen_qwen3_6_35b_a3b' to become ready at http://127.0.0.1:8256/v1/models
+--- tail of logs/vllm/qwen_qwen3_6_35b_a3b.log ---
+roc_executor.py:987]            ^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]   File "/fast/jtaraz/LIARS/colosseum-detection/.venv-vllm023/lib/python3.11/site-packages/torch/_compile.py", line 54, in inner
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]     return disable_fn(*args, **kwargs)
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]   File "/fast/jtaraz/LIARS/colosseum-detection/.venv-vllm023/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]     return fn(*args, **kwargs)
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]            ^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]   File "/fast/jtaraz/LIARS/colosseum-detection/.venv-vllm023/lib/python3.11/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 409, in __torch_dispatch__
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]     res = func(*args, **kwargs)
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]           ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]   File "/fast/jtaraz/LIARS/colosseum-detection/.venv-vllm023/lib/python3.11/site-packages/torch/_ops.py", line 865, in __call__
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]     return self._op(*args, **kwargs)
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]            ^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]   File "/fast/jtaraz/LIARS/colosseum-detection/.venv-vllm023/lib/python3.11/site-packages/vllm/compilation/passes/fusion/allreduce_rms_fusion.py", line 194, in call_trtllm_fused_allreduce_norm
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]     assert workspace is not None, (
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987]            ^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987] AssertionError: Flashinfer allreduce workspace must be initialized when using flashinfer
+(Worker_TP1 pid=2769667) ERROR 08-04 11:16:13 [multiproc_executor.py:987] 
+(EngineCore pid=2769595) INFO 08-04 11:16:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:17:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:18:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:19:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:20:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:21:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:22:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:23:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:24:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:25:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:26:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:27:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:28:27 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:29:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:30:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:31:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:32:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:33:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:34:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:35:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:36:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:37:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:38:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:39:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:40:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:41:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:42:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:43:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:44:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:45:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:46:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:47:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:48:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:49:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+(EngineCore pid=2769595) INFO 08-04 11:50:28 [shm_broadcast.py:705] No available shared memory broadcast block found in 60 seconds. This typically happens when some processes are hanging or doing some time-consuming work (e.g. compilation, weight/kv cache quantization).
+
+--- end of log ---
+
+=== vllm-gpt-oss-120b  id=openai_gpt_oss_120b  port=8257  tp=2  gpus=2,3  max_model_len=65536
+--- ready in 282s; sending one completion
+--- HTTP 200, reply=None
+
+RESULT: 1 failure(s)
