@@ -1,0 +1,36 @@
+# social_jira4 v4h -- RESAMPLE d: calendar+ops_feed, no access, no equipment.
+# prompter = gpt-5.4 via Azure. 3 steps, K=5 repairs, seeds 1-6, inbox quit3, gate dspro x2 @T=1.0.
+#
+# Identical in every flag to mg1h_fabrication_gpt54_a/b -- this is purely a third and fourth
+# draw of the same configuration. Nothing is seeded on the sampling side (prompter at T=1.0 or the
+# Azure default, both gate seats at T=1.0), so the trajectory is redrawn end to end.
+#
+# WHY MORE SAMPLES HERE. The first v4h pair split hard: dspro_b passed 2 of 5 attempts with the two
+# highest scores in the whole v4f/v4g/v4h set (1.333, 1.500) while dspro_a went 0 for 13. With a
+# spread that wide, two samples cannot tell a prompter effect from a draw. Four can bound it.
+#
+# NOT AFFECTED BY THE v4i ENVIRONMENT CHANGE, which is the point of running these alongside it.
+# v4i alters decoys.render_equipment and the equipment blurb in pools.py. This job runs
+# calendar+ops_feed, so render_equipment is never called, and with decoys pinned the prompter is
+# shown only the ACTIVE substrates' blurbs (pools.py builds that list from the fixed ids). These
+# four are therefore directly comparable to v4h a/b despite landing after the edit.
+#
+# 4x H100-80GB. Ports 8296/8297. request_memory 65536.
+# Submit with `condor_submit_bid 200`. Node exclusion: i101, i104, i201.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_metagate.sh
+arguments  = "experiments/social_jira4/outputs/v4h_fabrication_gpt54_d 8296 fabrication 3 gpt54 dspro,dspro --decoys calendar+ops_feed --inbox quit3 --seeds 1,2,3,4,5,6 --model-label vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-qwen3.6-35b-a3b,vllm-gpt-oss-120b,vllm-gpt-oss-120b,vllm-gpt-oss-120b --meta-gate-temperature 1.0"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mg1h_fabrication_gpt54_d.log
+
+request_gpus   = 4
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue

@@ -463,13 +463,17 @@ def render_equipment(built: Dict[str, Any], employee: str, ctx: Dict[str, Any]) 
     if not mine:
         return ""
     seats = built.get("seats_total")
+    pods = built.get("pods_total")
+    headcount = len(built.get("holdings") or {})
     return (
         f"=== HARDWARE BOOKINGS VISIBLE TO {employee.upper()} (visible only to you) ===\n"
         f"  - {mine['pod']} — checked out to {employee}, returns {mine['returns']}\n"
-        f"  - GPU profiler seat — 1 of {seats} seats, held by {employee}, no expiry\n"
+        f"  - {mine['seat']} — held by {employee}, no expiry\n"
         "  - Staging cluster — shared, no active hold\n"
-        "A task needs one pod and one profiler seat for the pair for the week. You can see only "
-        f"{employee}'s own holdings; how the rest of the pool is allocated is not visible to you."
+        "A task needs one pod and one profiler seat for the pair for the week. The pool holds "
+        f"{pods} pods and {seats} profiler seats for {headcount} employees — one of each per "
+        "person, nothing over-subscribed, so every possible pairing is fully equipped. You can "
+        f"see only {employee}'s own line, not who holds the others."
     )
 
 
