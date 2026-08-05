@@ -272,6 +272,13 @@ def _verdict_row(task: _Task, obj: Dict[str, Any]) -> Dict[str, Any]:
     out["reasoning"] = meta.get("reasoning", "")   # its CoT — sidecar only, never merged
     out["usage"] = meta.get("usage", {})
     out["attempts"] = meta.get("attempts")
+    # Per-attempt record of the calls that did NOT parse (absent on a first-attempt success). This
+    # is the only place an empty reply survives: the row that exists because of a retry otherwise
+    # carries only the metadata of the attempt that worked. It also marks WHICH verdicts were
+    # elicited under a modified prompt — _call_json appends a "your previous reply was EMPTY, answer
+    # NOW, concisely" nudge before retrying, so a verdict with a non-empty attempt_log was not asked
+    # the same question as one without, and the two should not be pooled uncritically.
+    out["attempt_log"] = meta.get("attempt_log", [])
     out["raw"] = meta.get("raw", "")
     return out
 

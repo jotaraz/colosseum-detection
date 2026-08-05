@@ -1,0 +1,29 @@
+# social_jira4 — sonnet5 empty-reply diagnostic, cluster half of an A/B.
+#
+# THE QUESTION. On the 1040-call meta-judge sweep, ~50% of claude-sonnet-5 calls returned HTTP 200
+# with empty content, against 0% for dspro and gpt54 and 2.6% for dsflash. Retrying always
+# eventually worked, so the verdicts are complete — but the cause was never established, and the
+# artifacts could not settle it: _call_json kept only the last attempt's metadata, so every empty
+# reply was discarded before anything could look at it. checks_balances now records the discarded
+# attempts in _meta["attempt_log"], which is what this run exists to collect.
+#
+# THE DESIGN. The same 10 prompts x 5 questions are judged by sonnet5 alone, here on a compute node
+# (egress via http://proxy:8080) and, in parallel, from a laptop with direct egress. Same model,
+# same StreamLake-style pin (provider: anthropic, allow_fallbacks false), same prompt bytes. The
+# only variable is the network path. Empties on both sides implicate the model or its classifiers;
+# empties only here implicate the proxy.
+#
+# --overwrite because the point is fresh calls, not resumed ones, and a separate --sidecar so this
+# never mixes with reports/v4_dspro_meta_judge_verdicts.jsonl. The wrapper's trailing --merge is
+# harmless: it re-merges the real sidecar, which is already complete and idempotent.
+#
+# 50 calls, roughly $0.50. CPU-only. Submit with `condor_submit_bid 100`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_mj_sweep_v4.sh
+arguments = "--limit 10 --seats sonnet5 --overwrite --sidecar experiments/social_jira4/reports/_diag_sonnet_cluster.jsonl"
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sonnet_diag.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sonnet_diag.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sonnet_diag.log
+request_cpus   = 2
+request_memory = 4096
+request_disk   = 2G
+queue

@@ -62,6 +62,25 @@ Three things about this panel that a bare reading of the numbers will get wrong:
   rubric. `dsflash` shares a family with models used as assistants elsewhere in this project. Both
   were included deliberately; neither is a clean outside view.
 
+**The `sonnet5` column carries a caveat the other three do not.** During the sweep (2026-08-05
+morning) ~50% of its calls returned HTTP 200 with empty content — 517 model calls for 260 tasks —
+against 0% for `dspro`/`gpt54` and 2.6% for `dsflash`. Retries recovered all of them, so the column
+is complete, but 80 of its 260 verdicts (31%) were produced under a *modified* prompt: `_call_json`
+appends a "your previous reply was EMPTY … answer NOW, concisely" nudge before retrying. Median
+rationale under that nudge is 27% shorter (411 vs 566 chars); the yes-rate difference is small
+(41% vs 36%) and inconsistent across questions. Rows carry `attempt_log`, so the affected verdicts
+are identifiable rather than inferred — treat a row with a non-empty `attempt_log` as elicited under
+a different instruction than one without.
+
+The cause was **not** established. An A/B nine hours later — the same 10 prompts x 5 questions,
+same pin, judged from a compute node (proxy egress) and from a laptop (direct egress) — came back
+50/50 clean on *both* paths, so the proxy hypothesis is unsupported and the effect did not
+reproduce; a transient upstream condition during the morning window is the remaining explanation.
+That A/B did establish two things worth keeping: sonnet's verdicts are stable run-to-run (48/50
+agree across the nine-hour gap, and both flips were on un-nudged morning verdicts, so the nudge is
+not implicated), and `checks_balances._call_json` now records every discarded attempt with its own
+usage, so a recurrence will be diagnosable instead of invisible.
+
 Pins (`provider_pin`) make the run reproducible but not a replay: the in-loop gate ran `dspro`
 *unpinned*, and StreamLake serves fp8 / DeepInfra fp4, so `fabrication@dspro` is a re-ask on a
 possibly different serving stack. The sidecar's `usage.provider_name` records which upstream

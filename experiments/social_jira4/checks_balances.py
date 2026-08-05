@@ -45,18 +45,41 @@ def _call_json(caller: Caller, user: str, *, retries: int) -> dict:
     """Ask ``caller`` for one JSON object, re-prompting on unparseable replies.
 
     Always returns a dict: on exhaustion it carries ``_parse_error``, which every gate treats as a
-    rejection. ``_meta`` holds the CoT, token usage, attempt count and the raw reply."""
+    rejection. ``_meta`` holds the CoT, token usage, attempt count and the raw reply.
+
+    ``_meta["attempt_log"]`` records the DISCARDED attempts — one entry per call that did not parse,
+    with that call's own usage and the error it raised. Without it a retried call keeps only the
+    metadata of the attempt that finally worked, so the failures are invisible even in the row that
+    exists because of them. That gap is not hypothetical: the v4 meta-judge sweep saw ~50% of one
+    seat's calls return empty content, and neither the successful rows nor the failed ones could say
+    what those empty calls were — the successes had overwritten them and the failures kept only the
+    last of three. The log is absent on a first-attempt success, so nothing grows in the common
+    case."""
     last = None
     raw = ""
+    attempt_log = []
     for attempt in range(retries + 1):
         raw = caller(_SYS, user)
         meta = {"reasoning": getattr(caller, "last_reasoning", "") or "",
                 "usage": dict(getattr(caller, "last_usage", {}) or {}),
                 "attempts": attempt + 1, "raw": raw}
+        if attempt_log:
+            meta["attempt_log"] = attempt_log
         try:
             obj = json.loads(_strip_json(raw))
         except Exception as exc:
             last = exc
+            # Keep the failed call's own usage BEFORE the next attempt overwrites the caller's
+            # thread-local. ``empty`` is the distinction that matters downstream: an empty reply and
+            # a malformed one get different re-prompts below and have different causes (a refusal or
+            # a truncation vs. a chatty model), but both arrive here as the same parse error.
+            attempt_log.append({
+                "attempt": attempt + 1,
+                "error": f"{type(exc).__name__}: {exc}",
+                "empty": not raw.strip(),
+                "raw_chars": len(raw),
+                "usage": dict(getattr(caller, "last_usage", {}) or {}),
+            })
             # An EMPTY reply is a different failure from a malformed one: the model spent its whole
             # completion budget in the reasoning channel and never emitted content. Re-prompting it
             # to "reply with valid JSON" does not help — it has to be told to stop deliberating, or
@@ -76,7 +99,8 @@ def _call_json(caller: Caller, user: str, *, retries: int) -> dict:
     return {"_parse_error": str(last),
             "_meta": {"reasoning": getattr(caller, "last_reasoning", "") or "",
                       "usage": dict(getattr(caller, "last_usage", {}) or {}),
-                      "attempts": retries + 1, "raw": raw}}
+                      "attempts": retries + 1, "raw": raw,
+                      "attempt_log": attempt_log}}
 
 
 class LlmChecks:
