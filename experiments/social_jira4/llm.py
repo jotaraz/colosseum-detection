@@ -94,9 +94,10 @@ def make_judge_caller(
     provider: str = DEFAULT_JUDGE_PROVIDER,
     model: str = DEFAULT_JUDGE_MODEL,
     max_tokens: int = 4096,
-    temperature: float = 0.0,   # judges are deterministic
+    temperature: Optional[float] = 0.0,   # judges are deterministic
     timeout: int = 180,
     reasoning_effort: str = DEFAULT_JUDGE_REASONING_EFFORT,
+    provider_routing: Optional[Dict[str, Any]] = None,
 ) -> Caller:
     """The caller the 3 critics + validator + consistency gate use — DeepSeek-V4-Pro via
     OpenRouter by default.
@@ -107,10 +108,20 @@ def make_judge_caller(
 
     ``reasoning_effort`` is requested explicitly rather than left to the model's own adaptive
     choice — see ``DEFAULT_JUDGE_REASONING_EFFORT``. Pass ``""`` to restore the old behaviour of
-    sending no reasoning knob at all."""
+    sending no reasoning knob at all.
+
+    ``temperature=None`` sends NO temperature at all, which some models require rather than merely
+    tolerate: Claude Sonnet 5 removed the sampling parameters, so any non-default value is a 400 and
+    "deterministic judging" is simply not on offer there (OpenRouter's endpoint metadata for
+    ``anthropic/claude-sonnet-5`` lists no ``temperature`` among its supported parameters). The 0.0
+    default is unchanged for every caller that does not ask.
+
+    ``provider_routing`` is OpenRouter's routing object, forwarded verbatim — see
+    ``_TrackingCaller.__call__``. Ignored on Azure, which has one upstream by construction."""
     return _tracking_caller(provider=provider, model=model, max_tokens=max_tokens,
                             temperature=temperature, timeout=timeout,
-                            reasoning_effort=reasoning_effort)
+                            reasoning_effort=reasoning_effort,
+                            provider_routing=provider_routing)
 
 
 _EMPTY_USAGE: Dict[str, Any] = {}
@@ -159,12 +170,14 @@ class _TrackingCaller:
     (mutated under a lock); the loop snapshots it either side of a step to get per-step cost.
     """
 
-    def __init__(self, model: str, max_tokens: int, temperature: float,
-                 reasoning_effort: str = ""):
+    def __init__(self, model: str, max_tokens: int, temperature: Optional[float],
+                 reasoning_effort: str = "",
+                 provider_routing: Optional[Dict[str, Any]] = None):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.reasoning_effort = reasoning_effort
+        self.provider_routing = provider_routing
         self._local = threading.local()
         self._lock = threading.Lock()
         self.totals: Dict[str, Any] = _blank_totals()
@@ -187,12 +200,23 @@ class _TrackingCaller:
         from experiments.social_jira2.openrouter_client import OpenRouterClient
         client = OpenRouterClient()
         messages = OpenRouterClient.init_context(system_prompt, user_prompt)
-        params = {"model": self.model, "max_completion_tokens": self.max_tokens,
-                  "temperature": self.temperature}
+        params = {"model": self.model, "max_completion_tokens": self.max_tokens}
+        # None means "send no temperature", which is not the same as 0.0: a model that removed the
+        # sampling parameters (Claude Sonnet 5) rejects any non-default value, so the field has to
+        # be absent from the payload rather than present-and-zero. generate_response only forwards
+        # a temperature that is not None, so omitting the key here is what reaches the wire.
+        if self.temperature is not None:
+            params["temperature"] = self.temperature
         # Only when set: the client forwards any non-None value, so "" would go out as
         # reasoning.effort="" rather than as "no knob requested".
         if self.reasoning_effort:
             params["reasoning_effort"] = self.reasoning_effort
+        # OpenRouter provider routing, forwarded verbatim (see openrouter_client.generate_response
+        # for why an unpinned run is not reproducible). Pinning is the whole point of passing it, so
+        # the caller is expected to set ``allow_fallbacks: false`` and accept a loud 404 over a
+        # silent reroute to a different upstream.
+        if self.provider_routing is not None:
+            params["provider"] = self.provider_routing
         data, response_str = client.generate_response(messages, params)
         steps = getattr(client, "_reasoning_steps", None) or []
         self._local.reasoning = "\n".join(
@@ -205,6 +229,32 @@ class _TrackingCaller:
         cost = usage.get("cost")
         if isinstance(cost, (int, float)):
             usage["cost_usd"] = float(cost)
+        # Which upstream actually served this call. Recorded because a provider PIN is otherwise
+        # unfalsifiable after the fact: the request carries the intent, only the reply carries the
+        # outcome, and a run whose reproducibility argument rests on the pin should be able to show
+        # the pin held rather than assert it.
+        served_by = (data or {}).get("provider")
+        if served_by:
+            usage["provider_name"] = served_by
+        # Why an EMPTY completion was empty. Without this a 200 carrying no content is
+        # indistinguishable from a 200 carrying a policy refusal: both reach the caller as "" and
+        # both surface downstream as an unparseable-JSON error, which is the one failure mode that
+        # says nothing about its own cause. Measured on the v4 meta-judge sweep, claude-sonnet-5
+        # returned empty content on ~31% of calls while three other seats returned none at all, and
+        # the artifacts could not say whether that was a refusal, a truncation or a bad hop.
+        choices = (data or {}).get("choices") or []
+        if choices:
+            ch0 = choices[0] or {}
+            finish = ch0.get("finish_reason") or ch0.get("native_finish_reason")
+            if finish:
+                usage["finish_reason"] = finish
+            refusal = (ch0.get("message") or {}).get("refusal")
+            if refusal:
+                usage["refusal"] = str(refusal)[:500]
+        else:
+            usage["no_choices"] = True
+        if not (response_str or "").strip():
+            usage["empty_content"] = True
         self._local.usage = usage
         with self._lock:
             self.totals["calls"] += 1
@@ -384,25 +434,27 @@ _ReasoningCaller = _TrackingCaller
 
 
 def _tracking_caller(
-    *, provider: str, model: str, max_tokens: int, temperature: float, timeout: int,
-    reasoning_effort: str = "",
+    *, provider: str, model: str, max_tokens: int, temperature: Optional[float], timeout: int,
+    reasoning_effort: str = "", provider_routing: Optional[Dict[str, Any]] = None,
 ) -> Caller:
     """A caller exposing ``.last_reasoning`` / ``.last_usage`` / ``.snapshot()``, with tokens and
     cost tracked for both providers — OpenRouter's charge as reported, Azure's computed from
     :data:`AZURE_PRICES`. Anything else falls back to the untracked shim.
 
-    ``reasoning_effort`` is OpenRouter-only — the Azure path has no equivalent knob, so it is
-    silently ignored there (as the reasoning channel already is)."""
+    ``reasoning_effort`` and ``provider_routing`` are OpenRouter-only — the Azure path has no
+    equivalent knob and one upstream, so both are silently ignored there (as the reasoning channel
+    already is). The Azure body likewise never carried a temperature, so ``temperature=None`` is
+    already that path's behaviour."""
     prov = (provider or "auto").lower()
     if prov == "auto":
         prov = "azure" if os.getenv("AZURE_OPENAI_ENDPOINT") else "openrouter"
     if prov == "openrouter":
-        return _TrackingCaller(model, max_tokens, temperature, reasoning_effort)
+        return _TrackingCaller(model, max_tokens, temperature, reasoning_effort, provider_routing)
     if prov == "azure":
         return _AzureTrackingCaller(model, max_tokens, timeout=timeout)
     return _UntrackedCaller(
         make_caller(provider=prov, model=model, max_tokens=max_tokens,
-                    temperature=temperature, timeout=timeout)
+                    temperature=1.0 if temperature is None else temperature, timeout=timeout)
     )
 
 

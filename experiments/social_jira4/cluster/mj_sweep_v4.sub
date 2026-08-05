@@ -1,0 +1,57 @@
+# social_jira4 — rationale-first meta-judge panel over the 52 qualifying v4 prompts.
+#
+# WHAT THIS IS. Not an optimizer run and not a rollout. It re-reads the 52 prompt-pairs in
+# reports/v4_dspro_fabrication_qualifying.jsonl — every dspro-prompted, fabrication-gated v4 step
+# that scored > 0 — and asks five independent questions about each: realism, fabrication,
+# admissibility, forecast, intent (META_JUDGE_1..5; coldread is excluded, its envelope is free text
+# by design). 52 prompts x 5 questions x 4 models = 1040 calls.
+#
+# THE PROMPTS ARE NOT RE-RENDERED. Each row's step file is opened and the pair the in-loop gate
+# actually read (meta.rendered.system / .user) is judged verbatim in the system_user view. All 52
+# re-hash to the prompt_sha the gate recorded, and the sweep re-checks that per task and hard-errors
+# on a mismatch — so these verdicts are answers to byte-identical text, not to a fresh render.
+#
+# THE ENVELOPE IS DIFFERENT ON PURPOSE. The questions are the *_RATIONALE_FIRST copies, which ask
+# for {rationale, answer, confidence} instead of {answer, confidence, rationale}: the judge reasons
+# before it commits. That is a change to the instrument, not formatting — do NOT pool these verdicts
+# with reports/v3_meta_judge_verdicts.jsonl or with the `meta` block of any step file, both of which
+# were collected answer-first. The originals are untouched and remain the in-loop gate.
+#
+# THE PANEL, and what each seat can and cannot be told to do:
+#   dspro    deepseek/deepseek-v4-pro          pinned StreamLake  temp 0   effort medium
+#   dsflash  deepseek/deepseek-v4-flash-0731   pinned DeepInfra   temp 0   effort medium
+#   sonnet5  anthropic/claude-sonnet-5         pinned Anthropic   NO temp  effort medium
+#   gpt54    gpt-5.4 over Azure                (one upstream)     no temp  no effort knob
+# Sonnet 5 REMOVED the sampling parameters — any non-default temperature is a 400 and OpenRouter's
+# endpoint metadata lists no temperature at all — so "deterministic judging" is unavailable on that
+# seat, and Azure's caller has no effort knob. The four seats are therefore NOT matched on sampling
+# or effort; that is a property of the models, not an oversight.
+#
+# WHAT IS CONFOUNDED, stated up front so no row is over-read:
+#   * dspro wrote all 52 of these prompts AND ran the fabrication gate that admitted them, so its
+#     column is close to asking the author to re-grade its own work under a modified rubric.
+#   * dsflash is from the same family as models used as ASSISTANTS elsewhere in this project. The
+#     confounder was known and accepted when the seat was requested.
+#   * The pins make the run reproducible but not a replay: the in-loop gate ran dspro UNPINNED, and
+#     StreamLake serves fp8 / DeepInfra fp4, so the fabrication@dspro column is a re-ask on a
+#     possibly different serving stack. usage.provider_name in the sidecar records which upstream
+#     actually served each call, so the pin is checkable rather than assumed.
+#
+# OUTPUT, two files. Verdicts append to reports/v4_dspro_meta_judge_verdicts.jsonl (flushed per row,
+# so an interrupted run keeps everything it paid for, and it alone keeps each judge's CoT and raw
+# reply); the wrapper then merges them into reports/v4_dspro_fabrication_qualifying.jsonl under
+# `meta_judges`. Resubmitting resumes: rows that already parsed are skipped, so a second submit only
+# patches failures and re-merges.
+#
+# COST. Roughly $9-12 for the full 1040 — sonnet5 ~$5, gpt54 ~$3, dspro ~$1, dsflash ~$0.15.
+#
+# CPU-only: no GPUs, no ports, no vLLM. Submit with `condor_submit_bid 100`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_mj_sweep_v4.sh
+arguments = ""
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sweep_v4.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sweep_v4.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/mj_sweep_v4.log
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+queue
