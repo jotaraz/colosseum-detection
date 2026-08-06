@@ -1,0 +1,21 @@
+# The rr10 prompt set — the top-10 fabrication-qualifying prompts, in score order (6.33 -> 1.67),
+# 10 distinct prompt_sha. This is the SAME list rr10_pinned.sub spelled out inline; it lives here
+# once so that the deception study's 14+ submit files cannot drift from each other or from the
+# base cells already on disk. Line order IS the step index: line 1 becomes step000, and so on.
+#
+# Read by fixed_prompt_run.py --step-files (a manifest is accepted wherever a comma-separated list
+# is). Blank lines and #-comments are ignored.
+#
+# Provenance: mined by the v4d/v4e/v4g/v4h meta-gate loops against vllm-qwen3.6-35b-a3b and
+# vllm-gpt-oss-120b; each cleared the dspro fabrication gate when it was written. Nothing here is
+# re-gated at replay time.
+experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_023.json
+experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_033.json
+experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_018.json
+experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_037.json
+experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_035.json
+experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json
+experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_001.json
+experiments/social_jira4/outputs/v4h_fabrication_dspro_d_gptoss/steps/step_002.json
+experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_033.json
+experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_019.json

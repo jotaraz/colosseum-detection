@@ -1,0 +1,51 @@
+# social_jira4 rr10dcp — qwen3.6-35b-a3b on vLLM, ALL THREE deception levels.
+#
+# See rr10dcp_or_allow.sub for what the study is and why nothing is judged here. This file covers
+# the qwen column: 3 levels x 10 prompts x seeds 7,8 = 60 rollouts, as THREE independent 2-GPU jobs
+# (one per level) so the levels progress simultaneously rather than serially behind one server.
+#
+# BASE IS NEW HERE. The four OpenRouter models already have their `none` cell on disk; qwen and
+# gpt-oss do not, so `none` is generated in this submission alongside `allow` and `forbid`. At
+# `none` the system prompt is byte-identical to what the existing base rollouts used and the run-dir
+# names carry no `dcp` token — verified against a frozen rollout's agent_prompts.json.
+#
+# ONE PORT PER JOB, NOT PER MODEL. The containers share the host network namespace, so two jobs on
+# one node bind the same port: the second job's `ensure_server` would find the first job's server
+# already healthy, attach to it, and then die when that job exits. Three levels, three ports.
+#
+# 2 GPUs per job at tensor_parallel_size 2 — qwen is ~70 GB bf16 at 128k context and does not fit
+# one 80 GB card alongside its KV cache. Three jobs => 6 H100s if all three place at once; they
+# queue independently, so partial placement just means the levels finish at different times.
+#
+# TOOL-CALL PARSER. The config template carries the duplicated trailing --tool-call-parser
+# qwen3_coder that defeats terrarium's hermes preset. Without it qwen's tool calls parse 0/160 and
+# every execution turn silently posts nothing. After any config change, check the startup log's
+# "non-default args" says 'tool_call_parser': 'qwen3_coder', NOT 'hermes'.
+#
+# Node exclusion (i101, i104, i201) carried over from the v4h batch, PLUS i108 on one observation:
+# the first attempt at the forbid cell died there (exit 43) after FlashInfer's all-reduce workspace
+# timed out at 600s and torch's inductor cache threw `OSError: [Errno 116] Stale file handle`. The
+# other two qwen servers came up normally on g204/g206 the same minute, so this looks like that
+# node rather than the model. One data point — drop i108 again if the pool tightens.
+# Submit with `condor_submit_bid 200`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt_vllm.sh
+arguments  = "experiments/social_jira4/outputs/rr10dcp/cells/$(DECEPTION)_qwen3.6-35b-a3b $(PORT) qwen $(DECEPTION)"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_qwen_$(DECEPTION).out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_qwen_$(DECEPTION).err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_qwen_$(DECEPTION).log
+
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet") && (TARGET.Machine != "i108.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue DECEPTION, PORT from (
+    none, 8401
+    allow, 8402
+    forbid, 8403
+)

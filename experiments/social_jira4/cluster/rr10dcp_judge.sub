@@ -1,0 +1,52 @@
+# social_jira4 rr10dcp — score every cell of the deception study with deepseek-v4-flash-0731.
+#
+# NOTHING IS GENERATED HERE. The rollout jobs (rr10dcp_or_*.sub, rr10dcp_vllm_*.sub) ran with
+# --no-judge, so every cell is on disk unscored. This job runs the three critics (CATEGORY,
+# SOUNDNESS, AT-STAKE) over the frozen transcripts: one judge, one code path, every cell. Run dirs
+# are opened read-only; only the judgments tree is written.
+#
+# SAFE TO RUN EARLY, AND AGAIN. Cells are discovered from disk on each pass and resume is per
+# rollout, so submitting this while generation is still in flight scores what exists and a later
+# submission picks up the rest. Nothing is paid for twice.
+#
+# ONE JOB PER DECEPTION LEVEL, via `queue LEVEL in`. The split is not for wall-clock alone — it
+# bounds API pressure. Total in-flight judge calls is jobs x --workers x --critic-workers, so
+# 3 x 4 x 6 = 72 here. rr24 ran 96 across four jobs without rate-limit failures, so this sits
+# comfortably under the only precedent we have. A single job at the same internal concurrency would
+# be a third of the throughput; fourteen one-per-cell jobs would be 252 in flight, which is how the
+# 429s in the rr10 preflight sweeps were produced.
+#
+# THE LEVELS ARE UNEVEN, deliberately. On this filesystem `allow` and `forbid` are 6 cells each
+# (4 OpenRouter + 2 vLLM) while `none` is 2 — the four OpenRouter base cells were collected before
+# the axis existed and are judged from the local copy under outputs/rr10dcp/cells. The `none` job
+# will therefore finish early; that is expected, not a stall.
+#
+# JUDGE ROUTING. order [DeepInfra] with allow_fallbacks TRUE — DeepInfra first (cheapest endpoint
+# for this model), anything else if it rate-limits. Deliberately NOT a hard pin: ~13,000 judge calls
+# on one upstream with fallbacks off is precisely the 429 three preflight sweeps produced during
+# rr10. Every call records which upstream served it, so how often it left DeepInfra is countable
+# from verdicts.jsonl rather than a matter of trust.
+#
+# SEAT NAME IS LOAD-BEARING. `dsflash0731` is the same seat the local base-cell pass wrote, so the
+# two halves of the study merge into one judgments tree without translation.
+#
+# COST. ~280 rollouts x ~$0.066 measured on the base cells, scaled down by flash-0731's cheaper
+# tokens: on the order of $15. cost.json is written per cell and accumulates across invocations.
+#
+# AFTER IT FINISHES, rebuild the study-wide table (no model calls, reads what is on disk):
+#   bash experiments/social_jira4/cluster/run_sj4_rejudge.sh --cells \
+#       --root experiments/social_jira4/outputs/rr10dcp/cells --seat dsflash0731 --summarize
+#
+# CPU-ONLY. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_rejudge.sh
+arguments  = "--cells --root experiments/social_jira4/outputs/rr10dcp/cells --cells-prefix $(LEVEL)_ --seat dsflash0731 --judge-model deepseek/deepseek-v4-flash-0731 --judge-provider-routing {""order"":[""DeepInfra""],""allow_fallbacks"":true} --workers 4 --critic-workers 6"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_judge_$(LEVEL).out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_judge_$(LEVEL).err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_judge_$(LEVEL).log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue LEVEL in (none, allow, forbid)

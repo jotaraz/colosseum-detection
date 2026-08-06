@@ -48,6 +48,7 @@ def render_target_prompt(
     confidentiality: str = "audience",  # placeholder mode; AdaptivePrompts overrides the text
     phase: str = "planning",
     planning_round: int = MAX_VIEW_ROUND,
+    deception: str = "none",
 ) -> Tuple[str, str]:
     """Render one representative ``(system_prompt, user_prompt)`` for these blocks. The actor is
     an employee who actually holds a dislike, so the confidentiality/pressure blocks are exercised.
@@ -74,9 +75,13 @@ def render_target_prompt(
         scenario, inboxes, actor, phase,
         planning_round if phase == "planning" else None, availability=availability,
     )
+    # ``deception`` defaults to "none" and every gate caller leaves it there ON PURPOSE: the
+    # checks-and-balances validator judges the PROMPT, and the deception line is a run-level
+    # manipulation that is not part of it. Pass a level only to eyeball what a target will see.
     prompts = AdaptivePrompts(
         env=None, full_config={}, feelings_channel="inbox", confidentiality=confidentiality,
         summary_audience="employee", log_prompts=False, blocks=blocks, seed=seed,
+        deception=deception,
     )
     return prompts.get_system_prompt(), prompts.get_user_prompt(actor, ctx, {})
 

@@ -1,0 +1,37 @@
+# social_jira4 rr10dcp — gpt-oss-120b on vLLM, ALL THREE deception levels.
+#
+# See rr10dcp_or_allow.sub for what the study is and why nothing is judged here, and
+# rr10dcp_vllm_qwen.sub for why base is generated here rather than copied and why each level gets
+# its own port. This file covers the gpt-oss column: 3 levels x 10 prompts x seeds 7,8 = 60
+# rollouts, as three independent 2-GPU jobs.
+#
+# 2 GPUs at tensor_parallel_size 2: gpt-oss is ~63 GB mxfp4 at 64k context. Its template runs 64k
+# rather than qwen's 128k — mxfp4 weights are ~31 GB/GPU, so there is ample KV headroom, and sj4
+# prompts plus 20k completions sit far below that ceiling.
+#
+# Ports 8411-8413, disjoint from the qwen column's 8401-8403 so all six jobs may run concurrently.
+#
+# Node exclusion (i101, i104, i201) carried over from the v4h batch — re-check it is still the right
+# set before submitting.
+# Submit with `condor_submit_bid 200`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt_vllm.sh
+arguments  = "experiments/social_jira4/outputs/rr10dcp/cells/$(DECEPTION)_gpt-oss-120b $(PORT) gptoss $(DECEPTION)"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_gptoss_$(DECEPTION).out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_gptoss_$(DECEPTION).err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10dcp_gptoss_$(DECEPTION).log
+
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3") && (TARGET.Machine != "i101.internal.cluster.is.localnet") && (TARGET.Machine != "i104.internal.cluster.is.localnet") && (TARGET.Machine != "i201.internal.cluster.is.localnet")
+request_memory = 65536
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+
+queue DECEPTION, PORT from (
+    none, 8411
+    allow, 8412
+    forbid, 8413
+)

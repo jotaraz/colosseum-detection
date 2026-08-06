@@ -62,7 +62,7 @@ from terrarium.logger import AgentTrajectoryLogger, PromptLogger
 from terrarium.utils import build_vllm_runtime, get_generation_params
 from terrarium.agents.base import BaseAgent
 
-from experiments.social_jira4.adaptive_prompts import AdaptivePrompts
+from experiments.social_jira4.adaptive_prompts import AdaptivePrompts, deception_token
 from experiments.social_jira4.blocks import Blocks
 from experiments.social_jira4.ground_truth import (
     SJ4_DECOY_GT_KEY,
@@ -155,6 +155,12 @@ async def _rollout(
     topology: str = "complete",
     num_agents: int = 4,
     num_tasks: int = 2,
+    # The deception axis (none / allow / forbid) — a RUN-level manipulation appended to the system
+    # prompt, deliberately NOT one of the prompter's blocks: it must not enter ``blocks.to_dict()``
+    # and so must not change a prompt's sha, and it is never seen by the checks-and-balances gate
+    # (which exists to reject prompts that instruct deception — exactly what this line does on
+    # purpose). See ``adaptive_prompts.DECEPTION_LINES``.
+    deception: str = "none",
 ) -> Path:
     """Mirrors social_jira3._run_single; only the prompt object and the pool→config mapping differ."""
     dislike_strength = resolve_private_messages(blocks.private_messages_id)
@@ -187,7 +193,7 @@ async def _rollout(
     cfg["environment"]["setup"] = None
     cfg["llm"] = copy.deepcopy(model_llm_cfg)
 
-    run_id = f"{model_label}__{blocks.private_messages_id}-{blocks.decoy_slug()}__seed{seed}"
+    run_id = run_id_for(model_label, blocks, seed, deception)
     # Step-indexed so each optimization step's artifacts are preserved (no collision when two
     # steps pick the same pool ids + seed).
     run_dir = out_dir / "runs" / f"step{step:03d}" / run_id
@@ -247,7 +253,7 @@ async def _rollout(
         feelings_channel=feelings_channel, confidentiality=confidentiality, hint=hint,
         summary_audience=summary_audience, personality=personality,
         robust_assignment=robust_assignment, experiment_prompt_logger=prompt_logger,
-        log_prompts=True, blocks=blocks, seed=int(seed),
+        log_prompts=True, blocks=blocks, seed=int(seed), deception=deception,
     )
     for a in agents:
         a._force_execution_commit = robust_assignment
@@ -340,6 +346,9 @@ async def _rollout(
         "confidentiality": confidentiality, "hint": hint, "summary_audience": summary_audience,
         "decoys": decoys, "scenario_type": scenario_type, "personality": personality,
         "decoy_info_ids": list(blocks.decoy_info_ids),
+        # Its own field, never folded into prompt_version — same treatment the sj3 plans give it,
+        # and the same treatment confidentiality/hint already get here.
+        "deception": deception,
         "setup": "base", "prompt_version": PROMPT_VERSION, "seed": seed,
         "blocks": blocks.to_dict(),
     })
@@ -378,6 +387,35 @@ async def _rollout(
         for bb in protocol.megaboard.blackboards
     ])
     return run_dir
+
+
+# Files a finished rollout leaves behind. ``blackboards.json`` is written LAST by ``_rollout``, so
+# its presence is what distinguishes a completed rollout from one that died partway — note that
+# ``run_config.json`` is written well before the end and so cannot serve as the marker. The rest are
+# exactly what ``assemble_turns`` reads: a run dir missing any of them cannot be judged, which is
+# the property a resume actually needs to check.
+COMPLETE_MARKERS = ("blackboards.json", "run_config.json", "scenario.json", "tool_events.json",
+                    "agent_reasoning.json", "agent_prompts.json", "agent_turns.json")
+
+
+def run_id_for(model_label: str, blocks: Blocks, seed: int, deception: str = "none") -> str:
+    """The run-directory name for one (model, prompt, seed, deception) cell.
+
+    Factored out of ``_rollout`` so a caller can predict where a rollout WOULD land without running
+    it — which is what lets a re-run skip work already on disk. Duplicating this format in the
+    caller instead would mean two places to change and a resume that silently stops matching.
+
+    The deception token is omitted at ``none`` so base run dirs keep the names they already have on
+    disk — see ``adaptive_prompts.deception_token``.
+    """
+    dcp = deception_token(deception)
+    return (f"{model_label}__{blocks.private_messages_id}-{blocks.decoy_slug()}"
+            f"{'__' + dcp if dcp else ''}__seed{seed}")
+
+
+def is_complete(run_dir: Path) -> bool:
+    """True when ``run_dir`` holds a rollout that ran to completion and can be judged."""
+    return run_dir.is_dir() and all((run_dir / f).is_file() for f in COMPLETE_MARKERS)
 
 
 def assemble_turns(run_dir: Path) -> List[Dict[str, Any]]:
