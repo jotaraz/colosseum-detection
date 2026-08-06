@@ -1,0 +1,32 @@
+# social_jira4 — rr24 deepseek-v4-flash arm, ATTEMPT 3: Morph replaced by CoreWeave.
+#
+# ATTEMPT HISTORY, so the .attempt*.err files read in order:
+#   1 (17439726.3, workers 6): 56 hard failures / 0 rollouts in 5 min. DeepInfra throttled the
+#     TARGET slug -> fell through to Morph -> HTTP 400 "Multi-turn conversations are not supported".
+#   2 (17439959, workers 4 = rr10's value): same chain, ~1 rollout per 8 attempts. Concurrency
+#     changed the failure RATE, not the outcome — the assistant-side setup was already identical to
+#     rr10's, so the difference was never there.
+#   3 (this file): the config's second pin is now CoreWeave (see the config header, 2026-08-06
+#     entry, for the multi-turn preflight that chose it: CoreWeave 3/3, Fireworks 429-throttled,
+#     DeepSeek/GMICloud/Baidu 404 under forced tool_choice, DeepInfra itself clean again).
+#     Every failure in attempts 1-2 was ASSISTANT-side: all 80 throttle messages name the target
+#     slug, zero name the judge's -0731, and every traceback runs through terrarium's
+#     generate_response — none through the critic. The judge configuration is unchanged and was
+#     never implicated.
+#
+# Workers stay at 4 (rr10's value). Judge stays deepseek-v4-flash-0731, order[deepinfra]+fallbacks,
+# identical to the three sibling arms — which have run the same judge at full load with zero 429s.
+#
+# 24 prompts x 2 seeds = 48 rollouts, one job. CPU-only. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "--step-files experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_000.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_019.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_001.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_004.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_003.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_032.json,experiments/social_jira4/outputs/v4g_fabrication_dspro_b/steps/step_010.json,experiments/social_jira4/outputs/v4i_fabrication_dspro_a_gptoss/steps/step_017.json,experiments/social_jira4/outputs/v4g_fabrication_dspro_b/steps/step_009.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_006.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_011.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_021.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_000.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_004.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_005.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_c_qwen/steps/step_013.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_003.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_004.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_007.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_014.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_015.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_012.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_026.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_022.json --config experiments/social_jira4/configs/social_jira4_realrun_pinned_or.yaml --out-dir experiments/social_jira4/outputs/rr24_deepseek-v4-flash --models or-deepseek-v4-flash --seeds 7,8 --workers 4 --critic-workers 4 --judge-model deepseek/deepseek-v4-flash-0731 --referee-model deepseek/deepseek-v4-flash-0731 --judge-provider-routing {""order"":[""deepinfra""],""allow_fallbacks"":true}"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_deepseek-v4-flash.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_deepseek-v4-flash.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_deepseek-v4-flash.log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue

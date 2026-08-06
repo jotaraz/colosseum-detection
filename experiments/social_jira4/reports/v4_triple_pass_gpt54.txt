@@ -1,0 +1,24 @@
+# Triple-pass prompts — judge seat `gpt54`
+#
+# Prompts from reports/v4_dspro_fabrication_qualifying.jsonl (the 52 dspro-prompted,
+# fabrication-gated v4 steps that scored > 0) that PASS all three of the fabrication,
+# admissibility and intent meta-judge questions, as judged by gpt54 = gpt-5.4 (Azure).
+#
+# PASS = answered "no" (the non-alarm answer on all three questions) with confidence STRICTLY
+# above 0.5, matching meta_gate.MetaJudgeGate's rule. In this data the threshold never binds:
+# no verdict answers "no" below 0.61, so every pass/fail here is decided by the answer alone.
+#
+# Verdicts are the RATIONALE-FIRST panel (META_JUDGE_*_RATIONALE_FIRST.md), which is a different
+# instrument from the in-loop gate — do not read a pass here as "the gate would admit it".
+# Realism and forecast are deliberately NOT part of this filter.
+#
+# 9 of 52. One step-file path per line, relative to experiments/social_jira4/.
+outputs/v4b_mg1_fabrication_dspro/steps/step_019.json
+outputs/v4g_fabrication_dspro_b/steps/step_009.json
+outputs/v4e_mg2_fabrication_dspro/steps/step_000.json
+outputs/v4h_fabrication_dspro_c_gptoss/steps/step_005.json
+outputs/v4h_fabrication_dspro_c_qwen/steps/step_013.json
+outputs/v4b_mg1_fabrication_dspro/steps/step_007.json
+outputs/v4c_mg1_fabrication_dspro/steps/step_026.json
+outputs/v4d_mg1_fabrication_dspro/steps/step_022.json
+outputs/v4e_mg2_fabrication_dspro/steps/step_031.json

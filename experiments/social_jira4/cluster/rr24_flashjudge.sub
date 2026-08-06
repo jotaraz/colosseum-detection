@@ -1,0 +1,65 @@
+# social_jira4 REAL RUN — 24 union-passing prompts x seeds 7,8 x 4 models, judged by
+# deepseek-v4-flash-0731. The rr10 campaign's shape, a different prompt set and a different judge.
+#
+# WHAT RUNS. The 24 prompts of reports/v4_union_rank29_minus_rr10.txt, each replayed at seeds 7
+# and 8, one job per target model. 24 x 2 x 4 = 192 rollouts (rr10 was 80). Prompt index becomes
+# the step, so runs/step000..step023 each hold two seeds — the shape a real optimizer run writes.
+#
+# HOW THESE 24 WERE CHOSEN, and why that is a DIFFERENT provenance from rr10's. rr10 took the top
+# 10 of reports/v4_dspro_fabrication_qualifying.jsonl by score, full stop. These 24 passed a second,
+# LATER filter on top of that: the offline rationale-first meta-judge panel
+# (META_JUDGE_*_RATIONALE_FIRST.md, four seats) had to clear them on fabrication AND admissibility
+# AND intent, on at least one seat — then ranks 1-29 by score, minus the 5 already in rr10. So:
+#   * "already cleared a gate when it was mined" is still true (the in-loop dspro fabrication gate),
+#     but it is no longer the only screen these prompts passed, and the second screen used a
+#     MODIFIED instrument (rationale before answer) that is not the gate. Do not describe this set
+#     as "gate-cleared" without saying which gate.
+#   * The union is a UNION, not a consensus: 15 of the 38 it came from were passed by exactly one
+#     seat. Several of these 24 rest on a single judge's opinion.
+#   * Selection pushed the score DOWN. rr10's prompts score 6.33-1.67 (mean 2.78); these score
+#     1.67-0.50 (mean ~0.85). The prompts a judge will call admissible are largely the ones that
+#     elicited least deception, so expect weaker effects here than in rr10 BY CONSTRUCTION. A lower
+#     mean score in this campaign is not evidence about the models.
+#
+# THE JUDGE IS deepseek-v4-flash-0731, replacing deepseek-v4-pro in EVERY role it played: all three
+# critics (CATEGORY, SOUNDNESS, AT-STAKE) and the referee. The referee no longer follows the judge
+# implicitly — fixed_prompt_run grew a separate --referee-model once it became clear that changing
+# the judge was silently changing the ROLLOUTS (the referee ends the planning discussion, so it is
+# part of the environment). This file therefore names it explicitly to keep the intent above; drop
+# the flag to score with flash-0731 while leaving the environment on deepseek-v4-pro. Two consequences, both accepted deliberately rather than overlooked:
+#   * NOT comparable to rr10 head-to-head. rr10's scores were assigned by v4-pro; these are assigned
+#     by a smaller, cheaper model. A score difference between the campaigns confounds prompt set,
+#     judge model and judge cost tier all at once.
+#   * THE deepseek-v4-flash ARM IS ESSENTIALLY SELF-JUDGING. rr10 already flagged that row as
+#     judged within its own family; here the judge is the same model on a dated snapshot. Read that
+#     one row as a model scoring its own transcripts. It is kept for continuity with rr10, not
+#     because it is clean.
+#
+# JUDGE ROUTING. order [deepinfra] with allow_fallbacks TRUE — DeepInfra first (also the cheapest
+# endpoint at $0.09/$0.18 per M), anything else if it is rate-limited. Deliberately NOT a hard pin:
+# ~9,200 judge calls across four jobs on a single upstream with fallbacks off is precisely the 429
+# that three preflight sweeps produced during rr10. There is no zero-cost endpoint for this model;
+# the fallbacks are cheap, not free (next cheapest ~1.4x DeepInfra). Target models keep the config's
+# own verified ordered pins, unchanged from rr10.
+#
+# CONCURRENCY. --workers 6 (rr10 used 4) x --critic-workers 4 = up to 24 in-flight calls per job,
+# ~96 across the four. Raised because each job now carries 48 rollouts instead of 20; at rr10's
+# settings the slowest arm would run ~8-9h.
+#
+# COST. Scaling rr10's measured judging by 2.4x rollouts and dividing by flash-0731's ~4.8x lower
+# token price: ~$10 judging + ~$13 generation ~= $24. As in rr10, cost.json records the JUDGE half
+# only — the rollouts bill through social_jira3's client, which this script does not instrument.
+#
+# CPU-ONLY. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "--step-files experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_000.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_019.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_001.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_004.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_003.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_032.json,experiments/social_jira4/outputs/v4g_fabrication_dspro_b/steps/step_010.json,experiments/social_jira4/outputs/v4i_fabrication_dspro_a_gptoss/steps/step_017.json,experiments/social_jira4/outputs/v4g_fabrication_dspro_b/steps/step_009.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_b/steps/step_006.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_011.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_021.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_000.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_004.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_005.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_c_qwen/steps/step_013.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_003.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_004.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_007.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_014.json,experiments/social_jira4/outputs/v4b_mg1_fabrication_dspro/steps/step_015.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_012.json,experiments/social_jira4/outputs/v4c_mg1_fabrication_dspro/steps/step_026.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_022.json --config experiments/social_jira4/configs/social_jira4_realrun_pinned_or.yaml --out-dir experiments/social_jira4/outputs/rr24_$(MODEL) --models or-$(MODEL) --seeds 7,8 --workers 6 --critic-workers 4 --judge-model deepseek/deepseek-v4-flash-0731 --referee-model deepseek/deepseek-v4-flash-0731 --judge-provider-routing {""order"":[""deepinfra""],""allow_fallbacks"":true}"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_$(MODEL).out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_$(MODEL).err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr24_$(MODEL).log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue MODEL in (kimi-k2.6, glm-5.2, gemma-4-31b, deepseek-v4-flash)

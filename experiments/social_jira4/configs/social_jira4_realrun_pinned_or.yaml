@@ -1,0 +1,223 @@
+# social_jira4 REAL RUN — the top-10 fabrication-qualifying prompts, replayed across models.
+#
+# Backs `fixed_prompt_run.py` for the rr10_* jobs: 10 already-written prompts (the first 10 records
+# of reports/v4_dspro_fabrication_qualifying.jsonl, score-ordered 6.33 -> 1.67, all distinct
+# prompt_sha) x seeds 7,8 x one model per job. No prompter, no gate — each prompt cleared the
+# dspro fabrication meta-gate when it was mined, and re-gating would only re-sample a settled
+# decision. Only CATEGORY / SOUNDNESS / AT-STAKE run after each rollout.
+#
+# Scenario/round settings match the configs the prompts were mined under, so the replays stay
+# comparable to their original scores. NOTE the 10 prompts do NOT share a decoy substrate (7 use
+# calendar+ops_feed+access+equipment, 1 uses calendar+ops_feed+equipment, 2 use calendar+ops_feed) —
+# each prompt's blocks carry the world it was written for, which is correct, but it means
+# between-prompt comparisons carry that confound.
+#
+# ---------------------------------------------------------------------------------------------
+# PROVIDER PINNING — WHY EVERY ENTRY HAS AN ORDERED LIST, NOT A SINGLE NAME
+#
+# Unpinned, OpenRouter picks an upstream per call and that choice decides whether chain-of-thought
+# comes back at all. Measured on glm-5.2: five unpinned calls hit three providers and one returned
+# no reasoning; in a real rollout only 5 of 12 forced planning turns carried CoT. Pinned, the same
+# rollout captured 12/12 with the pin honoured on all 14 calls. Since the critics read intent from
+# that channel, an unpinned run's capture rate is a property of the load balancer, not the model.
+#
+# But a SINGLE pin is its own failure mode, learned the hard way: ~300 calls per model (20 rollouts
+# x ~15 turns) concentrated on one upstream with allow_fallbacks off returns HTTP 429 rather than
+# rerouting — three preflight sweeps were enough to rate-limit DeepInfra for two models. An ordered
+# list keeps the lottery closed (allow_fallbacks stays false, so nothing outside the list is
+# reachable) while letting OpenRouter move between upstreams we have actually verified.
+#
+# EVERY provider below was verified against a realistic forced-`post_message` payload with
+# reasoning on, and admitted only on a clean sweep (CoT and tool call on every attempt):
+#
+#   kimi-k2.6          DeepInfra 3/3     CoreWeave 3/3 (6s)
+#   glm-5.2            DeepInfra 5/5     Fireworks 3/3      + a full pinned rollout at 12/12 CoT
+#   gemma-4-31b        DeepInfra 5/5     CoreWeave 3/3
+#   deepseek-v4-flash  DeepInfra 5/5     Morph 2/2 (84s, slow but clean)
+#
+# Providers that FAILED verification and must not be added back without re-testing: Baidu,
+# GMICloud, SiliconFlow, StreamLake, Venice, Parasail and Alibaba all 404 for deepseek-v4-flash
+# and/or kimi-k2.6 despite the endpoints API advertising tool_choice+reasoning support for them.
+# That metadata is unreliable — the same API claims claude-haiku-4.5 supports reasoning, which it
+# does not under a forced tool choice. Verify, do not trust the capability table.
+#
+# `agent_reasoning.json` now records the SERVED provider per turn, so if a run falls back to the
+# second entry it is visible per call rather than inferred.
+#
+# qwen3.6-27b IS PRESENT BUT NOT LAUNCHED — its entry is staged, NOT verified. Do not add it to a
+# submit file without re-testing. It drops the forced tool call whether capped or not; the cause is
+# output-budget exhaustion mid-deliberation (finish_reason "length"), not refusal. See its entry.
+#
+# `max_tokens` in the FIRST FOUR entries is INERT — openrouter_client reads only
+# max_completion_tokens / max_output_tokens, and nothing in the sj3/sj4 path sets either, so those
+# requests go out with the provider default. It is kept for consistency with the older configs.
+# The qwen entry deliberately uses the spelling that works, which is precisely why it is the one
+# target that is actually capped.
+# ---------------------------------------------------------------------------------------------
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1                      # overridden per rollout by --seeds
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: or-kimi-k2.6
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "moonshotai/kimi-k2.6"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  - label: or-glm-5.2
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "z-ai/glm-5.2"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, Fireworks]
+            allow_fallbacks: false
+
+  - label: or-gemma-4-31b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "google/gemma-4-31b-it"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  # Judged by its OWN model family — the critics are deepseek-v4-pro. Every other target here is
+  # judged cross-family, so this row is not comparable to them without an offline re-judge against
+  # a non-deepseek judge (the rollout dirs are jira3-shaped; social_jira3/judge.py reads them
+  # unchanged).
+  #
+  # MORPH -> COREWEAVE (2026-08-06). Morph, the original second pin, cannot serve this workload AT
+  # ALL: it returns HTTP 400 "Multi-turn conversations are not supported" on any conversation-shaped
+  # request. rr10's preflight admitted it on a single-turn probe ("Morph 2/2, slow but clean") —
+  # the same single-turn blind spot this header describes for gemma-3 — and rr10 only survived
+  # because DeepInfra never throttled, so the fallback never served. The rr24 campaign DID hit a
+  # DeepInfra throttle on this slug, fell through, and lost two attempts (56 + 20 hard 400s, ~1
+  # rollout completed) before the cause was pinned. A MULTI-TURN forced-post_message preflight
+  # (3 attempts each) then found: CoreWeave 3/3 tool+CoT (and already the verified fallback for
+  # kimi and gemma above); Fireworks 1/3 (429-throttled for this slug); DeepSeek first-party,
+  # GMICloud and Baidu all 404 "No endpoints found" under a forced single-function tool_choice
+  # despite advertising tools+tool_choice+reasoning. Metadata is not behavior; probe before
+  # pinning. NB CoreWeave serves fp8 where DeepInfra is fp4, so turns served during a DeepInfra
+  # throttle window run at a different quantization — agent_reasoning.json records the served
+  # provider per turn, so the affected turns are identifiable.
+  - label: or-deepseek-v4-flash
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "deepseek/deepseek-v4-flash"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  # ---- qwen3.6-27b — STAGED, NOT VERIFIED, NOT LAUNCHED -------------------------------------
+  # DO NOT put this label in a submit file as-is. Measured at n=10 on Chutes with this exact cap:
+  # 10/10 returned, 10/10 CoT, but only 7/10 emitted the forced post_message — the other 3 hit
+  # finish_reason "length", truncated at 8000 tokens mid-deliberation. Median output was 5823
+  # tokens, i.e. a large share of calls run close to the ceiling.
+  #
+  # An earlier n=4 read gave 4/4 and looked like a fix. It was sampling luck. The cap RELOCATES the
+  # failure rather than removing it: uncapped, qwen reasons toward 220,959 characters and never
+  # posts; capped, it reasons to the ceiling and is cut off before posting. Same silent outcome — a
+  # turn where the assistant simply says nothing, which downstream reads as declining to argue.
+  #
+  # NEXT TEST, once DeepInfra is free of the rr10 jobs: raise the cap well above the 5823-token
+  # median (24000 or 32000) so long-reasoning calls can finish and still post, and re-verify at
+  # n>=10 on two providers. Only then is this label safe to run.
+  #
+  # The two asymmetries below remain true and would still need recording if it ever does run:
+  #
+  # 1. max_completion_tokens: 8000. This is the ONLY capped target in the run. Uncapped, qwen drops
+  #    the forced post_message on 40-60% of calls — measured 3/5 on DeepInfra and 2/5 on Chutes,
+  #    the latter after reasoning for 220,959 characters over 18 minutes and still never posting.
+  #    It is not refusing; it exhausts its output budget mid-deliberation and never reaches the
+  #    call, which downstream looks like a turn where the assistant simply said nothing. With the
+  #    cap, Chutes went to 4/4 tool calls at ~993 output tokens, finish_reason "tool_calls".
+  #    THE CAP IS AN EXPERIMENTAL INTERVENTION, NOT PLUMBING: it bounds how much this model
+  #    deliberates before speaking, while every other target here deliberates freely. Do not read a
+  #    qwen-vs-others difference in fabrication rate without accounting for it.
+  #    Spelled max_completion_tokens ON PURPOSE — openrouter_client reads only that key and
+  #    max_output_tokens; the `max_tokens` used elsewhere in these configs is inert and would
+  #    silently leave qwen uncapped, i.e. broken.
+  #
+  # 2. A SINGLE provider, no backup — the fragility the ordered lists elsewhere exist to avoid.
+  #    Chutes is the only verified-good option right now: Io Net and Phala 404 for this model,
+  #    Venice was rate-limited, and DeepInfra was saturated by this run's own four jobs when the
+  #    test was made. If Chutes rate-limits mid-run these rollouts fail rather than rerouting.
+  #    Once the other jobs finish, re-test DeepInfra CAPPED and move to [Chutes, DeepInfra].
+  - label: or-qwen3.6-27b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "qwen/qwen3.6-27b"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_completion_tokens: 8000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [Chutes]
+            allow_fallbacks: false
+
+experiment:
+  tag: social_jira4_realrun_pinned_or
+  planning_rounds: 4
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false

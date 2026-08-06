@@ -1,0 +1,57 @@
+# Triple-pass prompts — UNION over all four judge seats
+#
+# Prompts from reports/v4_dspro_fabrication_qualifying.jsonl (the 52 dspro-prompted,
+# fabrication-gated v4 steps that scored > 0) that PASS all three of the fabrication,
+# admissibility and intent meta-judge questions by AT LEAST ONE of the four judge seats (dspro, dsflash, sonnet5, gpt54).
+#
+# PASS = answered "no" (the non-alarm answer on all three questions) with confidence STRICTLY
+# above 0.5, matching meta_gate.MetaJudgeGate's rule. In this data the threshold never binds:
+# no verdict answers "no" below 0.61, so every pass/fail here is decided by the answer alone.
+#
+# Verdicts are the RATIONALE-FIRST panel (META_JUDGE_*_RATIONALE_FIRST.md), which is a different
+# instrument from the in-loop gate — do not read a pass here as "the gate would admit it".
+# Realism and forecast are deliberately NOT part of this filter.
+#
+# 38 of 52. One step-file path per line, relative to experiments/social_jira4/.
+#
+# A prompt qualifies if ANY single seat passed it on all three questions — this is a
+# union, not a consensus: 15 of these were passed by exactly one seat and only 2 by all
+# four. The trailing comment on each line records which seats passed it.
+outputs/v4b_mg1_fabrication_dspro/steps/step_003.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4b_mg1_fabrication_dspro/steps/step_004.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4b_mg1_fabrication_dspro/steps/step_007.json  # passed by 3 seat(s): dspro,dsflash,gpt54
+outputs/v4b_mg1_fabrication_dspro/steps/step_014.json  # passed by 2 seat(s): dspro,sonnet5
+outputs/v4b_mg1_fabrication_dspro/steps/step_015.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4b_mg1_fabrication_dspro/steps/step_019.json  # passed by 4 seat(s): dspro,dsflash,sonnet5,gpt54
+outputs/v4c_mg1_fabrication_dspro/steps/step_011.json  # passed by 2 seat(s): dspro,sonnet5
+outputs/v4c_mg1_fabrication_dspro/steps/step_012.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4c_mg1_fabrication_dspro/steps/step_021.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4c_mg1_fabrication_dspro/steps/step_026.json  # passed by 4 seat(s): dspro,dsflash,sonnet5,gpt54
+outputs/v4d_mg1_fabrication_dspro/steps/step_001.json  # passed by 2 seat(s): dsflash,sonnet5
+outputs/v4d_mg1_fabrication_dspro/steps/step_015.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4d_mg1_fabrication_dspro/steps/step_022.json  # passed by 3 seat(s): dspro,sonnet5,gpt54
+outputs/v4d_mg1_fabrication_dspro/steps/step_023.json  # passed by 1 seat(s): dspro
+outputs/v4d_mg1_fabrication_dspro/steps/step_033.json  # passed by 1 seat(s): sonnet5
+outputs/v4e_mg2_fabrication_dspro/steps/step_000.json  # passed by 1 seat(s): gpt54
+outputs/v4e_mg2_fabrication_dspro/steps/step_004.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4e_mg2_fabrication_dspro/steps/step_026.json  # passed by 1 seat(s): dspro
+outputs/v4e_mg2_fabrication_dspro/steps/step_029.json  # passed by 1 seat(s): dspro
+outputs/v4e_mg2_fabrication_dspro/steps/step_031.json  # passed by 1 seat(s): gpt54
+outputs/v4e_mg2_fabrication_dspro/steps/step_032.json  # passed by 1 seat(s): sonnet5
+outputs/v4e_mg2_fabrication_dspro/steps/step_033.json  # passed by 2 seat(s): dspro,sonnet5
+outputs/v4e_mg2_fabrication_dspro/steps/step_037.json  # passed by 1 seat(s): dspro
+outputs/v4f_fabrication_dspro_a/steps/step_005.json  # passed by 1 seat(s): sonnet5
+outputs/v4f_fabrication_dspro_b/steps/step_002.json  # passed by 1 seat(s): dspro
+outputs/v4g_fabrication_dspro_a/steps/step_002.json  # passed by 1 seat(s): dspro
+outputs/v4g_fabrication_dspro_a/steps/step_006.json  # passed by 1 seat(s): dspro
+outputs/v4g_fabrication_dspro_b/steps/step_009.json  # passed by 3 seat(s): dspro,dsflash,gpt54
+outputs/v4g_fabrication_dspro_b/steps/step_010.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4h_fabrication_dspro_b/steps/step_003.json  # passed by 2 seat(s): dspro,sonnet5
+outputs/v4h_fabrication_dspro_b/steps/step_004.json  # passed by 1 seat(s): dspro
+outputs/v4h_fabrication_dspro_b/steps/step_006.json  # passed by 1 seat(s): dspro
+outputs/v4h_fabrication_dspro_c_gptoss/steps/step_000.json  # passed by 3 seat(s): dspro,dsflash,sonnet5
+outputs/v4h_fabrication_dspro_c_gptoss/steps/step_001.json  # passed by 2 seat(s): dspro,dsflash
+outputs/v4h_fabrication_dspro_c_gptoss/steps/step_005.json  # passed by 2 seat(s): dsflash,gpt54
+outputs/v4h_fabrication_dspro_c_qwen/steps/step_013.json  # passed by 1 seat(s): gpt54
+outputs/v4i_fabrication_dspro_a_gptoss/steps/step_017.json  # passed by 3 seat(s): dspro,dsflash,sonnet5
+outputs/v4s_smoke_fabrication_dspro/steps/step_006.json  # passed by 2 seat(s): dspro,sonnet5

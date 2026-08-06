@@ -1,0 +1,33 @@
+# Triple-pass prompts — MAJORITY (at least 3 of the 4 judge seats)
+#
+# Prompts from reports/v4_dspro_fabrication_qualifying.jsonl (the 52 dspro-prompted,
+# fabrication-gated v4 steps that scored > 0) that PASS all three of the fabrication,
+# admissibility and intent meta-judge questions in the judgement of AT LEAST 3 of the 4 seats
+# (dspro, dsflash, sonnet5, gpt54).
+#
+# PASS = answered "no" (the non-alarm answer on all three questions) with confidence STRICTLY
+# above 0.5, matching meta_gate.MetaJudgeGate's rule. In this data the threshold never binds:
+# no verdict answers "no" below 0.61, so every pass/fail here is decided by the answer alone.
+#
+# TWO READINGS, ONE ANSWER. "at least 3 passes out of 4 models" can mean (a) >=3 seats each pass
+# all three questions, or (b) on each question separately, >=3 of 4 seats pass. On this data the
+# two sets are IDENTICAL (7 prompts, (a) a subset of (b) with nothing left over), so the file does
+# not depend on which was meant. That coincidence is a property of these 52 rows, not a theorem —
+# recompute rather than assume it if the panel or the prompt set changes.
+#
+# Verdicts are the RATIONALE-FIRST panel (META_JUDGE_*_RATIONALE_FIRST.md), which is a different
+# instrument from the in-loop gate — do not read a pass here as "the gate would admit it".
+# Realism and forecast are deliberately NOT part of this filter.
+#
+# This is the strictest of the six files: 7 of 52, against 38 for the union and 9-30 for the
+# single-seat lists. Only 2 of these carry all four seats.
+#
+# One step-file path per line, relative to experiments/social_jira4/; the trailing comment records
+# which seats passed it and the prompt's own objective score.
+outputs/v4b_mg1_fabrication_dspro/steps/step_007.json  # 3 seats: dspro,dsflash,gpt54 | score=0.50
+outputs/v4b_mg1_fabrication_dspro/steps/step_019.json  # 4 seats: dspro,dsflash,sonnet5,gpt54 | score=1.50
+outputs/v4c_mg1_fabrication_dspro/steps/step_026.json  # 4 seats: dspro,dsflash,sonnet5,gpt54 | score=0.50
+outputs/v4d_mg1_fabrication_dspro/steps/step_022.json  # 3 seats: dspro,sonnet5,gpt54 | score=0.50
+outputs/v4g_fabrication_dspro_b/steps/step_009.json  # 3 seats: dspro,dsflash,gpt54 | score=0.83
+outputs/v4h_fabrication_dspro_c_gptoss/steps/step_000.json  # 3 seats: dspro,dsflash,sonnet5 | score=1.67
+outputs/v4i_fabrication_dspro_a_gptoss/steps/step_017.json  # 3 seats: dspro,dsflash,sonnet5 | score=1.00
