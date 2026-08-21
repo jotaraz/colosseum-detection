@@ -1,0 +1,38 @@
+# v8 baseline — Azure gpt-5.4, inference + self_and_others.
+#
+# Same cell as the OpenRouter v8 batch (seeds 141-146), so an Azure run drops straight in
+# beside them. Credentials come from the environment, not this file:
+#
+#     source /fast/jtaraz/syco-bench/.env      # AZURE_OPENAI_ENDPOINT / _API_KEY
+#
+# `azure.model` is the DEPLOYMENT name. On this resource the deployments are gpt-4.1, gpt-5,
+# gpt-5-chat, gpt-5.2 and gpt-5.4; the first three of those were probed for tool calling and
+# all work. NOTE: no chain-of-thought comes back from any Azure deployment, so
+# `steps_detail[].reasoning` will be empty and the private debrief is the only introspective
+# surface — see experiments/agent1/azure_client.py.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v8_renamed.json
+  out: experiments/agent1/outputs/v8/inf_both_gpt54.json   # --out overrides per seed
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 120
+  turn_jitter: 0
+  seed: 1
+  confidentiality: inference
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+
+llm:
+  provider: azure
+  azure:
+    model: "gpt-5.4"          # deployment name
+    request_timeout: 300
+    connect_timeout: 30
+    total_timeout: 1200
+    params:
+      max_tokens: 8000        # sent as max_completion_tokens; gpt-5.x rejects max_tokens
+      temperature: 0.7
+      # reasoning_effort: medium   # accepted by gpt-5.x; omitted = the deployment's default

@@ -1,0 +1,31 @@
+# HTCondor submit: social_jira3 DECEPTION sweep — offline judging of the finished vLLM trees.
+# L1 full taxonomy then L2 fabrication, both on deepseek/deepseek-v4-flash-0731 via OpenRouter.
+# 126 rollouts (gpt-oss base 48 + gpt-oss harmless 30 + qwen base 48).
+#
+# CPU only — the judge is API wall-clock, no GPU. Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira3_deception_judge.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_deception_judge.sh $(Process) 4"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_judge_$(Process)_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_judge_$(Process)_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_judge_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+# 2 shards x 10 workers = ~20 concurrent judge calls. 4x20=80 was tried on 2026-08-06 and made
+# per-shard throughput ~5x WORSE (total slightly down, no 429s) — the provider queues rather than
+# refuses, so oversubscription shows up as latency, not errors. judge.py iterates run dirs
+# SEQUENTIALLY (judge.py:1013) — the --workers pool only
+# parallelises the 20 turns WITHIN one run. Sharding is the only way to judge runs in parallel.
+# N=4, not 2: the partition is idx %% n == i over ALL run dirs and skip-existing is applied
+# AFTER, so re-running with the same N reproduces the same assignment and cannot rebalance a
+# straggler. Bumping N re-splits the leftover: old shard 1's dirs (idx odd) become new shards
+# 1 and 3, while 0 and 2 skip everything and exit in seconds. 2 live shards x 10 workers = 20
+# concurrent, the setting that behaved well (80 was 5x worse per shard).
+queue 4

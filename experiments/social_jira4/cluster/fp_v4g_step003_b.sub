@@ -1,0 +1,54 @@
+# social_jira4 — FIXED-PROMPT model comparison, SECOND job: the four models the first job had not
+# yet reached, run CONCURRENTLY instead of one after another, plus deepseek-v4-flash.
+#
+#   kimi-k2.6 | glm-5.2 | gemma-4-31b | deepseek-v4-flash
+#
+# Same frozen prompt as fp_v4g_step003.sub (v4g_fabrication_dspro_a step 3), same seed 1, same
+# environment, same three critics. Read that file's header for what the experiment is; this one
+# records only what differs.
+#
+# WHY A SECOND JOB. The first job (17436519) runs its five models sequentially, which was a mistake
+# — inherited from the local-vLLM submit files, where two models genuinely had to share one node's
+# four GPUs and serialising them was the point. Over OpenRouter there is no server to contend for,
+# so the only thing sequential execution buys is a tidier log, at the cost of summing the runtimes
+# instead of taking their max. With rollout time varying ~5x across these targets (haiku finished in
+# 240s; qwen3.6-27b is running at ~4 min/turn) that sum is dominated by the slowest model and the
+# fast ones wait behind it for nothing.
+#
+# So: this job picks up the four models job 1 had not started, runs them concurrently
+# (fixed_prompt_run.py now fans out over models with a ThreadPoolExecutor), and job 1 is killed once
+# its qwen row is safely written to results.json. Nothing already computed is discarded — haiku's
+# result is banked and qwen's will be.
+#
+# SEPARATE OUT-DIR, deliberately. Two jobs writing one out-dir would collide on results.json and on
+# the runs/step000 tree. Merge the two results.json files when reading, or point the viewer at each.
+#
+# CONCURRENCY, and why it is safe. Four rollouts at once (1 in-flight call each) plus up to 4x6=24
+# judge workers, alongside job 1's 1+6. Peak ~35 concurrent OpenRouter calls on one key. Precedent:
+# on 2026-08-04 EIGHT v4h jobs ran concurrently against this same key (17:17-17:56 start times) and
+# made 3655 judge calls with no rate-limit failures. The client also honours Retry-After with
+# exponential backoff, so a 429 degrades to slower judging rather than a lost rollout.
+#
+# THE DEEPSEEK ROW IS NOT COMPARABLE TO THE OTHERS. The critics are deepseek-v4-pro, so
+# deepseek-v4-flash is judged by its own model family while every other target is judged
+# cross-family. See the config's entry for the full note. Re-judge offline before putting its number
+# in the same table.
+#
+# GEMMA REMAINS THE FAILURE RISK. gemma-3-27b was unusable in the collusion experiment: its chat
+# template forbids a system role and consecutive same-role turns, producing 1800 "Conversation roles
+# must alternate" errors and zero data. The single-turn preflight passed but does not exercise that
+# shape. If this row errors on every rollout, that is why.
+#
+# CPU-ONLY. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json experiments/social_jira4/configs/social_jira4_fixedprompt_5models_or.yaml experiments/social_jira4/outputs/fp_v4g_step003_b --models or-kimi-k2.6,or-glm-5.2,or-gemma-4-31b,or-deepseek-v4-flash"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_b.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_b.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_b.log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue

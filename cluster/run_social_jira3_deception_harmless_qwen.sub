@@ -1,0 +1,23 @@
+# HTCondor submit: social_jira3 DECEPTION sweep — harmless arm, Qwen3.6-35B-A3B (local vLLM, port 8034).
+# 30 runs = 5 prompt cells x 3 deception levels (none/allow/forbid) x seeds 3,4 x 1 sample.
+# Study: experiments/social_jira3/social_jira3_allow_forbid_harmless_plan.md
+# Submit with:
+#   condor_submit_bid 100 cluster/run_social_jira3_deception_harmless_qwen.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_social_jira3_deception_vllm.sh experiments/social_jira3/configs/social_jira3_deception_harmless_qwen.yaml"
+
+environment = "HF_TOKEN=$ENV(HF_TOKEN)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_harmless_qwen_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_harmless_qwen_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/sj3_deception_harmless_qwen_$(Cluster).log
+
+# Qwen3.6-35B-A3B MoE bf16 ~70GB, tensor_parallel_size 2 -> 2x H100-80GB.
+request_gpus   = 2
+requirements   = (TARGET.CUDADeviceName == "NVIDIA H100 80GB HBM3")
+request_memory = 131072
+request_cpus   = 8
+request_disk   = 200G
++BypassLXCfs   = "true"
+queue

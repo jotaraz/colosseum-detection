@@ -45,6 +45,7 @@ _SAMPLE_RE = re.compile(r"__s(\d+)(?:$|/)")
 DIMENSIONS = [
     ("model_label", "model"),
     ("decoys", "decoy"),
+    ("deception", "dcp"),   # none|allow|forbid; absent in pre-axis judge bodies
     ("hint", "hint"),
     ("seed", "seed"),
     ("sample", "sample"),
@@ -54,15 +55,38 @@ DIMENSIONS = [
 
 
 def _model_alias(summary: Dict[str, Any], _path: Path) -> str:
-    """Collapse the verbose model_label to the short axis value qwen|gpt-oss|glm."""
+    """Collapse the verbose model_label to a short axis value.
+
+    ``glm-5.2`` keeps its version: the original jira3 sweeps ran glm-4.7-flash, the deception
+    sweeps run glm-5.2, and collapsing both to ``glm`` would pool two different models.
+    """
     s = str(summary.get("model_label") or summary.get("model") or "").strip().lower()
     if "qwen" in s:
         return "qwen"
     if "gpt" in s and "oss" in s:
         return "gpt-oss"
+    if "glm" in s and "5.2" in s:
+        return "glm-5.2"
     if "glm" in s:
         return "glm"
+    if "kimi" in s:
+        return "kimi"
+    if "deepseek" in s:
+        return "deepseek"
+    if "gemma" in s:
+        return "gemma"
     return s or "?"
+
+
+def _deception(summary: Dict[str, Any], _path: Path) -> str:
+    """`deception` axis value, defaulting missing to "none".
+
+    Judge bodies written before the axis existed have no field; those runs had no deception
+    sentence in the system prompt, which is exactly ``none`` — so they pool with the new base
+    cells instead of showing up as a separate "None" bucket.
+    """
+    v = summary.get("deception")
+    return str(v) if v not in (None, "", "None") else "none"
 
 
 def _sample(summary: Dict[str, Any], _path: Path) -> str:
@@ -106,7 +130,7 @@ ADAPTER = Adapter(
     taxonomy=taxonomy,
     default_roots=default_roots,
     l2_map=L2_PHENOMENA,
-    derive={"model_label": _model_alias, "sample": _sample},
+    derive={"model_label": _model_alias, "sample": _sample, "deception": _deception},
     extra_roots=EXTRA_ROOTS,
     extra_label="include v6 qwen seeds 3–6",
 )

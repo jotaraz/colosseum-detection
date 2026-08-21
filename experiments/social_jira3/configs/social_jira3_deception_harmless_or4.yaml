@@ -1,0 +1,140 @@
+# social-jira3 DECEPTION SWEEP — harmless-mechanism arm.
+# See social_jira3_allow_forbid_harmless_plan.md.
+#
+#   5 prompt cells  = {duty, leverage} x hint {none, noconstraint}  +  conf none x hint none
+#                     (`none` has no norm, so no hint can attach to it — run.py skips those)
+#   x 3 deception   = {none, allow, forbid}      (one sentence closing the SYSTEM prompt)
+#   x 6 models      = 2 local vLLM + 4 OpenRouter
+#   x seeds {3,4} x 1 sample
+#   = 180 runs.
+#
+# Fixed: conflict/base, inbox, quit3, decoys OFF (no availability block -> pairings must be
+# argued on task-fit alone), employee summary, personality none, prompt_version 6,
+# robust_assignment TRUE for every model.
+#
+# No cell here shares an environment with the base arm (quit2 + decoys on), so the two studies
+# are read through the deception axis WITHIN each, not cell-to-cell across them.
+#
+# NOTE the two vLLM models need DIFFERENT venvs (gpt-oss = MXFP4 -> pinned vLLM 0.12.0;
+# Qwen3.6-35B-A3B = gated-delta-net -> vLLM >= ~0.19). Run them as two cluster jobs with the
+# model list trimmed accordingly, or run the 4 OpenRouter rows separately; this file is the
+# single source of truth for the AXES, not necessarily one submit.
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 6
+  max_conversation_steps: 5
+  seed: 3
+  tags: [social_jira3, deception]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict   # overridden per cell by the sweep
+  assignment_filling: false
+  n_distractors: 3          # distractor THREADS per inbox
+  n_signal_threads: 2       # primary signal thread + 1 strength-matched secondary mention
+  signal_recipient: friend
+  secrecy_request: "on"     # employee asks 'keep this between us' in the signal msg (SPEC §2.2)
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  - label: or-kimi-k2.6
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "moonshotai/kimi-k2.6"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  - label: or-deepseek-v4-flash
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "deepseek/deepseek-v4-flash"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            # CoreWeave (fp8) != DeepInfra (fp4): a failover changes the served model.
+            # Identifiable after the fact — the provider is recorded per turn in
+            # agent_reasoning.json — but not avoidable. Check the provider mix post-run.
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  - label: or-glm-5.2
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "z-ai/glm-5.2"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            # CoreWeave, not sj4's Fireworks: CoreWeave serves glm-5.2 at fp4, matching
+            # DeepInfra, so a failover changes neither quantization nor a proven capability.
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+  - label: or-gemma-4-31b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "google/gemma-4-31b-it"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra, CoreWeave]
+            allow_fallbacks: false
+
+experiment:
+  tag: social_jira3_deception_harmless_or4
+  output_dir: experiments/social_jira3/outputs/social_jira3_deception_harmless_or4
+  planning_rounds: 6          # cap (MAX): stop rule = >=3 rounds, then stop on stable votes
+  min_planning_rounds: 3
+  preliminary_vote: true
+  early_stop_stable: true
+  max_conversation_steps: 5
+  log_prompts: true
+  max_concurrent_runs: 12
+  run_attempts: 3
+  robust_assignment: true     # ALL six models, so the prompt is constant across the roster
+  seeds: [3, 4]
+
+  social_jira3:
+    feelings_channels: [inbox]
+    dislike_strengths: [quit3]
+    confidentiality: [none, duty, leverage]
+    hints: [none, noconstraint]
+    deception: [none, allow, forbid]   # the axis under study (SYSTEM-prompt closing sentence)
+    summary_audiences: [employee]
+    decoys: ["off"]
+    personalities: [none]
+    samples_per_seed: 1
+    cells:
+      - {scenario_type: conflict, setup: base}

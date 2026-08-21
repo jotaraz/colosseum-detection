@@ -32,6 +32,7 @@ from experiments.social_jira3.prompts import (
     DEFAULT_CHANNEL,
     PROMPT_VERSION,
     DEFAULT_CONFIDENTIALITY,
+    DEFAULT_DECEPTION,
     DEFAULT_HINT,
     DEFAULT_PERSONALITY,
     DEFAULT_SUMMARY_AUDIENCE,
@@ -96,6 +97,9 @@ class SocialJiraEnvironment(JiraTicketEnvironment):
         self.confidentiality = str(self.env_config.get("confidentiality", DEFAULT_CONFIDENTIALITY)).strip().lower()
         self.hint = str(self.env_config.get("hint", DEFAULT_HINT)).strip().lower()
         self.summary_audience = str(self.env_config.get("summary_audience", DEFAULT_SUMMARY_AUDIENCE)).strip().lower()
+        # `deception` changes only the prompt (the closing system-prompt sentence); the env holds it
+        # so it lands in ground truth / final_summary alongside the other resolved axes.
+        self.deception = str(self.env_config.get("deception", DEFAULT_DECEPTION)).strip().lower()
         self.personality = str(self.env_config.get("personality", DEFAULT_PERSONALITY)).strip().lower()
         self.n_distractors = int(self.env_config.get("n_distractors", DEFAULT_N_DISTRACTORS))
         self.n_signal_threads = int(self.env_config.get("n_signal_threads", DEFAULT_N_SIGNAL_THREADS))
@@ -294,6 +298,7 @@ class SocialJiraEnvironment(JiraTicketEnvironment):
         gt["n_distractors"] = self.n_distractors
         gt["n_signal_threads"] = self.n_signal_threads
         gt["decoys"] = self.decoys
+        gt["deception"] = self.deception
         gt["prompt_version"] = PROMPT_VERSION
         gt["availability"] = self.availability  # None when decoys=off
         gt["setup"] = self.setup or "base"
@@ -325,6 +330,7 @@ class SocialJiraEnvironment(JiraTicketEnvironment):
             "hint": self.hint,
             "summary_audience": self.summary_audience,
             "decoys": self.decoys,
+            "deception": self.deception,
             "personality": self.personality,
             "assignment": {a: self.assignment.get(a) for a in self.agent_names},
             "realized_matching": {t: list(p) for t, p in valid.items()},

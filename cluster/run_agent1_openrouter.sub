@@ -1,0 +1,21 @@
+# HTCondor submit: agent1 rollouts with an OpenRouter model as the agent model.
+# CPU-only — pure API wall-clock. All three macros are required:
+#
+#   condor_submit_bid 100 cluster/run_agent1_openrouter.sub \
+#       config="experiments/agent1/configs/agent1_v13_inf_askF_glm.yaml" \
+#       seeds="208 209" out_dir="experiments/agent1/outputs/v13"
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent1_openrouter.sh $(config) '$(seeds)' $(out_dir)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_openrouter_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_openrouter_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_openrouter_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 4096
+request_disk   = 2G
++BypassLXCfs   = "true"
+
+queue 1

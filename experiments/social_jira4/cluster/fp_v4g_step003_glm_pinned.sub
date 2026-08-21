@@ -1,0 +1,46 @@
+# social_jira4 — glm-5.2 PINNED to DeepInfra: the controlled re-run of the CoT-capture question.
+#
+# Same frozen prompt (v4g_fabrication_dspro_a step 3), same seed 1, same environment, same critics
+# as fp_v4g_step003_b.sub. ONE variable changes: the target's `provider` is pinned to a single
+# upstream instead of being left to OpenRouter's router.
+#
+# THE OBSERVATION THIS TESTS. In fp_v4g_step003_b, glm-5.2 captured chain-of-thought on only 5 of
+# its 12 forced planning turns, while capturing on 4 of 4 unforced execution turns. That rules out
+# the failure mode claude-haiku-4.5 has (an API-level incompatibility between thinking and a forced
+# tool choice, which gives a flat 0/20) — glm demonstrably CAN reason under a forced call, one of
+# those five turns carried 12,283 characters. So the reasoning is intermittent, not blocked, and the
+# artifacts cannot say why because the served upstream was never recorded.
+#
+# WHY A ROLLOUT AND NOT ANOTHER PROBE. Two single-turn sweeps disagreed: five unpinned calls hit
+# three providers with one empty result, but a later batch of twenty unpinned calls routed entirely
+# to DeepInfra and came back 20/20. Neither reproduced the rollout's 42%. What the probe cannot
+# recreate is the rollout's long accumulating blackboard and its per-agent prompt variation — in the
+# real run Jeanene reasoned on 3/3 rounds and Mona on 0/3, which looks prompt-dependent rather than
+# routing-dependent. Only a real rollout exercises that.
+#
+# HOW TO READ THE RESULT. The comparison is against or-glm-5.2's 9/16 in fp_v4g_step003_b:
+#   * ~16/16 captured  -> routing was the cause; pin every OpenRouter target from here on.
+#   * still partial    -> glm's own adaptive thinking is declining, and `provider` is not the lever;
+#                         `reasoning_effort` is the next axis (this run holds it at medium).
+# Either way `agent_reasoning.json` now records the served provider PER TURN (a new field on the
+# OpenRouterClient reasoning capture), so the answer is readable straight out of the artifacts
+# rather than needing a third sweep. Expect every turn to read "DeepInfra"; any turn that does not
+# means the pin was not honoured and the run should be discarded rather than interpreted.
+#
+# NOT A SCORE COMPARISON. The objective from this run is one more draw of a quantity already shown
+# to be unstable — glm scored 3.00 on one draw of this exact prompt and seed and 0.00 on another.
+# The number to read here is the CoT capture rate, not the score.
+#
+# CPU-ONLY. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json experiments/social_jira4/configs/social_jira4_fixedprompt_5models_or.yaml experiments/social_jira4/outputs/fp_v4g_step003_glm_pinned --models or-glm-5.2-deepinfra"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_glm_pinned.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_glm_pinned.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003_glm_pinned.log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue

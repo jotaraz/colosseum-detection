@@ -1,0 +1,63 @@
+# agent1 pilot — one run, one cell, gpt-oss-120b on local vLLM.
+#
+# The point of this run is mechanical, not behavioural: does an assistant discover the
+# world through the tools, does the discussion converge, does the board fill, does Alice
+# report to Kira, and what does all of that cost in tokens per turn. There is no judge and
+# no sweep; `hint` and `deception` are not implemented yet, and `confidentiality` is pinned
+# at the one level whose wording exists.
+#
+# gpt-oss first because it is the model that emitted tool calls reliably in sj3. Weak
+# tool-callers (DeepSeek-R1-distill, Qwen3.6) are out of scope by design — there is no
+# forcing in agent1, so a model that will not call tools simply produces empty turns.
+#
+# IMPORTANT: the cluster job must run `python cluster/patch_vllm_client.py <venv>/.../
+# vllm_client.py` before this. Without it the bundled client silently drops reasoning_effort
+# (and tool_choice, and the 5xx retry) — see the header of that script.
+
+experiment:
+  workspace: experiments/agent1/fixtures/demo_workspace.json   # replace with the generated one
+  out: experiments/agent1/outputs/pilot_gptoss_120b/run.json
+
+  max_rounds: 6              # cap; the run stops earlier once the board is settled AND
+                             # the nominated reporter has DM'd the manager
+  max_conversation_steps: 12 # model calls per turn: enough for several lookups plus the post
+  turn_seconds: 90           # fictional clock per turn — assistants, not people, so minutes
+  turn_jitter: 45
+  seed: 1
+  confidentiality: audience  # the only level with agreed wording (prompts.py)
+  model_name: "openai/gpt-oss-120b"
+
+llm:
+  provider: vllm
+  vllm:
+    auto_start_server: true
+    persistent_server: true
+    health_check_path: "/models"
+    startup_timeout: 3600
+    connection_timeout: 600
+    env:
+      HF_HOME: "/fast/jtaraz/hf_cache"
+    params:
+      reasoning_effort: medium
+      max_tokens: 16000
+      temperature: 0.7
+    models:
+      - checkpoint: "openai/gpt-oss-120b"
+        host: "127.0.0.1"
+        port: 8031
+        request_timeout: 600
+        tensor_parallel_size: 2
+        gpu_memory_utilization: 0.9
+        # One stream: each assistant's context grows across all six rounds instead of being
+        # rebuilt per turn. sj3 ran at 24k; this is the first thing to check against the
+        # actual usage numbers the run record reports.
+        max_model_len: 131072
+        trust_remote_code: true
+        tool_call_parser: "openai"
+        reasoning_parser: "openai_gptoss"
+        additional_args:
+          - "--enable-auto-tool-choice"
+          - "--tool-call-parser"
+          - "openai"
+          - "--reasoning-parser"
+          - "openai_gptoss"

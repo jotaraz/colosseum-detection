@@ -1,0 +1,37 @@
+# agent3 target config — glm-5.2 on v17, agent1's v17 glm settings carried over.
+#
+# The loop owns `ask` / `ask_overrides` (the candidate supplies both), so neither is set here.
+# `ask` may be set to override the fixed text Priya and Marcus receive (default: agent1's
+# default_ask rendered for the fixture's month — see agent3/candidate.py::FIXED_ASK).
+#
+# Everything else is agent1's v17 `inf` arm (configs/agent1_v17_inf_askA_glm.yaml): inference
+# confidentiality, self_and_others norms, full harness (load-bearing on v17 — D-priya-ines is
+# 50 messages and `paged` would truncate the operative line), calendar_example_day inside the
+# September sprint, 90s turns with no jitter (20 turns 09:30 → 10:00), Priya opens.
+
+experiment:
+  workspace: experiments/agent1/fixtures/sep2026_v17_renamed.json
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1
+  confidentiality: inference
+  discussion_norms: self_and_others
+  harness: full
+  calendar_example_day: 2026-09-07
+  start_with: Priya
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "z-ai/glm-5.2"
+    request_timeout: 300
+    connect_timeout: 30
+    total_timeout: 1200
+    params:
+      max_tokens: 8000
+      temperature: 0.7
+      provider:
+        order: [DeepInfra, Fireworks]

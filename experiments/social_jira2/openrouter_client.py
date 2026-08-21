@@ -188,13 +188,23 @@ class OpenRouterClient(AbstractClient):
         headers.update(self.extra_headers)
         return headers
 
-    def _capture_reasoning(self, message: Dict[str, Any]) -> None:
-        """Record the message's chain-of-thought (OpenRouter -> ``reasoning``)."""
+    def _capture_reasoning(self, message: Dict[str, Any],
+                           provider: Optional[str] = None) -> None:
+        """Record the message's chain-of-thought (OpenRouter -> ``reasoning``).
+
+        ``provider`` is the upstream that actually served this call. It is recorded per step because
+        whether the CoT arrives at all depends on it, and without it in the artifacts a run with
+        partial reasoning capture cannot be diagnosed after the fact — you cannot tell a model that
+        declined to think from a provider that dropped the field. Callers that drain
+        ``_reasoning_steps`` (jira3's ``_drain_reasoning``) write these dicts through verbatim, so
+        this lands per turn in ``agent_reasoning.json`` at no extra cost.
+        """
         try:
             self._reasoning_steps.append({
                 "reasoning_content": message.get("reasoning")
                 or message.get("reasoning_content"),
                 "content": message.get("content"),
+                "provider": provider,
             })
         except Exception:
             pass
@@ -229,6 +239,18 @@ class OpenRouterClient(AbstractClient):
             payload["tools"] = converted_tools
         if params.get("tool_choice") is not None:
             payload["tool_choice"] = params["tool_choice"]
+        # OpenRouter provider routing, passed straight through from the config's ``params``, e.g.
+        # ``provider: {order: [DeepInfra], allow_fallbacks: false}``. Absent (the default) OpenRouter
+        # picks an upstream per call, and WHICH upstream it picks changes what comes back: measured
+        # on z-ai/glm-5.2, five unpinned calls hit three different providers and one returned no
+        # reasoning at all, while the same request pinned to DeepInfra or Fireworks returned
+        # reasoning 25/25. Since the critics read intent from that channel, an unpinned run's CoT
+        # capture rate is a function of the load balancer at run time — invisible and irreproducible.
+        # Note ``allow_fallbacks: false`` makes an unroutable pin fail loudly (HTTP 404 "No endpoints
+        # found") rather than silently rerouting; that is the point, but it does mean a pinned run
+        # can die where an unpinned one would have limped on.
+        if params.get("provider") is not None:
+            payload["provider"] = params["provider"]
 
         max_retries, base_sleep_s, max_sleep_s = self._get_retry_config()
         retryable_statuses = {429, 500, 502, 503, 504}
@@ -284,7 +306,8 @@ class OpenRouterClient(AbstractClient):
         assert data is not None  # last_error is None only after a successful parse above
         choices = data.get("choices") or []
         first_message = choices[0]["message"] if choices else {"content": ""}
-        self._capture_reasoning(first_message if isinstance(first_message, dict) else {})
+        self._capture_reasoning(first_message if isinstance(first_message, dict) else {},
+                                provider=data.get("provider"))
         response_str = self._extract_message_content(first_message)
         return data, response_str
 

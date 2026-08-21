@@ -20,6 +20,7 @@ Sweep axes (SPEC §5):
   * hint              - none | small | big | noconstraint (§3.2, escalate 'avoid inference'); default [none].
   * summary_audience  - employee | manager (§4.1); default [employee].
   * decoys            - on | off (§2.5a, private per-employee equal-overlap calendar); default [on].
+  * deception         - none | allow | forbid (one sentence closing the SYSTEM prompt); default [none].
   * personality       - jira2 registry (mixed stays deferred); default [none].
   * seeds, samples    - as in jira2. n_distractors / n_signal_threads / signal_recipient
                         are config scalars.
@@ -60,6 +61,7 @@ from experiments.social_jira3.prompts import (
     PROMPT_VERSION,
     FEELINGS_CHANNELS,
     CONFIDENTIALITY_MODES,
+    DECEPTION_MODES,
     HINT_MODES,
     SUMMARY_AUDIENCES,
     SocialJiraPrompts,
@@ -376,7 +378,8 @@ def _cached_summary(run_dir: Path) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         k: rc.get(k) for k in (
             "run_id", "model_label", "model", "feelings_channel", "dislike_strength",
-            "confidentiality", "hint", "summary_audience", "decoys", "scenario_type", "personality", "setup", "seed",
+            "confidentiality", "hint", "summary_audience", "decoys", "deception",
+            "scenario_type", "personality", "setup", "seed",
         )
     }
     out["sample"] = m.get("sample", rc.get("sample"))
@@ -401,6 +404,7 @@ async def _run_single(
     hint: str,
     summary_audience: str,
     decoys: str,
+    deception: str,
     scenario_type: str,
     personality: str,
     setup: str,
@@ -418,6 +422,7 @@ async def _run_single(
     hint = str(hint).strip().lower()
     summary_audience = str(summary_audience).strip().lower()
     decoys = _coerce_onoff(decoys)
+    deception = str(deception).strip().lower()
     scenario_type = str(scenario_type).strip().lower()
     personality = str(personality).strip().lower()
     setup_label = str(setup).strip().lower() or "base"
@@ -444,12 +449,19 @@ async def _run_single(
     cfg["environment"]["hint"] = hint
     cfg["environment"]["summary_audience"] = summary_audience
     cfg["environment"]["decoys"] = decoys
+    cfg["environment"]["deception"] = deception
     cfg["environment"]["personality"] = personality
     cfg["environment"]["setup"] = setup_key  # None => default single-matching roster
     cfg["llm"] = copy.deepcopy(model_llm_cfg)
 
     run_timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    cell = f"{feelings_channel}-{dislike_strength}-conf{confidentiality}-hint{hint}-{summary_audience}-dec{decoys}"
+    # NB `dcp` (deception), not `dec` (decoys) — the two tokens must stay distinguishable both
+    # here and in phenomena_hist.parse_params. Run dirs written before the deception axis existed
+    # carry no `dcp` token; the parser reads their absence as `none` (which is what they were).
+    cell = (
+        f"{feelings_channel}-{dislike_strength}-conf{confidentiality}-hint{hint}"
+        f"-{summary_audience}-dec{decoys}-dcp{deception}"
+    )
     run_id = (
         f"{model_label}__{cell}__{scenario_type}__{setup_label}__{personality}"
         f"__{topology}__n{num_agents}__t{num_tasks}__seed{seed}__s{sample}"
@@ -528,6 +540,7 @@ async def _run_single(
     env.hint = hint
     env.summary_audience = summary_audience
     env.decoys = decoys
+    env.deception = deception
     env.personality = personality
     env.robust_assignment = robust_assignment
     env.prompts = SocialJiraPrompts(
@@ -537,6 +550,7 @@ async def _run_single(
         confidentiality=confidentiality,
         hint=hint,
         summary_audience=summary_audience,
+        deception=deception,
         personality=personality,
         robust_assignment=robust_assignment,
         experiment_prompt_logger=prompt_logger,
@@ -678,6 +692,7 @@ async def _run_single(
         hint=hint,
         summary_audience=summary_audience,
         decoys=decoys,
+        deception=deception,
         scenario_type=scenario_type,
         personality=personality,
         seed=int(seed),
@@ -698,6 +713,7 @@ async def _run_single(
         "hint": hint,
         "summary_audience": summary_audience,
         "decoys": decoys,
+        "deception": deception,
         "scenario_type": scenario_type,
         "personality": personality,
         "setup": setup_label,
@@ -745,7 +761,8 @@ async def _run_single(
     return {
         "run_id": run_id, "model_label": model_label, "model": model_name,
         "feelings_channel": feelings_channel, "dislike_strength": dislike_strength,
-        "confidentiality": confidentiality, "hint": hint, "summary_audience": summary_audience, "decoys": decoys,
+        "confidentiality": confidentiality, "hint": hint, "summary_audience": summary_audience,
+        "decoys": decoys, "deception": deception,
         "scenario_type": scenario_type, "personality": personality, "setup": setup_label,
         "seed": seed, "sample": int(sample),
         "status": metrics.get("status"),
@@ -800,6 +817,10 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
     for d in decoy_modes:
         if d not in DECOY_MODES:
             raise ValueError(f"unknown decoys mode {d!r}; expected one of {DECOY_MODES}")
+    deception_modes = [str(d).strip().lower() for d in (sj.get("deception") or ["none"])]
+    for d in deception_modes:
+        if d not in DECEPTION_MODES:
+            raise ValueError(f"unknown deception mode {d!r}; expected one of {DECEPTION_MODES}")
     scenario_types = [str(s).strip().lower() for s in (sj.get("scenario_types") or list(SCENARIO_TYPES))]
     for s in scenario_types:
         if s not in SCENARIO_TYPES:
@@ -850,7 +871,8 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
     )
     total_runs = (
         len(models) * len(cells) * len(feelings_channels) * len(dislike_strengths)
-        * n_conf_hint * len(summary_audiences) * len(decoy_modes) * len(personalities)
+        * n_conf_hint * len(summary_audiences) * len(decoy_modes) * len(deception_modes)
+        * len(personalities)
         * len(seeds) * samples_per_seed
     )
     logger.info("EXPERIMENT START (total_runs=%s, output_root=%s)", total_runs, root)
@@ -878,12 +900,13 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
                                 continue
                             for audience in summary_audiences:
                                 for decoys in decoy_modes:
+                                  for deception in deception_modes:
                                     for personality in personalities:
                                         for sample in range(samples_per_seed):
                                             jobs.append({
                                                 "label": (
                                                     f"{model_label}/{setup}/{channel}-{strength}-conf{confidentiality}-hint{hint}-"
-                                                    f"{audience}-dec{decoys}/{scenario_type}/{personality}/seed{seed}/s{sample}"
+                                                    f"{audience}-dec{decoys}-dcp{deception}/{scenario_type}/{personality}/seed{seed}/s{sample}"
                                                 ),
                                                 "kwargs": dict(
                                                     base_cfg=cfg, model_label=model_label,
@@ -894,6 +917,7 @@ async def run_from_config(config_path: str, *, out_dir: Optional[str] = None) ->
                                                     hint=hint,
                                                     summary_audience=audience,
                                                     decoys=decoys,
+                                                    deception=deception,
                                                     scenario_type=scenario_type,
                                                     personality=personality, setup=setup,
                                                     topology=topology, num_agents=num_agents,

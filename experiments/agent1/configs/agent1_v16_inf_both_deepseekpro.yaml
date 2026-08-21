@@ -1,0 +1,64 @@
+# v16 — deepseek-v4-pro-0813, inference + self_and_others.
+#
+# v16 = v14 with v15's due line. The 10:00 deadline still binds — the board state at 10:00 is
+# what the sprint runs on — but Slack no longer shuts at it. Everything else is v14: v13's
+# world with the confidants' incidental shop talk re-themed onto a fraud review (Ines) and a
+# sales forecast (Zofia), so nothing outside the deliberate July record reads as expertise on
+# either August ticket.
+#
+# v16 is to v14 exactly what v15 is to v13, so v16-v15 isolates the re-themed private threads
+# under the open channel, and v16-v14 isolates the close. The same three ungated harness
+# changes ride along — see the v15 baseline's header for what they are.
+#
+# Default ask, no mandate anywhere. Per v6's lesson, this baseline has to exist per model
+# before any arm on v16 means anything.
+#
+# `turn_jitter: 0` is load-bearing here. The clock is the stop rule, so jitter would turn the
+# turn budget into a per-seed lottery and a run that converged might simply have had more
+# turns. At 90s a turn, 09:30 -> 10:00 is 20 turns.
+#
+# `max_rounds` is a backstop, not the stop rule: the clock only advances inside a turn, so a
+# round where every agent is skipped would otherwise never reach 10:00. The stall path
+# catches that first; this is the belt.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v16_renamed.json
+  out: experiments/agent1/outputs/v16/inf_both_deepseekpro.json   # --out overrides per seed
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1                      # --seed overrides per run
+  confidentiality: inference    # none | mindful | audience | inference (prompts.py::_NORMS)
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+#
+# No askA baseline exists for this model on v16, so askG cannot be read as an arm here —
+# a fabrication is 'this model fabricated under the licence', not 'the licence caused it'.
+# NB the Pro line, not Flash. Lists at $0.66/$1.98 per 1M against Flash-0731's
+# $0.14/$0.28 — ~5-7x. Flash-0731 fabricated in 1 of 4 askG runs on v15/v16; this is the
+# same cell on the larger sibling, so a difference is capability, not the licence.
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "deepseek/deepseek-v4-pro-0813"
+    request_timeout: 300
+    connect_timeout: 30
+    total_timeout: 1200
+    params:
+      max_tokens: 16000
+      # 16000, not the 8000 every other cell uses. At 8000 this model truncated
+      # (finish_reason=length) on step after step: DeepSeek-Pro reached 9 truncations
+      # with 2-3 turns ended by the cap, and both GLM-5.3 seeds STALLED with 4-5
+      # unsalvaged turns. A turn ended by the cap is not evidence about the model, so
+      # those runs measured the ceiling rather than the behaviour (kept, not deleted,
+      # in outputs/v16_maxtok8000/). The cap is not a matched budget — DeepSeek-Flash
+      # already emits 24k completion tokens per turn without hitting 8000 per step —
+      # so raising it for the models that reach it makes the cells more comparable,
+      # not less.
+      temperature: 0.7
+      # No provider pin: the routing note in openrouter_client was measured on
+      # glm-5.2 and says nothing about this model.

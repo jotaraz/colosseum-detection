@@ -1,0 +1,215 @@
+# social_jira4 TARGET config — FIVE OpenRouter assistant models, one entry each.
+#
+# Not an optimizer config: this backs `fixed_prompt_run.py`, which replays ONE already-written
+# prompt (v4g_fabrication_dspro_a/steps/step_003.json) at seed 1 against each model in turn. There
+# is no prompter and no gate — the prompt is fixed, and it already cleared the dspro-x2 fabrication
+# gate when v4g produced it. Only the three critics (CATEGORY / SOUNDNESS / AT-STAKE) run after.
+#
+# The runner selects ONE label per rollout, so the five entries never contend: unlike the
+# `--model-label a,b,c,d` path in loop.py, models are not paired to seeds here. Every model sees
+# seed 1, i.e. the identical scenario, roster and inbox — model is the only thing that varies.
+#
+# Scenario/round settings are copied verbatim from social_jira4_dual_vllm_r4.yaml.tmpl (the config
+# v4g ran), so these rollouts are directly comparable to v4g's qwen3.6-35b and gpt-oss-120b rows.
+#
+# PREFLIGHT NOTES (measured against the live endpoints with a realistic forced-`post_message`
+# payload — see the cluster .sh header for the full table). sj4 forces `post_message` on every
+# planning turn, so a target must accept a forced object tool_choice AND still emit CoT under it:
+#
+#   kimi-k2.6      forced call OK, ~8k chars CoT      -> clean
+#   glm-5.2        forced call OK, ~1.2k chars CoT    -> clean
+#   gemma-4-31b    forced call OK, ~4.7k chars CoT    -> clean (single-turn; see role-alternation note)
+#   qwen3.6-27b    verbose enough to need headroom    -> capped at 4000 it spent the entire budget
+#                                                       in the reasoning channel and never emitted
+#                                                       the call at all
+#   claude-haiku-4.5  forced call OK, ZERO CoT        -> see the haiku block below
+#
+# `max_tokens: 20000` BELOW IS INERT — VERIFIED, NOT ASSUMED. It is carried for consistency with the
+# *_openrouter_r4.yaml configs, but it never reaches the API: openrouter_client.generate_response
+# reads only `max_completion_tokens` / `max_output_tokens`, and nothing in the sj3/sj4 path sets
+# either. Measured: sending params["max_tokens"]=10 still returned 217 completion tokens with
+# finish_reason "stop". So requests go out with NO explicit output cap and the provider default
+# applies — strictly more headroom than 20000, which is why the qwen truncation seen in preflight
+# (an artifact of a probe that set the cap explicitly) cannot occur here. Do not "fix" a truncation
+# by raising this number; it does nothing. Spell it `max_completion_tokens` if a real cap is ever
+# wanted. The same inert line is in every existing sj4 OpenRouter config, so the v4/v4b/v4c runs
+# were likewise uncapped.
+
+simulation:
+  max_iterations: 1
+  max_planning_rounds: 4
+  max_conversation_steps: 5
+  seed: 1
+  tags: [social_jira4]
+
+environment:
+  name: SocialJiraEnvironment
+  import_path: experiments.social_jira3.environment:SocialJiraEnvironment
+  num_tasks: 2
+  scenario_type: conflict
+  assignment_filling: false
+  n_distractors: 3
+  n_signal_threads: 2
+  signal_recipient: friend
+  secrecy_request: "off"
+
+communication_network:
+  topology: complete
+  num_agents: 4
+  consolidate_channels: true
+
+llm_models:
+  # ---- Anthropic ---------------------------------------------------------------------------
+  # NO `reasoning_effort` HERE, ON PURPOSE. Anthropic extended thinking cannot be combined with a
+  # forced single-tool tool_choice and pins temperature to 1; sj4 forces `post_message` on exactly
+  # the turns the critic reads. Asking for reasoning anyway does not fail loudly — OpenRouter
+  # accepts the request and Anthropic serves it WITHOUT thinking, so the flag would only make the
+  # config lie about what ran. Preflight measured 0 chars of CoT with the flag and 0 without it.
+  # CRITIC_CATEGORY is intent-based and reads from the reasoning, so this target's turns will be
+  # scored off "(no reasoning captured)" — that is a known, recorded limitation of this row, not a
+  # bug to chase. It is included because the user asked to try it regardless.
+  - label: or-claude-haiku-4.5
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "anthropic/claude-haiku-4.5"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+
+  # ---- Alibaba -----------------------------------------------------------------------------
+  - label: or-qwen3.6-27b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "qwen/qwen3.6-27b"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+
+  # ---- Moonshot ----------------------------------------------------------------------------
+  - label: or-kimi-k2.6
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "moonshotai/kimi-k2.6"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+
+  # ---- Z.ai --------------------------------------------------------------------------------
+  - label: or-glm-5.2
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "z-ai/glm-5.2"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+
+  # ---- Google ------------------------------------------------------------------------------
+  # gemma-3-27b was unusable in the collusion experiment: its chat template forbids a system role
+  # and consecutive same-role turns, and every conversation 400'd with "Conversation roles must
+  # alternate user/assistant" (1800 occurrences, no usable data). The single-turn preflight here
+  # passed cleanly with tools and reasoning, but that probe does not exercise the multi-turn shape
+  # that broke gemma-3. If this row errors on every rollout, that is the reason to check first.
+  - label: or-gemma-4-31b
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "google/gemma-4-31b-it"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+
+  # ---- DeepSeek ----------------------------------------------------------------------------
+  # Copied from social_jira4_deepseek_v4_flash_openrouter_r4.yaml, whose scenario/round blocks are
+  # byte-identical to this file's (verified), so no comparability is lost by hosting it here.
+  #
+  # `reasoning_effort` IS REQUIRED, not a tuning knob. deepseek-v4-flash is adaptive-thinking: it
+  # decides per request whether to emit reasoning, and it reliably DECLINES when tool_choice forces
+  # a function call — which is every planning turn, i.e. exactly the turns the critic reads.
+  # Measured against the live endpoint: 0/8 requests carried CoT with the knob unset, 5/5 at each of
+  # low/medium/high. Same failure class as claude-haiku-4.5 above; the difference is that here a
+  # setting fixes it.
+  #
+  # CONFOUND — READ ITS ROW DIFFERENTLY FROM THE OTHER FIVE. The critics are deepseek-v4-pro, so
+  # this is the one target judged by its OWN model family; the other five are judged cross-family.
+  # That is the same structural problem as a dspro prompter gated by a dspro panel. Do not compare
+  # this row's score against the others without re-judging it offline with a non-deepseek judge
+  # (the rollout dirs are jira3-shaped, so social_jira3/judge.py reads them unchanged).
+  - label: or-deepseek-v4-flash
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "deepseek/deepseek-v4-flash"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+
+  # ---- glm-5.2, PINNED to one upstream ------------------------------------------------------
+  # Identical to or-glm-5.2 above in every respect except `provider`. It exists to answer one
+  # question: the unpinned cluster run captured CoT on only 5 of its 12 forced planning turns
+  # (4/4 on the unforced execution turns), and it is not knowable from the artifacts whether the
+  # model declined to think or the upstream dropped the field.
+  #
+  # WHAT THE PROBE SHOWED, and what it did not. Against a synthetic single-turn payload: five
+  # UNPINNED calls hit three different providers (Friendli, Inceptron, Together) and one returned
+  # no reasoning; pinned to DeepInfra or Fireworks, 25/25 returned reasoning. But a later unpinned
+  # batch of 20 happened to route entirely to DeepInfra and scored 20/20. So routing is not
+  # reliably BAD — it is unpredictable, and varies over time as well as per call. Neither window
+  # reproduced the real run's 42%, which is why this needs a real rollout and not another probe:
+  # only the rollout has the long accumulating blackboard and the per-agent prompt variation
+  # (Jeanene reasoned on 3/3 rounds, Mona on 0/3) that the probe cannot recreate.
+  #
+  # DeepInfra rather than Z.AI: the first-party endpoint 404s under a forced object tool_choice
+  # ("No endpoints found") even though the endpoints API advertises tool_choice support for it.
+  # With allow_fallbacks false that is a hard failure, which is the intended behaviour — a pin that
+  # cannot be honoured should say so rather than quietly routing elsewhere.
+  - label: or-glm-5.2-deepinfra
+    llm:
+      provider: openrouter
+      openrouter:
+        model: "z-ai/glm-5.2"
+        base_url: "https://openrouter.ai/api/v1"
+        request_timeout: 300
+        total_timeout: 420
+        params:
+          max_tokens: 20000
+          temperature: 0.7
+          reasoning_effort: medium
+          provider:
+            order: [DeepInfra]
+            allow_fallbacks: false
+
+experiment:
+  tag: social_jira4_fixedprompt_5models_or
+  planning_rounds: 4              # up to 4 discussion rounds; referee can stop from round 2
+  min_planning_rounds: 2
+  early_stop: true
+  max_conversation_steps: 5
+  log_prompts: true
+  robust_assignment: false

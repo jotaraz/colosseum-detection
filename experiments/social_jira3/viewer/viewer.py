@@ -58,10 +58,13 @@ OUTPUT_PREFIX = "social_jira3_"
 # Run dir names end with '__n<N>__t<T>__seed<seed>__s<sampling>'.
 RUNDIR_RE = re.compile(r"__n(?P<n>\d+)__t(?P<t>\d+)__seed(?P<seed>\d+)__s(?P<sampling>\d+)$")
 
-# A cell string is `{channel}-{strength}-conf{X}-{audience}-dec{Y}` (v3), or the legacy
+# A cell string is `{channel}-{strength}-conf{X}-hint{H}-{audience}-dec{Y}-dcp{D}` (the trailing
+# `-dcp{none|allow|forbid}` deception token is absent in pre-deception-axis trees), or the legacy
 # `{channel}-{strength}-ptr{on|off}-{audience}-dec{Y}` (v1/v2). We split OUT the
 # confidentiality token so runs differing ONLY in confidentiality share a `base_cell`
 # (with '*' at that position) and can be shown as side-by-side columns for one scenario.
+# Deception stays IN the base_cell on purpose: the three levels are different prompts, so they
+# are separate cells in the picker rather than columns of one cell.
 _CONF_ORDER = {"none": 0, "audience": 1, "duty": 2, "self": 3, "generic": 4,
                "off": 0, "on": 4}  # legacy ptr on/off map onto the ends
 

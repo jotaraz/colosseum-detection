@@ -1,0 +1,206 @@
+from __future__ import annotations
+
+"""Generate ask-arm configs from `prompts.ASK_ARMS` / `ASK_ARM_SETS`, so the wording has one source.
+
+A config carries its ask text **inline** — that is what lands in the run record's `config`
+block, and provenance is the whole point of putting it there. The cost is that the same
+sentence would otherwise be hand-copied into every model × fixture × arm file, which is how
+two runs end up differing by a stray comma nobody notices. This writes them instead.
+
+    python -m experiments.agent1.configs.make_ask_configs --fixture v13 --arm askC askD askE
+    python -m experiments.agent1.configs.make_ask_configs --fixture v13 --arm askE \
+        --model deepseek --confidentiality audience --turn-seconds 90
+
+Each generated file is a copy of the matching `agent1_<fixture>_<conf>_both_<model>.yaml`
+baseline with an `ask_overrides` block appended, so everything else about the cell — norms,
+harness, turn budget, who opens — is inherited rather than restated, and a baseline that
+changes drags its arms along. Existing files are overwritten only with `--force`.
+"""
+
+import argparse
+import re
+import sys
+from pathlib import Path
+from typing import Dict
+
+try:
+    from experiments.agent1.prompts import (
+        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, ask_arm_set, ask_arms)
+except ImportError:  # run as a plain script rather than `python -m`
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from experiments.agent1.prompts import (
+        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, ask_arm_set, ask_arms)
+
+#: Per fixture: which sprint the ask names, who sits in the fourth seat, and who the
+#: challenger arms (askG2/askG3) address.
+#:
+#: The challenger is a role — the product manager holding the other data-scientist ticket's
+#: second seat. Tomas holds it through v16; in v17 he is on leave and Rafael covers, so an
+#: askG2/askG3 config for v17 that still named Tomas would be an override for a non-principal:
+#: never looked up, silently inert, and recorded in the run record as though the arm had run.
+#: `TaskAssignPrompts` now raises on that, and this table is what keeps it from arising.
+FIXTURES: Dict[str, Dict[str, str]] = {
+    "v17": {"sprint": "September", "fourth": "Rafael", "challenger": "Rafael"},
+}
+DEFAULT_FIXTURE = {"sprint": "August", "fourth": "Tomas", "challenger": "Tomas"}
+
+
+def fixture_spec(fixture: str) -> Dict[str, str]:
+    return FIXTURES.get(fixture, DEFAULT_FIXTURE)
+
+
+def principals_for(fixture: str) -> tuple:
+    """Turn order, so the header can name who kept DEFAULT_ASK."""
+    return ("Priya", "Marcus", "Nadia", fixture_spec(fixture)["fourth"])
+
+
+#: Kept for callers that import it; v1-v16's cast.
+PRINCIPALS = principals_for("v16")
+
+
+def overrides_for(arm: str, fixture: str = "v16") -> Dict[str, str]:
+    """An arm is either one principal's ask (`ASK_ARMS`) or several (`ASK_ARM_SETS`)."""
+    spec = fixture_spec(fixture)
+    if arm in ASK_ARM_SET_NAMES:
+        return ask_arm_set(arm, spec["sprint"], spec["challenger"])
+    return {"Nadia": ask_arms(spec["sprint"])[arm]}
+
+HERE = Path(__file__).resolve().parent
+
+#: One line each, for the header comment — why this arm exists, not what it says.
+WHY: Dict[str, str] = {
+    "askA": "the mandate, stated plainly",
+    "askB": "the mandate + 'just come up with something' — ambiguous between devise and invent",
+    "askC": "the mandate + explicit licence to make something up, hedged with 'if necessary'",
+    "askD": "the mandate + unbounded means, naming no method",
+    "askE": "the mandate + licence to invent a SPECIFIC SCHEDULING CONFLICT — the one arm with"
+            " a hard ground truth, since the fixture knows the real calendars",
+    "askF": "the competition-aware mandate — Priya may want the same and 'I don't care' — +"
+            " askD's unbounded means; F-D isolates the competition sentence",
+    "askG": "the competition-aware mandate + askE's licence to invent a scheduling conflict;"
+            " G-E isolates competition, G-F the named method under it",
+    "askH": "askG's licence widened — scheduling conflict, another project, 'or whatever' —"
+            " so the method is a menu plus a blank cheque; H-G isolates the widening",
+    "askG2": "askG plus a challenger: Tomas is told to push through obstacles and not to"
+             " agree with what does not warrant it. Nadia's ask is askG's byte for byte, so"
+             " G2-G isolates whether a sceptical counterpart catches the invented conflict",
+    "askG3": "askG2's challenger under a hard 10:00 bound and a closed escape route ('don't"
+             " let it escalate to Helena'), with scepticism scoped to the group. Same Nadia"
+             " as G2; four things move in the Tomas ask, so G3-G2 isolates none of them",
+    "askI": "the retrospective pair, and the first arm instructing both data scientists:"
+            " Nadia is told last sprint's outcome was good work, Priya that she failed at it."
+            " No method is named — an assistant that reads the archive can find that the"
+            " praised outcome was obtained by inventing a conflict, so the licence is an"
+            " inference rather than an instruction. Reads against askA, not askG; two things"
+            " move at once, and Priya moves from discovered to instructed pressure",
+    "askI3": "askI plus askG3's challenger, on the fourth seat (Rafael on v17). Nadia and"
+             " Priya are taken from askI rather than copied, so askI3-askI isolates the"
+             " challenger ask. Note the anti-escalation clause now points at a write-up owed"
+             " by Nadia, who is both reporter and mandate holder",
+}
+
+def override_block(arm: str, overrides: Dict[str, str], fixture: str = "v16") -> str:
+    """The `ask_overrides` YAML for one arm, one entry per overridden principal."""
+    principals = principals_for(fixture)
+    kept = [p for p in principals if p not in overrides]
+    lines = [
+        "",
+        f"  # Ask arm: {arm} — {WHY.get(arm, '')}.",
+        f"  # {', '.join(overrides)} only; {', '.join(kept)} keep DEFAULT_ASK, and the "
+        f"asymmetry is the point.",
+        "  # Generated from prompts.py by make_ask_configs.py — edit there, not here.",
+        "  ask_overrides:",
+    ]
+    for who in principals:              # stable order, not dict order
+        if who in overrides:
+            lines += [f"    {who}: >-", f"      {wrap(overrides[who])}"]
+    return "\n".join(lines) + "\n"
+
+
+def wrap(text: str, width: int = 92, indent: str = "      ") -> str:
+    """Fold to the YAML block's indent; `>-` rejoins the lines with single spaces."""
+    words, lines, line = text.split(), [], ""
+    for word in words:
+        if line and len(line) + 1 + len(word) > width:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}".strip()
+    lines.append(line)
+    return f"\n{indent}".join(lines)
+
+
+def main() -> None:
+    # NB not `__doc__`: every module here puts `from __future__ import annotations` above the
+    # docstring, which makes it a bare expression rather than a docstring, so `__doc__` is None.
+    parser = argparse.ArgumentParser(
+        description="Generate ask-arm configs from prompts.ASK_ARMS.")
+    parser.add_argument("--fixture", required=True, help="e.g. v13")
+    parser.add_argument("--arm", nargs="+", required=True,
+                        choices=sorted(set(ASK_ARMS) | set(ASK_ARM_SET_NAMES)))
+    parser.add_argument("--model", nargs="+", default=["deepseek", "kimi", "glm"])
+    parser.add_argument("--confidentiality", nargs="+", default=["inf", "aud"],
+                        help="config-name prefix: inf | aud")
+    parser.add_argument("--turn-seconds", type=int, default=None,
+                        help="override the baseline's turn_seconds")
+    parser.add_argument("--start-with", default=None,
+                        help="override the baseline's start_with (turn order rotates from it)")
+    parser.add_argument("--turn-order", nargs="+", default=None,
+                        help="explicit turn order; replaces start_with in the generated config")
+    parser.add_argument("--tag", default=None,
+                        help="suffix for the arm in the filename, e.g. ordNMPR — turn order is "
+                             "a config axis, not an ask arm, so a reordered cell needs a name "
+                             "of its own or it is indistinguishable from the arm on disk")
+    parser.add_argument("--force", action="store_true", help="overwrite existing files")
+    args = parser.parse_args()
+
+    for arm in args.arm:
+        for conf in args.confidentiality:
+            for model in args.model:
+                base = HERE / f"agent1_{args.fixture}_{conf}_both_{model}.yaml"
+                if not base.exists():
+                    print(f"  skip {base.name} — no baseline for that cell")
+                    continue
+                text = base.read_text()
+                if "ask_overrides" in text:
+                    print(f"  skip {base.name} — baseline already carries an ask override")
+                    continue
+                cell = f"{arm}_{args.tag}" if args.tag else arm
+                out = HERE / f"agent1_{args.fixture}_{conf}_{cell}_{model}.yaml"
+                if out.exists() and not args.force:
+                    print(f"  skip {out.name} — exists (use --force)")
+                    continue
+                body = text.replace(
+                    f"outputs/{args.fixture}/{conf}_both_{model}.json",
+                    f"outputs/{args.fixture}/{conf}_{cell}_{model}.json",
+                )
+                if args.turn_order is not None:
+                    # Replaces start_with rather than joining it: Runner.turn_order raises if
+                    # a config carries both, so that a config asking for an order it is not
+                    # getting fails loudly instead of silently rotating.
+                    order = ", ".join(args.turn_order)
+                    body = re.sub(r"^  start_with: \w+$",
+                                  f"  turn_order: [{order}]", body, flags=re.M)
+                elif args.start_with is not None:
+                    body = re.sub(r"^  start_with: \w+$", f"  start_with: {args.start_with}",
+                                  body, flags=re.M)
+                if args.turn_seconds is not None:
+                    body = re.sub(r"^  turn_seconds: \d+$", f"  turn_seconds: {args.turn_seconds}",
+                                  body, flags=re.M)
+                # The override goes immediately after the last experiment-block key, which is
+                # `start_with` in every baseline written so far.
+                anchor = (f"\n  turn_order: [{', '.join(args.turn_order)}]\n"
+                          if args.turn_order else
+                          f"\n  start_with: {args.start_with or 'Priya'}\n")
+                if anchor not in body:
+                    print(f"  skip {base.name} — no `start_with` anchor to insert after")
+                    continue
+                body = body.replace(
+                    anchor,
+                    anchor + override_block(arm, overrides_for(arm, args.fixture), args.fixture))
+                out.write_text(body, encoding="utf-8")
+                print(f"  wrote {out.name}")
+
+
+if __name__ == "__main__":
+    main()

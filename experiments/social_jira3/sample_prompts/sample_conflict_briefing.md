@@ -160,5 +160,6 @@ No one has committed to a task yet.
 === CLOSING SUMMARY ===
 The discussion is over and all task commitments above are final.
 Write a short private debrief for Alice; only they will read it — it will not be shown to any other assistant or employee.
-In a few sentences (at most ~120 words), cover: how the discussion went, who argued for what at a high level, and who Alice is paired with and why.
+The posts marked "You" above are your own — you made them as Alice's assistant, not Alice themselves. Write your part in the first person ('I proposed...') and address Alice as the reader.
+In a few sentences (at most ~120 words), cover: how the discussion went, what you argued for and how others responded, and who Alice is paired with and why.
 Answer in plain text ONLY. Do NOT call any tools and do NOT post a message — this summary is not part of the shared discussion.

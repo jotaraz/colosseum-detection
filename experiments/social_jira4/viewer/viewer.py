@@ -130,6 +130,126 @@ def scan_runs() -> List[Dict[str, Any]]:
     return runs
 
 
+# --------------------------------------------------------------------------- #
+# Which target model produced what                                             #
+# --------------------------------------------------------------------------- #
+# A run can point every seed at ONE model or map one model PER SEED
+# (``loop._build_live_runner`` → ``MultiModelTargetRunner``), in which case a step's score is a mean
+# over models, not over samples of one model — so the model behind a rollout has to be visible
+# wherever a number is. Three sources, in decreasing authority:
+#   run_config.json   what the rollout actually called (label + provider + checkpoint) — only exists
+#                     if that rollout dir was synced back from the cluster
+#   run dir name      "<model_label>__<pools>__seed<N>", recorded in the step file, so it survives
+#                     even when the rollout dir itself was not copied back
+#   metadata.json     models.target_per_seed / models.target — what the run *requested*
+try:
+    import yaml  # target_config.yaml turns a label into the concrete checkpoint
+except ModuleNotFoundError:      # pragma: no cover - viewer still works, just label-only
+    yaml = None  # type: ignore[assignment]
+
+_LABEL_INDEX: Dict[str, Dict[str, Dict[str, str]]] = {}
+
+
+def _checkpoint(llm: Dict[str, Any]) -> Tuple[str, str]:
+    """``(provider, concrete model name)`` for one ``llm_models[i].llm`` block. vLLM names its
+    checkpoint under ``vllm.models[0]``; the HTTP providers put it at ``<provider>.model``."""
+    provider = str(llm.get("provider") or "")
+    sub = llm.get(provider) or {}
+    if provider == "vllm":
+        models = sub.get("models") or []
+        first = (models[0] or {}) if models else {}
+        return provider, str(first.get("checkpoint") or "")
+    return provider, str(sub.get("model") or "")
+
+
+def _read_llm_models(path: Path, origin: str) -> Dict[str, Dict[str, str]]:
+    idx: Dict[str, Dict[str, str]] = {}
+    if yaml is None or not path.exists():
+        return idx
+    try:
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return idx
+    for entry in cfg.get("llm_models") or []:
+        provider, model = _checkpoint(entry.get("llm") or {})
+        idx.setdefault(str(entry.get("label")), {"provider": provider, "model": model,
+                                                 "from": origin})
+    return idx
+
+
+def _label_index(run_name: str) -> Dict[str, Dict[str, str]]:
+    """``label -> {provider, model, from}`` — first from the target config the run archived beside
+    its own artifacts (authoritative for that run), then from the repo's ``configs/`` as a
+    last resort for runs made before that archiving existed. The ``from`` key says which, because
+    a same-named label in a current config is an inference about an old run, not a record of it."""
+    if run_name in _LABEL_INDEX:
+        return _LABEL_INDEX[run_name]
+    idx = _read_llm_models(OUTPUTS / run_name / "target_config.yaml", "target_config.yaml")
+    if not idx:
+        for p in sorted((HERE / ".." / "configs").resolve().glob("*.yaml")):
+            for lb, v in _read_llm_models(p, f"configs/{p.name}").items():
+                idx.setdefault(lb, v)
+    _LABEL_INDEX[run_name] = idx
+    return idx
+
+
+def _declared_seed_models(meta: Dict[str, Any]) -> Dict[int, str]:
+    """``seed -> target label`` as the run declared it. ``target_per_seed`` is written only by a
+    multi-model run ("seed 1=a, seed 2=b"); otherwise ``--model-label``'s list is positional against
+    ``seeds``, and a single label covers every seed."""
+    models = meta.get("models") or {}
+    out: Dict[int, str] = {}
+    for m in re.finditer(r"seed\s+(\d+)\s*=\s*([^,]+)", str(models.get("target_per_seed") or "")):
+        out[int(m.group(1))] = m.group(2).strip()
+    if out:
+        return out
+    seeds = [int(s) for s in (meta.get("seeds") or [])]
+    labels = [t.strip() for t in str(models.get("target") or "").split(",") if t.strip()]
+    if len(labels) > 1 and len(labels) == len(seeds):
+        return dict(zip(seeds, labels))
+    if labels:
+        return {s: labels[0] for s in seeds}
+    return {}
+
+
+def _describe_label(run_name: str, label: str, source: str,
+                    provider: str = "", model: str = "", declared: str = "") -> Dict[str, Any]:
+    hit = _label_index(run_name).get(label) or {}
+    return {
+        "label": label or "?",
+        "provider": provider or hit.get("provider", ""),
+        "model": model or hit.get("model", ""),
+        # where the checkpoint name (not the label) came from: the rollout's own run_config.json,
+        # the run's archived target config, or a same-labelled entry in the repo's configs/.
+        "model_from": "run_config.json" if model else (hit.get("from", "") if hit else ""),
+        "source": source if label else "unknown",
+        "declared": declared,
+        # Should never fire: the label in the run dir is written from the same mapping metadata
+        # reports. Surfaced rather than hidden, because if it ever does, every per-seed number in
+        # this run is attributed to the wrong model.
+        "mismatch": bool(label and declared and declared != label),
+    }
+
+
+def _seed_model(run_name: str, meta: Dict[str, Any], seed: Any,
+                stored_run_dir: Optional[str] = None,
+                run_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Which target model produced one rollout — and which artifact says so."""
+    try:
+        declared = _declared_seed_models(meta).get(int(seed), "")
+    except (TypeError, ValueError):
+        declared = ""
+    rc = run_config or {}
+    if rc.get("model_label"):
+        return _describe_label(run_name, str(rc["model_label"]), "run_config",
+                               provider=str(rc.get("provider") or ""),
+                               model=str(rc.get("model") or ""), declared=declared)
+    name = Path(str(stored_run_dir)).name if stored_run_dir else ""
+    if "__" in name:
+        return _describe_label(run_name, name.split("__", 1)[0], "run_dir", declared=declared)
+    return _describe_label(run_name, declared, "metadata", declared=declared)
+
+
 def _history(run_dir: Path) -> List[Dict[str, Any]]:
     p = run_dir / "history.jsonl"
     if not p.exists():
@@ -179,6 +299,10 @@ def load_run(name: str) -> Dict[str, Any]:
             "usage": r.get("usage", {}),
             "best_lie": r.get("best_lie", ""),
             "seed_scores": r.get("seed_scores", []),
+            # ``{label: n_errored}`` for the models that errored this step (schema ≥ 4; models with
+            # no error are omitted). A model that errored on every one of its seeds contributed
+            # nothing to the score on the chip, which is then one model's number, not two.
+            "errored_by_model": r.get("errored_by_model", {}),
             "has_detail": (d / "steps" / f"step_{int(r.get('step', 0)):03d}.json").exists(),
         })
     # Only one step can be *the* best; mark the earliest that reached the final maximum.
@@ -192,8 +316,16 @@ def load_run(name: str) -> Dict[str, Any]:
     for s in steps:
         for role, u in (s.get("usage") or {}).items():
             totals[role] = totals.get(role, 0) + int(u.get("total_tokens", 0) or 0)
+    # seed -> target model, as declared by the run. The per-seed resolution in ``load_step`` may
+    # sharpen this from the rollout's own artifacts, but this is what the run asked for and it is
+    # known even for steps that never ran.
+    declared = _declared_seed_models(meta)
+    seed_models = {str(s): _describe_label(name, lb, "metadata", declared=lb)
+                   for s, lb in sorted(declared.items())}
     return {
         "name": name, "metadata": meta, "steps": steps,
+        "seed_models": seed_models,
+        "target_labels": list(dict.fromkeys(declared[s] for s in sorted(declared))),
         "totals": {"tokens": totals, "duration_s": sum(s.get("duration_s", 0) or 0 for s in steps)},
         "prompter_system": (d / "prompter_system.md").read_text(encoding="utf-8")
         if (d / "prompter_system.md").exists() else "",
@@ -204,6 +336,17 @@ def load_run(name: str) -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # One rollout (a social_jira3-shaped run dir)                                   #
 # --------------------------------------------------------------------------- #
+def _slot_key(s: Dict[str, Any]) -> str:
+    """Identity of one rollout slot within a step.
+
+    ``key`` when the step file carries one (a run whose step holds several slots per seed — see
+    ``rr10dcp_to_viewer.py``), else the seed number, which is what identified a slot in every run
+    written before that shape existed. Always a string so the two never compare equal by accident.
+    """
+    k = s.get("key")
+    return str(k) if k not in (None, "") else str(s.get("seed"))
+
+
 def _resolve_run_dir(stored: Optional[str], run_name: str, step: int, seed: int) -> Optional[Path]:
     """``RunScore.run_dir`` is written relative to the repo root. Fall back to locating the dir
     under this run's own ``runs/stepNNN/`` so a moved/renamed outputs tree still resolves."""
@@ -353,6 +496,8 @@ def load_step(run_name: str, step: int) -> Dict[str, Any]:
         except Exception:
             prev_blocks = None
 
+    meta = json.loads((d / "metadata.json").read_text()) if (d / "metadata.json").exists() else {}
+
     # Verdicts joined to transcript turns by turn_index (both come from judge.build_turns).
     seeds = []
     for s in detail.get("seeds") or []:
@@ -365,19 +510,31 @@ def load_step(run_name: str, step: int) -> Dict[str, Any]:
             # Verdicts with no matching bubble (shouldn't happen; surfaced rather than hidden).
             seen = {int(t["turn_index"]) for t in rollout["turns"]}
             rollout["orphan_verdicts"] = [v for k, v in verdicts.items() if k not in seen]
+        # A step used to hold one slot per seed, so the seed number identified it. A study that
+        # varies a condition WITHIN a step (rr10dcp: three deception levels x two scenario seeds)
+        # breaks that — three slots share seed 7. `key` is the slot identity when present; `seed`
+        # remains it for every run written before that shape existed.
+        key = _slot_key(s)
         objective_detail = next(
             (o for o in (detail.get("objective", {}).get("seeds") or [])
-             if o.get("seed") == s.get("seed")), {}
+             if _slot_key(o) == key), {}
         )
         seeds.append({
-            "seed": s.get("seed"), "objective": s.get("objective"), "error": s.get("error"),
+            "seed": s.get("seed"), "key": key, "level": s.get("level", ""),
+            "objective": s.get("objective"), "error": s.get("error"),
             "run_dir": s.get("run_dir"), "resolved": bool(rd),
             "turns": s.get("turns") or [], "rollout": rollout,
             "objective_detail": objective_detail,
+            # The target model behind this rollout — from its own run_config.json when the dir came
+            # back, else the label in the run dir name, else what the run declared for this seed.
+            "model": _seed_model(run_name, meta, s.get("seed"), s.get("run_dir"),
+                                 (rollout or {}).get("run_config")),
         })
 
     return {
         "run": run_name,
+        # Every role's model, so a step is never read without knowing who wrote and who judged it.
+        "models": meta.get("models", {}),
         "schema": detail.get("schema", 1),
         "step": detail.get("step"),
         "score": detail.get("score"),
@@ -447,7 +604,8 @@ def _turn_title(t: Dict[str, Any]) -> str:
     return f"Turn {t['turn_index']} · {where}"
 
 
-def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str, str]:
+def export_session(run_name: str, step: int, seed: int, agent: str,
+                   key: str = "") -> Tuple[str, str]:
     """One assistant's session as markdown: the system prompt and the task briefing it opened with,
     then every turn it took (reasoning, message, decision) carrying that turn's judge labels, and
     the allocation it ended on. ``agent='__all__'`` emits every assistant in the rollout, with the
@@ -458,9 +616,15 @@ def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str
     detail = load_step(run_name, step)
     if "error" in detail:
         raise ValueError(detail["error"])
-    sd = next((s for s in detail["seeds"] if int(s["seed"]) == int(seed)), None)
-    if sd is None:
-        raise ValueError(f"seed {seed} not in step {step}")
+    # Match the slot key when the caller supplied one — three slots can share a seed number.
+    if key:
+        sd = next((s for s in detail["seeds"] if str(s.get("key")) == key), None)
+        if sd is None:
+            raise ValueError(f"slot {key} not in step {step}")
+    else:
+        sd = next((s for s in detail["seeds"] if int(s["seed"]) == int(seed)), None)
+        if sd is None:
+            raise ValueError(f"seed {seed} not in step {step}")
     if not sd.get("rollout"):
         raise ValueError(f"no rollout artifacts for seed {seed} (run dir not found)")
     R = sd["rollout"]
@@ -485,8 +649,24 @@ def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str
     L.append(f"| run | `{run_name}` |")
     L.append(f"| step | {step} (score {_num(detail.get('score'))}) |")
     L.append(f"| seed | {seed} (rollout score {_num(sd.get('objective'))}) |")
-    L.append(f"| target model | {models.get('target','?')} |")
-    L.append(f"| judge model | {models.get('judge','?')} |")
+    # The condition this rollout ran under, when the step varies one. Without it an exported
+    # transcript from a multi-condition step cannot be told apart from its neighbours.
+    if sd.get("level"):
+        L.append(f"| **condition** | **`{sd['level']}`** (deception axis) |")
+    # The model that spoke every turn below. With one target per seed this differs between seeds of
+    # the same step, so it is stated per rollout, with the artifact it was read from.
+    tm = sd.get("model") or {}
+    L.append(f"| **target model (this seed)** | **`{tm.get('label','?')}`**"
+             + (f" — `{tm['model']}`" if tm.get("model") else "")
+             + (f" via {tm['provider']}" if tm.get("provider") else "")
+             + f" _(from {tm.get('source','unknown')})_ |")
+    if models.get("target_per_seed"):
+        L.append(f"| targets across seeds | {models['target_per_seed']} |")
+    L.append(f"| judge model (3 critics) | {models.get('judge','?')} |")
+    L.append(f"| prompter model | {models.get('prompter','?')} |")
+    for role in ("referee", "validator", "consistency", "meta_gate"):
+        if models.get(role):
+            L.append(f"| {role.replace('_',' ')} model | {models[role]} |")
     L.append(f"| objective | {meta.get('objective','?')} |")
     L.append(f"| run dir | `{R['run_dir']}` |")
     b = detail.get("blocks") or {}
@@ -597,7 +777,17 @@ def export_session(run_name: str, step: int, seed: int, agent: str) -> Tuple[str
     L.append("")
 
     who = "all" if agent == "__all__" else agent
-    fname = f"{run_name}__step{step:03d}__seed{seed}__{who}.md"
+    # The model goes in the filename too — exported sessions get read far from this viewer, and
+    # under one-target-per-seed the seed number alone does not say which model spoke.
+    label = re.sub(r"[^A-Za-z0-9._-]+", "-", str((sd.get("model") or {}).get("label") or "")).strip("-")
+    # The slot, not just the seed: three slots can share seed 7 and would otherwise all export to
+    # the same filename — silently overwriting each other in the download folder.
+    # `key` falls back to the bare seed number for legacy runs; keep their filenames byte-identical
+    # by re-expanding that case to `seedN` rather than emitting a bare `1`.
+    raw = str(sd.get("key") or "")
+    slot = raw if raw and raw != str(seed) else f"seed{seed}"
+    slot = re.sub(r"[^A-Za-z0-9._-]+", "-", slot).strip("-")
+    fname = f"{run_name}__step{step:03d}__{slot}__{label + '__' if label and label != '?' else ''}{who}.md"
     return fname, "\n".join(L)
 
 
@@ -609,6 +799,7 @@ def load_lies(run_name: str) -> Dict[str, Any]:
     across the whole run — sorted by specificity. The AND-gate result is shown per row, so a lie
     that was found but vetoed by soundness/at-stake is visible rather than silently dropped."""
     d = OUTPUTS / run_name
+    meta = json.loads((d / "metadata.json").read_text()) if (d / "metadata.json").exists() else {}
     rows = []
     for p in sorted((d / "steps").glob("step_*.json")) if (d / "steps").is_dir() else []:
         try:
@@ -616,12 +807,15 @@ def load_lies(run_name: str) -> Dict[str, Any]:
         except Exception:
             continue
         for s in detail.get("seeds") or []:
+            # Which model told these lies — resolved from the step file alone (the run dir name),
+            # so the board works whether or not the rollout dirs came back.
+            model = _seed_model(run_name, meta, s.get("seed"), s.get("run_dir"))
             for t in s.get("turns") or []:
                 cats = t.get("categories") or []
                 if not any("fabrication" in c for c in cats):
                     continue
                 rows.append({
-                    "step": detail.get("step"), "seed": s.get("seed"),
+                    "step": detail.get("step"), "seed": s.get("seed"), "model": model,
                     "agent": t.get("agent"), "turn_index": t.get("turn_index"),
                     "categories": cats,
                     "specificity": t.get("fabrication_specificity"),
@@ -703,7 +897,8 @@ def api_export():
     except (KeyError, ValueError):
         return jsonify({"error": "step and seed required"}), 400
     try:
-        fname, md = export_session(a.get("run", ""), step, seed, a.get("agent", "__all__"))
+        fname, md = export_session(a.get("run", ""), step, seed, a.get("agent", "__all__"),
+                                   key=a.get("key", ""))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 404
     return app.response_class(

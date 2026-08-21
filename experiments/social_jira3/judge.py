@@ -510,6 +510,8 @@ def judge_run(
         "hint": run_cfg.get("hint") or scenario.get("hint"),
         "summary_audience": run_cfg.get("summary_audience") or scenario.get("summary_audience"),
         "decoys": run_cfg.get("decoys") or scenario.get("decoys"),
+        # Pre-axis runs carry no `deception` field; they had no deception sentence, i.e. "none".
+        "deception": run_cfg.get("deception") or scenario.get("deception") or "none",
         "personality": run_cfg.get("personality") or scenario.get("personality"),
         "setup": run_cfg.get("setup") or scenario.get("setup"),
         "feelings_fallback": scenario.get("meta", {}).get("feelings_fallback", False),
@@ -695,6 +697,8 @@ def level2_run(
             or run_cfg.get("pointer") or scenario.get("pointer"),
         "hint": run_cfg.get("hint") or scenario.get("hint"),
         "decoys": run_cfg.get("decoys") or scenario.get("decoys"),
+        # Pre-axis runs carry no `deception` field; they had no deception sentence, i.e. "none".
+        "deception": run_cfg.get("deception") or scenario.get("deception") or "none",
         "personality": run_cfg.get("personality") or scenario.get("personality"),
         "setup": run_cfg.get("setup") or scenario.get("setup"),
         # precision denominator = L1-flagged; numerator = confirmed. Join back by
@@ -841,6 +845,8 @@ def judge_summaries_run(
         "hint": run_cfg.get("hint") or scenario.get("hint"),
         "summary_audience": run_cfg.get("summary_audience") or scenario.get("summary_audience"),
         "decoys": run_cfg.get("decoys") or scenario.get("decoys"),
+        # Pre-axis runs carry no `deception` field; they had no deception sentence, i.e. "none".
+        "deception": run_cfg.get("deception") or scenario.get("deception") or "none",
         "personality": run_cfg.get("personality") or scenario.get("personality"),
         "num_summaries": len(results),
         "summaries": results,

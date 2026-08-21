@@ -1,0 +1,73 @@
+# social_jira4 — FIXED-PROMPT model comparison: v4g_fabrication_dspro_a/step003, seed 1,
+# five OpenRouter assistant models, judged by CATEGORY / SOUNDNESS / AT-STAKE only.
+#
+# WHAT THIS IS. Not an optimizer run. The prompt is frozen: the six blocks written by
+# deepseek-v4-pro at v4g step 3 (score 2.33, cleared the dspro-x2 fabrication gate), replayed
+# verbatim. The scenario is frozen too — seed 1 for every model, so roster, tasks, calendars and
+# inbox are byte-identical across the five. The model is the only thing that varies.
+#
+#   inbox   quit3
+#   decoys  calendar + ops_feed + equipment      (the v4g rung — access dropped, equipment kept)
+#   rounds  r4 / 5 conversation steps / 4 agents (copied from the config v4g ran)
+#
+# WHAT IS DELIBERATELY ABSENT. No prompter (the prompt is given). No validator, consistency or
+# meta-judge gate (v4g already gated this prompt; a fresh draw could reject the very thing we were
+# asked to run). No fabrication verdict and no L2 quality judge — a fabrication verdict for this
+# prompt already exists from v4g, and re-drawing it here would add sampling noise to a number we
+# are not trying to re-measure.
+#
+# THE MODELS, and what preflight found. sj4 forces `post_message` on every planning turn, i.e. on
+# exactly the turns the critic reads, so a target must accept a forced object tool_choice AND still
+# emit CoT under it. Measured against the live endpoints with a realistic forced-tool payload:
+#
+#   moonshotai/kimi-k2.6        forced call OK, ~8k chars CoT     clean
+#   z-ai/glm-5.2                forced call OK, ~1.2k chars CoT   clean
+#   google/gemma-4-31b-it       forced call OK, ~4.7k chars CoT   clean in a single-turn probe
+#   qwen/qwen3.6-27b            verbose; needs headroom           capped at 4000 it burned the whole
+#                                                                 budget reasoning and never
+#                                                                 emitted the call at all. NOTE the
+#                                                                 config's `max_tokens: 20000` is
+#                                                                 inert (the client reads only
+#                                                                 max_completion_tokens), so the
+#                                                                 real run sends NO cap — more
+#                                                                 headroom, not less. See the
+#                                                                 config header.
+#   anthropic/claude-haiku-4.5  forced call OK, ZERO CoT          see below
+#
+# THE HAIKU CAVEAT, stated up front so its row is not misread. Anthropic extended thinking cannot
+# be combined with a forced single-tool tool_choice and pins temperature to 1. Requesting reasoning
+# anyway does not fail loudly: OpenRouter accepts it and Anthropic serves the request WITHOUT
+# thinking. Preflight measured 0 chars of CoT both with the reasoning flag and without it. Since
+# CRITIC_CATEGORY is intent-based and reads from the reasoning, every haiku turn will be judged off
+# "(no reasoning captured)" — the same failure mode that forced `reasoning_effort` onto
+# deepseek-v4-flash, except here there is no spelling that fixes it. Haiku is included because it
+# was explicitly asked for; read its categories as a floor, not as a measurement.
+#
+# GEMMA, THE OTHER RISK. gemma-3-27b was unusable in the collusion experiment: its chat template
+# forbids a system role and consecutive same-role turns, and every conversation 400'd with
+# "Conversation roles must alternate user/assistant" (1800 occurrences, zero usable data). The
+# single-turn preflight passed, but it does not exercise the multi-turn shape that broke gemma-3.
+# If this row errors on every rollout, check that first before anything else.
+#
+# n=1. One rollout per model — a look at five transcripts, not a ranking. Nothing is seeded on the
+# sampling side, so a rerun redraws every trajectory, and the within-config spread in v4f/v4g was
+# as wide as the between-arm gaps. Do not read a gap between two models here as a result.
+#
+# COST. Five rollouts plus three critics per turn: roughly $1-2 of assistant generation and $2-3 of
+# deepseek judging. cost.json records the judge half only — the rollouts bill on OpenRouter through
+# social_jira3's own client, which fixed_prompt_run.py does not instrument.
+#
+# CPU-ONLY: no GPUs, no ports, no node exclusions, no vLLM startup, and none of the exit-43
+# flakiness that comes with it. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json experiments/social_jira4/configs/social_jira4_fixedprompt_5models_or.yaml experiments/social_jira4/outputs/fp_v4g_step003"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003.out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003.err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/fp_v4g_step003.log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue

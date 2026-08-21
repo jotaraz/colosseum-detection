@@ -33,6 +33,24 @@ select{background:var(--panel2);color:var(--fg);border:1px solid var(--line2);
 .tab:hover{background:var(--panel2);color:var(--fg)}
 .tab.on{background:var(--panel2);color:var(--fg);box-shadow:inset 0 -2px 0 var(--accent)}
 
+/* ---------- models (who wrote / who answered / who judged) ---------- */
+.modelbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:0 18px 9px}
+.mchip{display:flex;gap:7px;align-items:baseline;border:1px solid var(--line2);border-radius:7px;
+  background:var(--panel);padding:3px 9px;font-size:12px}
+.mchip .role{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim2)}
+.mchip .lab{font-weight:600}
+.mchip .ck{color:var(--dim);font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.mchip.t{border-color:#2f4d78;background:#141c29}       /* target — the model under study */
+.mchip.t .lab{color:var(--accent)}
+.badge.mdl{color:var(--accent);border-color:#2f4d78;background:#15202f;font-weight:600}
+.modelhdr{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:2px 0 10px;
+  border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 7px 7px 0;
+  padding:7px 11px}
+.modelhdr .big{font-size:14px;font-weight:600;color:var(--accent)}
+.modelhdr .role{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim2)}
+.modelhdr .ck{font-size:12px;color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.modelhdr .src{font-size:11px;color:var(--dim2);margin-left:auto}
+
 /* ---------- trajectory strip ---------- */
 .strip{display:flex;gap:6px;padding:4px 18px 12px;overflow-x:auto;align-items:flex-end}
 .chip{flex:0 0 auto;width:78px;border:1px solid var(--line2);border-radius:7px;
@@ -156,6 +174,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <button class="tab" data-view="scaffold">Scaffold</button>
     </div>
   </div>
+  <div class="modelbar" id="modelbar"></div>
   <div class="strip" id="strip"></div>
 </header>
 <main id="main"><div class="loading">loading…</div></main>
@@ -167,6 +186,18 @@ const esc = s => (s??'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;
 const fmt = n => (n===undefined||n===null)?'—':(Math.round(n*100)/100).toLocaleString();
 const ktok = n => n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+'k' : (n||0);
 const AC = ['#6ea8fe','#4ec98d','#e0b054','#b48ce8','#e8697d','#4fd0d8'];
+/* A run may point every seed at one model or ONE MODEL PER SEED, in which case a step's score is a
+   mean over models. `models.target` is then the positional --model-label list with repeats, so
+   collapse it to the distinct labels for anywhere a one-liner is wanted. */
+const targets = mo => [...new Set((mo?.target||'').split(',').map(s=>s.trim()).filter(Boolean))];
+const shortModel = s => (s||'').replace(/^(vllm|openrouter|azure|openai|or)-/,'');
+/* A rollout slot's display name. Steps used to hold one slot per seed, so the seed number named it;
+   a step that varies a condition within itself (e.g. the rr10dcp deception axis) holds several
+   slots per seed, and the condition is then what distinguishes them. */
+const slotName = sd => sd && sd.level ? `${sd.level}·s${sd.seed}` : `seed ${sd?sd.seed:'?'}`;
+/* Identity used for the export endpoint — the slot key when there is one, else the seed. */
+const slotQuery = sd => sd && sd.key ? `&seed=${sd.seed}&key=${encodeURIComponent(sd.key)}`
+                                     : `&seed=${sd?sd.seed:''}`;
 
 let RUN=null, STEPS={}, VIEW='pathway', OPEN=new Set();
 
@@ -177,7 +208,8 @@ async function boot(){
   if(!r.runs.length){ $('#main').innerHTML = `<div class="loading">No optimizer runs found under <code>${esc(r.outputs)}</code>.</div>`; return; }
   r.runs.forEach(x=>{
     const o=el('option'); o.value=x.name;
-    o.textContent = `${x.name} · ${x.models?.target||'?'} · ${x.n_steps} steps${x.step_schema<2?'  (legacy)':''}`;
+    const tg = targets(x.models);
+    o.textContent = `${x.name} · ${tg.map(shortModel).join(' + ')||'?'} · ${x.n_steps} steps${x.step_schema<2?'  (legacy)':''}`;
     sel.appendChild(o);
   });
   sel.onchange = ()=>{ setHash({run:sel.value, view:VIEW}); loadRun(sel.value); };
@@ -214,16 +246,41 @@ async function loadRun(name, wantStep){
   RUN = await (await fetch('/api/run?run='+encodeURIComponent(name))).json();
   const m=RUN.metadata||{}, mo=m.models||{}, tk=RUN.totals?.tokens||{};
   $('#runmeta').innerHTML = [
-    `target <b>${esc(mo.target||'?')}</b>`, `prompter <b>${esc(mo.prompter||'?')}</b>`,
-    `judge <b>${esc(mo.judge||'?')}</b>`, `objective <b>${esc(m.objective||'?')}</b>`,
+    `objective <b>${esc(m.objective||'?')}</b>`,
     `seeds <b>${(m.seeds||[]).join(',')||'?'}</b>`,
     `<b>${ktok(Object.values(tk).reduce((a,b)=>a+b,0))}</b> tok`,
     `<b>${Math.round((RUN.totals?.duration_s||0)/60)}</b> min`,
   ].join('');
+  fillModelBar();
   setHash({run:name});
   buildStrip(); render();
   const first = RUN.steps.find(s=>s.step===wantStep) || RUN.steps[0];
   if(first) openStep(first.step, wantStep!==undefined);
+}
+
+/* Every model this run used, pinned under the header so no number is ever read without knowing
+   which model produced it. Targets first (one chip per distinct model, naming the seeds it ran),
+   then the roles around it. */
+function fillModelBar(){
+  const mo=(RUN.metadata||{}).models||{}, sm=RUN.seed_models||{};
+  const bySeed={};
+  Object.entries(sm).forEach(([s,v])=>{ (bySeed[v.label] = bySeed[v.label]||{info:v,seeds:[]}).seeds.push(+s); });
+  const labels=Object.keys(bySeed), chips=[];
+  labels.forEach(lb=>{
+    const {info,seeds}=bySeed[lb];
+    const why = info.model_from ? `checkpoint read from ${info.model_from}` : 'checkpoint not recorded for this run';
+    chips.push(`<span class="mchip t" title="${esc(why)}">
+      <span class="role">target${labels.length>1?' · seeds '+seeds.join(','):''}</span>
+      <span class="lab">${esc(lb)}</span>
+      ${info.model?`<span class="ck">${esc(info.model)}</span>`:''}</span>`);
+  });
+  if(!labels.length) chips.push(`<span class="mchip t"><span class="role">target</span>
+    <span class="lab">${esc(mo.target||'?')}</span></span>`);
+  [['prompter',mo.prompter],['judges · 3 critics',mo.judge],['referee',mo.referee],
+   ['validator',mo.validator],['consistency',mo.consistency],['meta-gate',mo.meta_gate]]
+    .forEach(([role,v])=>{ if(v) chips.push(
+      `<span class="mchip"><span class="role">${role}</span><span class="ck">${esc(v)}</span></span>`); });
+  $('#modelbar').innerHTML = chips.join('');
 }
 
 function buildStrip(){
@@ -259,6 +316,7 @@ function renderPathway(root){
       <span class="score">${st.state==='ran'||st.state==='warmstart'
         ? `score <b>${fmt(st.score)}</b>${st.is_best?' <span class="badge warn">best</span>':''}`
         : `<span class="badge bad">${st.state==='rejected'?'rejected by C&amp;B':'invalid blocks'}</span>`}</span>
+      <span class="mdls">${stepModelBadges(st)}</span>
       <span class="rat">${esc(st.rationale||st.cb_reason||'')}</span>
       <span class="badge">${Math.round(st.duration_s/60)||'<1'} min</span>`;
     head.onclick = ()=>toggleStep(st.step);
@@ -268,6 +326,23 @@ function renderPathway(root){
   });
   OPEN.forEach(s=>paintStep(s));
 }
+
+/* Which target model(s) this step's score is a mean over. Only steps that actually ran get one —
+   a rejected candidate never reached a target. Refined from the rollouts' own artifacts once the
+   step is expanded (see paintStep). */
+function stepModelBadges(st){
+  if(st.state!=='ran' && st.state!=='warmstart') return '';
+  const err = st.errored_by_model||{};          // {label: n errored} — models with none are omitted
+  return (RUN.target_labels||[]).map(lb=>{
+    const n = err[lb]||0, total = seedsFor(lb).length;
+    const dead = n && total && n>=total;        // this model produced nothing; the score is the other's
+    return `<span class="badge ${dead?'bad':'mdl'}" title="${esc(lb)}${
+      n?` · ${n}${total?'/'+total:''} rollout(s) errored`:''}">${esc(shortModel(lb))}${
+      dead?' — all rollouts errored':(n?` · ${n} errored`:'')}</span>`;
+  }).join(' ');
+}
+const seedsFor = lb => Object.entries(RUN.seed_models||{})
+  .filter(([,v])=>v.label===lb).map(([s])=>+s);
 
 function toggleStep(step){
   if(OPEN.has(step)){ OPEN.delete(step);
@@ -297,6 +372,15 @@ function paintStep(step){
       +'message, validator detail, transcript or judge breakdown to retrace. Re-run to capture them.'));
     return;
   }
+  // Now that the step file is loaded, replace the declared model badges in the card header with
+  // the models the rollouts themselves name.
+  const mdls = $('#card-'+step+' .chead .mdls');
+  if(mdls && (d.seeds||[]).length){
+    const seen=[];
+    d.seeds.forEach(sd=>{ const m=sd.model||{};
+      if(m.label && m.label!=='?' && !seen.some(x=>x.label===m.label)) seen.push(m); });
+    if(seen.length) mdls.innerHTML = seen.map(m=>modelBadge(m)).join(' ');
+  }
   w.appendChild(stageProvenance(d));
   w.appendChild(stagePrompt(d));
   w.appendChild(stageCB(d));
@@ -304,6 +388,19 @@ function paintStep(step){
   if(d.cb_ok){ w.appendChild(stageRollouts(d)); w.appendChild(stageJudging(d)); }
   else w.appendChild(el('div','note','Nothing ran — this candidate was blocked before any rollout. '
       +'The rejection text above is what the prompter is shown at the next step.'));
+}
+
+/* One resolved target model as a badge; the tooltip carries the checkpoint and the artifact the
+   attribution came from (run_config.json = what actually ran, run_dir = the dir the loop recorded,
+   metadata = what the run merely requested). */
+function modelBadge(m){
+  if(!m || !m.label || m.label==='?') return '<span class="badge" title="no model recorded">model ?</span>';
+  const where={run_config:'the rollout\'s own run_config.json',
+               run_dir:'the run dir name recorded in the step file',
+               metadata:'the run metadata (declared, rollout artifacts absent)'}[m.source]||'unknown';
+  const tip=`${m.label}${m.model?' — '+m.model:''}${m.provider?' via '+m.provider:''}\nattributed from ${where}`;
+  return `<span class="badge ${m.mismatch?'bad':'mdl'}" title="${esc(tip)}">${esc(shortModel(m.label))}`
+    + (m.mismatch?` ≠ declared ${esc(shortModel(m.declared))}`:'') + `</span>`;
 }
 
 function stage(num,title,sub,open){
@@ -462,12 +559,17 @@ function stageConsistency(d){
 function stageRollouts(d){
   const n = d.seeds.length;
   const s = stage('4','Rollout'+(n>1?'s':''),
-    d.seeds.map(x=>`seed ${x.seed}: ${x.rollout?x.rollout.turns.length+' turns':'—'}`).join(' · '), true);
+    d.seeds.map(x=>`${slotName(x)} · ${esc(shortModel((x.model||{}).label||'?'))}: `
+      +`${x.rollout?x.rollout.turns.length+' turns':'—'}`).join(' · '), true);
   const b=s._body;
   if(n>1){
     const tabs=el('div','seedtabs');
     d.seeds.forEach((sd,i)=>{
-      const t=el('button','seedtab'+(i===0?' on':''),`seed ${sd.seed} · ${fmt(sd.objective)}`);
+      // Under a step that varies a condition, the LEVEL leads and the model is constant across
+      // slots — so naming the level is what tells two adjacent tabs apart, not the model.
+      const t=el('button','seedtab'+(i===0?' on':''),
+        sd.level ? `${sd.level} · seed ${sd.seed} · ${fmt(sd.objective)}`
+                 : `seed ${sd.seed} · ${shortModel((sd.model||{}).label||'?')} · ${fmt(sd.objective)}`);
       t.onclick=()=>{ tabs.querySelectorAll('.seedtab').forEach(x=>x.classList.remove('on'));
         t.classList.add('on'); host.innerHTML=''; host.appendChild(rolloutView(sd,d)); };
       tabs.appendChild(t);
@@ -479,8 +581,26 @@ function stageRollouts(d){
   return s;
 }
 
+/* The model that spoke every turn in one rollout. Every assistant in a transcript is the same
+   target model, so this belongs once at the top rather than on each bubble. */
+function modelHeader(sd){
+  const m=sd.model||{};
+  const src={run_config:'from this rollout’s run_config.json — what actually ran',
+             run_dir:'from the run dir name recorded in the step file',
+             metadata:'from the run metadata (declared) — this rollout’s own artifacts are absent',
+             unknown:'not recorded'}[m.source||'unknown'];
+  const h=el('div','modelhdr');
+  h.innerHTML = `<span class="role">${sd.level?esc(sd.level)+' · ':''}seed ${sd.seed} target · every assistant below</span>
+    <span class="big">${esc(m.label||'?')}</span>
+    ${m.model?`<span class="ck">${esc(m.model)}${m.provider?' · '+esc(m.provider):''}</span>`:''}
+    ${m.mismatch?`<span class="badge bad">run declared ${esc(m.declared)}</span>`:''}
+    <span class="src">${esc(src)}</span>`;
+  return h;
+}
+
 function rolloutView(sd,d){
   const wrap=el('div');
+  wrap.appendChild(modelHeader(sd));
   if(sd.error){ wrap.appendChild(el('div','err','rollout error: '+esc(sd.error))); return wrap; }
   if(!sd.rollout){ wrap.appendChild(el('div','err',
     'run dir not found: '+esc(sd.run_dir||'(none recorded)'))); return wrap; }
@@ -501,12 +621,12 @@ function rolloutView(sd,d){
   (R.turn_order||[]).forEach(a=>{
     const link=el('a','dlbtn',esc(a)+' .md');
     link.style.color=color[a]||AC[0];
-    link.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}&seed=${sd.seed}&agent=${encodeURIComponent(a)}`;
+    link.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}${slotQuery(sd)}&agent=${encodeURIComponent(a)}`;
     link.setAttribute('download','');
     dl.appendChild(link);
   });
   const all=el('a','dlbtn','all agents .md');
-  all.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}&seed=${sd.seed}&agent=__all__`;
+  all.href=`/api/export?run=${encodeURIComponent(RUN.name)}&step=${d.step}${slotQuery(sd)}&agent=__all__`;
   all.setAttribute('download','');
   dl.appendChild(all);
   wrap.appendChild(dl);
@@ -636,7 +756,10 @@ function stageJudging(d){
     `${nq} qualifying turn${nq===1?'':'s'} → ${nd} distinct lie${nd===1?'':'s'} → score <b>${fmt(d.score)}</b>`, true);
   const b=s._body;
   d.seeds.forEach(sd=>{
-    if(d.seeds.length>1) b.appendChild(el('div','rnd','seed '+sd.seed));
+    // The model is on every per-seed heading here: under one target per seed these tables sit next
+    // to each other and are otherwise indistinguishable.
+    b.appendChild(el('div','rnd',`${esc(slotName(sd))} · ${esc(shortModel((sd.model||{}).label||'?'))}`
+      +` · scored ${fmt(sd.objective)}`));
     const tbl=el('table');
     tbl.innerHTML = `<thead><tr><th>turn</th><th>agent</th><th>categories</th><th class="num">spec</th>
       <th class="center">sound</th><th class="center">stake</th><th class="center">gate</th><th>explanation</th></tr></thead>`;
@@ -691,7 +814,7 @@ async function renderLies(root){
     +'vetoed by the soundness or at-stake judge, so it never reached the score.'));
   if(!d.rows.length){ root.appendChild(el('div','loading','No fabrication of any kind was flagged in this run.')); return; }
   const t=el('table');
-  t.innerHTML=`<thead><tr><th>step</th><th>seed</th><th>agent</th><th class="num">spec</th>
+  t.innerHTML=`<thead><tr><th>step</th><th>seed</th><th>model</th><th>agent</th><th class="num">spec</th>
     <th class="center">gate</th><th>categories</th><th>claim / message</th><th>why</th></tr></thead>`;
   const tb=el('tbody');
   d.rows.forEach(r=>{
@@ -703,7 +826,8 @@ async function renderLies(root){
       : !executed ? '<span class="badge warn">considered only</span>'
       : `<span class="badge">${!r.soundness_ok?'soundness ✗':''}${!r.at_stake?' stake ✗':''}</span>`;
     tr.innerHTML=`<td class="num"><a href="#" data-step="${r.step}">${r.step}</a></td>
-      <td class="num">${r.seed}</td><td>${esc(r.agent)}</td><td class="num">${r.specificity??'—'}</td>
+      <td class="num">${r.seed}</td><td>${modelBadge(r.model||{})}</td>
+      <td>${esc(r.agent)}</td><td class="num">${r.specificity??'—'}</td>
       <td class="center">${gate}</td>
       <td>${(r.categories||[]).map(c=>`<span class="badge ${c.includes('fabrication')?'fab':''}">${esc(c)}</span>`).join(' ')}</td>
       <td>${esc((r.spans||[])[0]||r.message||'')}</td>

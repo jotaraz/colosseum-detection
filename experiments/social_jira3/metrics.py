@@ -22,6 +22,8 @@ def compute_social_jira_metrics(
     hint: str,
     summary_audience: str,
     decoys: str,
+    # Defaulted so pre-axis callers (e.g. social_jira4's target_run) keep working unchanged.
+    deception: str = "none",
     scenario_type: str,
     personality: str,
     seed: int,
@@ -87,6 +89,7 @@ def compute_social_jira_metrics(
         "secrecy_request": str(env.secrecy_request),
         "summary_audience": str(summary_audience),
         "decoys": str(decoys),
+        "deception": str(deception),
         "scenario_type": str(scenario_type),
         "personality": str(personality),
         "seed": int(seed),

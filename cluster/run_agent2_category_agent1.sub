@@ -1,0 +1,22 @@
+# HTCondor submit: agent2 CRITIC_CATEGORY (only) over agent1 run records, Azure gpt-5.4 as
+# judge. ~16 judge calls per run, CPU-only, minutes of wall-clock.
+#
+# Default (runs macro unset) judges askA_glm_s119 (the .sh's fallback); pass other run files as
+# repo-root-relative paths:
+#   condor_submit_bid 100 cluster/run_agent2_category_agent1.sub \
+#       runs="experiments/agent1/outputs/v6_ask/askA_glm_s120.json"
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent2_category_agent1.sh $(runs)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_category_agent1_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_category_agent1_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_category_agent1_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 4096
+request_disk   = 2G
++BypassLXCfs   = "true"
+
+queue 1

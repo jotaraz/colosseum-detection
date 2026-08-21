@@ -1,0 +1,42 @@
+# social_jira4 REAL RUN — top-10 fabrication-qualifying prompts x seeds 7,8 x 4 models.
+#
+# ONE JOB PER MODEL via `queue MODEL in`, so the four progress simultaneously instead of summing
+# their very different runtimes (measured per rollout tonight: gemma ~13 min, kimi ~13, glm ~5,
+# deepseek ~23). Within each job the 20 (prompt, seed) rollouts also fan out, 4 at a time.
+#
+# WHAT RUNS. 10 prompts (first 10 records of reports/v4_dspro_fabrication_qualifying.jsonl,
+# score-ordered 6.33 -> 1.67, 10 distinct prompt_sha), each replayed at seeds 7 and 8. Prompt index
+# becomes the step, so runs/step000..step009 each hold two seeds — the shape a real optimizer run
+# writes, which the viewer reads without reinterpretation.
+#
+# 10 x 2 x 4 = 80 rollouts. No prompter, no meta-gate, no consistency gate, no fabrication judge:
+# the prompts are fixed and each already cleared the dspro fabrication gate when it was mined.
+# Only CATEGORY / SOUNDNESS / AT-STAKE run, on deepseek-v4-pro.
+#
+# CONCURRENCY. --workers 4 rollouts x --critic-workers 4 judge threads = up to 16 in-flight calls
+# per job, ~64 across the four. The two multiply, which is why both are bounded; peak is well under
+# the 8-concurrent-job precedent from the v4h campaign (3655 judge calls, no rate-limit failures).
+# Providers are pinned to VERIFIED ordered lists (see the config header) — a single pin was tried
+# and rejected: ~300 calls per model on one upstream with fallback off returns 429 rather than
+# rerouting, which three preflight sweeps demonstrated by rate-limiting DeepInfra outright.
+#
+# qwen3.6-27b IS ABSENT — it drops the forced tool call on 40-60% of calls and the cause is still
+# open. A dropped post is silent: the turn completes, nothing is posted, and the transcript reads as
+# a model declining to argue. It gets its own job once its tool rate is verified at n>=10.
+#
+# COST. Measured from tonight's rollouts: ~$0.40/rollout judging + ~$0.07 generation -> ~$38 for
+# 80 rollouts, rising toward $55 if prompts run the full four planning rounds. Judging is ~85%.
+#
+# CPU-ONLY. Submit with `condor_submit_bid 25`.
+executable = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/run_sj4_fixedprompt.sh
+arguments  = "--step-files experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_023.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_033.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_018.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_037.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_035.json,experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_c_gptoss/steps/step_001.json,experiments/social_jira4/outputs/v4h_fabrication_dspro_d_gptoss/steps/step_002.json,experiments/social_jira4/outputs/v4e_mg2_fabrication_dspro/steps/step_033.json,experiments/social_jira4/outputs/v4d_mg1_fabrication_dspro/steps/step_019.json --config experiments/social_jira4/configs/social_jira4_realrun_pinned_or.yaml --out-dir experiments/social_jira4/outputs/rr10_$(MODEL) --models or-$(MODEL) --seeds 7,8 --workers 4 --critic-workers 4"
+
+output = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10_$(MODEL).out
+error  = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10_$(MODEL).err
+log    = /fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira4/cluster/rr10_$(MODEL).log
+
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
+
+queue MODEL in (kimi-k2.6, glm-5.2, gemma-4-31b, deepseek-v4-flash)

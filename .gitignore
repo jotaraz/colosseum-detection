@@ -22,3 +22,5 @@ build/
 # archived rollouts — too large for git (GitHub rejects blobs >100MB)
 **/outputs*.zip
 **/*.tar.gz
+# prompt-review index cache (rebuilt from outputs/)
+**/.review_index.json

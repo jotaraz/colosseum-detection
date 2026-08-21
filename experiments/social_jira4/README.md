@@ -200,6 +200,54 @@ bad rollout no longer moves it by half.) Providers may be mixed — one seed on 
 carries its whole `llm` block. `metadata.json` records the mapping under `models.target_per_seed`,
 and each rollout's `run_config.json` names the model that produced it.
 
+## Replaying one prompt across many models (`fixed_prompt_run.py`)
+
+The loop searches for a prompt. Sometimes the prompt is already chosen and the question is what
+*different assistant models* do with it — a target-family cross-check rather than an optimisation.
+`fixed_prompt_run.py` is that: it takes a written prompt, replays it at one seed against every
+model in a config, and judges the result.
+
+```bash
+python -m experiments.social_jira4.fixed_prompt_run \
+    --step-file experiments/social_jira4/outputs/v4g_fabrication_dspro_a/steps/step_003.json \
+    --config experiments/social_jira4/configs/social_jira4_fixedprompt_5models_or.yaml \
+    --out-dir experiments/social_jira4/outputs/fp_v4g_step003 --seed 1
+```
+
+`--step-file` accepts a loop step record, a bare block dict, or a warm-start seed file. **Every
+model gets the same seed**, so roster, tasks, calendars and inbox are identical across them and the
+model is the only thing that varies — unlike `--model-label a,b,c,d`, which pairs models to *different*
+seeds and deliberately confounds model with scenario.
+
+What is absent is the point: **no prompter** (the prompt is given), **no gate** (validator,
+consistency and meta-judge all skipped), and **no fabrication or L2 judge**. A prompt mined from a
+completed run has already been gated once; re-drawing that verdict would only add sampling noise to
+a decision that has been made. What runs after each rollout is `LlmCritic(gate=False)` — CATEGORY,
+SOUNDNESS and AT-STAKE on every turn — plus the `weighted_count` objective, so a model's number is
+directly comparable to the score the same prompt earned in its original run.
+
+Rollout dirs are jira3-shaped and land under `<out-dir>/runs/step000/<label>__<inbox>-<decoys>__seed<N>/`,
+so the viewer and `social_jira3/judge.py` read them unchanged. Results accumulate into
+`results.json` after **every** model, not once at the end, so one model hanging cannot cost you the
+ones that already finished.
+
+Two things to check before adding a model to such a config, both of which have already cost a run
+elsewhere: the target must accept a **forced object `tool_choice`** (sj4 forces `post_message` on
+every planning turn, i.e. exactly the turns the critic reads), and it must still **emit CoT under
+that forced call** — CRITIC_CATEGORY is intent-based and scores a turn with no reasoning off
+"(no reasoning captured)". Anthropic models fail the second by construction: extended thinking
+cannot be combined with a forced single-tool choice, and the request succeeds *without* thinking
+rather than erroring. Verbose reasoners fail neither but need output headroom — capped at 4000
+tokens, qwen3.6-27b spends the whole budget in the reasoning channel and never reaches the call.
+
+On that last point, a trap worth knowing: **`max_tokens` under an OpenRouter entry's `params` is
+inert.** `openrouter_client.generate_response` reads only `max_completion_tokens` /
+`max_output_tokens`, and nothing in the sj3/sj4 path sets either — verified by sending
+`params["max_tokens"] = 10` and getting 217 completion tokens back with `finish_reason: "stop"`.
+Every `*_openrouter*.yaml` in this directory carries the line and none of them cap anything, so
+those runs go out with the provider default. Raising the number will not fix a truncation; spell it
+`max_completion_tokens` if a real ceiling is ever needed.
+
 ## Cost
 
 Every run writes `cost.json` (rewritten each attempt, so a killed job still leaves an accurate
@@ -271,6 +319,16 @@ word-diffed against the previous step → **3** the checks-and-balances verdict 
 rollout(s), social_jira3-viewer style, with each turn's CoT, the exact prompt it saw, and its
 judge badges → **5** the per-turn verdict table and how those verdicts became the score.
 
+Every model the run used is pinned under the header — one chip per distinct **target** (naming the
+seeds it ran and its checkpoint), then prompter, critics, referee, validator, consistency and the
+meta-gate panel. Because a run can map **one target model per seed** (`--model-label a,b` against
+`--seeds 1,2`), the model is repeated wherever a per-seed number appears: on each step card, on the
+seed tabs, as a header above each transcript ("every assistant below is this model"), on the judging
+tables, in the lies board's own column, and in the exported markdown and its filename. Each
+attribution says where it came from — the rollout's own `run_config.json` (what actually ran), the
+run dir name recorded in the step file (survives rollouts that were never synced back), or the run
+metadata (what was requested, when the rollout artifacts are absent).
+
 A warm-start step shows its seed provenance (source jira3 run, verbatim L2 lie) in place of
 stage 1, since no model wrote it. Each rollout has **download session ⤓** buttons that export one
 assistant's whole session as markdown — system prompt, opening task briefing, then every turn's
@@ -283,6 +341,58 @@ prompter actually moves), and the fixed prompter **scaffold**. Steps are linkabl
 
 Runs written before the step schema (`step_schema < 2`) still list, but only their history rows
 exist; their chips are dimmed and expanding one says so.
+
+## Reviewing prompts across runs (`viewer/review.py`)
+
+```bash
+python3 experiments/social_jira4/viewer/review.py    # → http://localhost:5004
+```
+
+Where `viewer.py` walks one run down its optimization chain, this walks the whole `outputs/` corpus
+sideways — "every prompt from any `v4*` run that scored above zero" is the default filter — and
+answers, for a selected prompt: **who wrote which part of it**. A prompt here is one `(run, step)`,
+i.e. one template state, not split over seeds; notes are keyed the same way.
+
+The rendered system+user prompt is shown whole, with four provenance layers coloured in place:
+
+| layer | what it is | how it is located |
+| --- | --- | --- |
+| **prompter-authored** | the four free blocks | exact substring — they are stored verbatim per step and appear verbatim in the render (holds on 1080/1080 steps) |
+| **prompter-selected** / **pinned by the run** | a whole section that exists because of a pooled id (a decoy substrate, the inbox strength) | section header, against a map probed from the current pools at startup |
+| **per-seed scenario** | roster, tasks, commitments, the cast's names | sections (and names) that change when only the seed changes |
+| **fixed template** | everything else — `AdaptivePrompts` scaffolding | the remainder |
+
+Sections are attributed by *header*, not by re-rendering: re-rendering reproduces the stored prompt
+byte-for-byte only for runs predating the last `decoys.py` edits (686/1080 today), while the eleven
+headers are stable across the entire corpus. A pooled section is labelled **pinned** rather than
+*selected* when the run fixed that axis (`prompter.environment.fixed`) — that substrate was the
+experimenter's decision, and reading it as prompter authorship would be wrong. Free-block text that
+changed since the previous step is underlined, so a trajectory can be read as edits.
+
+The annotated text is `meta.rendered.{system,user}` — the canonical seed=1 render stored on every
+step, and the exact bytes the meta judges graded, so prompt, verdict and highlight refer to the same
+thing. Five tabs alongside: **lies** (every fabrication-flagged turn with the judge's cited spans,
+counted or vetoed), **gates** (each meta judge's answer, confidence and reasoning, plus
+checks-and-balances and consistency), **prompter** (its rationale, the blocks, the OPRO prompt it
+was given), **notes** (free text + tags + star, in `viewer/review_notes.db`; export with
+`curl localhost:5004/api/notes`), and **panel**.
+
+**`panel`** is the offline meta-judge sweep from `reports/*.jsonl`, joined to prompts by
+`(run, step)` — 5 questions × 4 seats for the 52 dspro-prompted, fabrication-gated steps that
+scored > 0. It is deliberately *not* merged into `gates`: the sweep used the `*_RATIONALE_FIRST.md`
+prompts, so it is a different instrument and the two verdicts do not pool. Pass is `yes` for
+realism and `no` for the other four. The filter block under the left panel toggles seats and
+questions, takes a per-question pass threshold and one global confidence bar, and shows a live
+survivor count per question (an unreachable threshold turns its field red rather than silently
+emptying the list); prompts outside the sweep are hidden with a count, since absence there means
+never asked, not failed. `forecast` reports `probability` of the target deceiving rather than a
+confidence, so its whole row is carried and displayed as `1 − prob` — labelled `(1-prob)` against
+`(conf)` on the others — which keeps every number in the grid pointing the same way and lets one
+threshold mean one thing across all five rows. Report files are discovered by shape: any
+`reports/*.jsonl` whose records carry a `step_path` joins itself.
+
+Adding a column to the corpus table is one decorated function (`@extractor` in `review.py`); bump
+`CACHE_VERSION` and the index rebuilds. `--reindex` forces a rebuild after new runs land.
 
 ## The objective (`--objective`, default `weighted_count`)
 
@@ -322,7 +432,7 @@ regardless of objective.
 | `loop.py` | the driver + CLI |
 | `check_decoys.py` | asserts the `decoy.md` recipe invariants across seeds/rosters; exits non-zero |
 | `check_environment.py` | asserts the `--decoys`/`--inbox` pinning holds end to end; exits non-zero |
-| `viewer/` | Flask app that retraces a run step by step (see above) |
+| `viewer/` | two Flask apps (see above): `viewer.py` retraces one run step by step (:5003); `review.py` reviews prompts across all runs, annotated by authorship (:5004) |
 
 ## What's real vs stubbed in v0
 

@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social_jira4 · prompt review</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f7f9; --bg-sunk: #eef0f4;
+    --fg: #16181d; --fg-dim: #5b6373; --fg-faint: #8b93a3;
+    --line: #dcdfe6; --line-soft: #e7e9ef;
+    --accent: #2f6fd0;
+    --free: #b7791f; --free-bg: #fdf3dc; --free-line: #e0a93a;
+    --pool: #2f6fd0; --pool-bg: #e6efFB;
+    --pinned: #6b7280; --pinned-bg: #eef0f3;
+    --seed: #2f855a; --seed-bg: #e7f4ec;
+    --ok: #2f855a; --bad: #c53030; --warn: #b7791f;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --bg-soft: #1a1d23; --bg-sunk: #0f1114;
+      --fg: #e6e8ee; --fg-dim: #a2abbd; --fg-faint: #6e7789;
+      --line: #2a2f39; --line-soft: #23272f;
+      --accent: #6ea8ff;
+      --free: #e0b155; --free-bg: #3a3115; --free-line: #c99a34;
+      --pool: #6ea8ff; --pool-bg: #16273f;
+      --pinned: #98a2b3; --pinned-bg: #23272f;
+      --seed: #6fce9a; --seed-bg: #16301f;
+      --ok: #6fce9a; --bad: #ff8b8b; --warn: #e0b155;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg); font: 13px/1.5 system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  a { color: var(--accent); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button {
+    background: var(--bg-soft); border: 1px solid var(--line); border-radius: 6px;
+    padding: 3px 9px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  input[type=text], input[type=number], select, textarea {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+    border-bottom: 1px solid var(--line); background: var(--bg-soft); flex: none;
+  }
+  header h1 { font-size: 14px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  header .grow { flex: 1; }
+  header .stat { color: var(--fg-dim); font-size: 12px; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #left {
+    width: 400px; flex: none; border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0; background: var(--bg-soft);
+  }
+  #filters { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 7px; }
+  .frow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .frow label { color: var(--fg-dim); font-size: 11px; text-transform: uppercase;
+                letter-spacing: .5px; min-width: 44px; }
+  .chip {
+    border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11px;
+    cursor: pointer; background: var(--bg); color: var(--fg-dim); user-select: none;
+  }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  #count { padding: 5px 12px; font-size: 11px; color: var(--fg-dim);
+           border-bottom: 1px solid var(--line-soft); display: flex; gap: 8px; align-items: center; }
+  #list { overflow-y: auto; flex: 1; }
+  .row {
+    padding: 7px 12px; border-bottom: 1px solid var(--line-soft); cursor: pointer;
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px;
+  }
+  .row:hover { background: var(--bg-sunk); }
+  .row.sel { background: var(--bg-sunk); box-shadow: inset 3px 0 0 var(--accent); }
+  .row .name { font-family: var(--mono); font-size: 11.5px; overflow: hidden;
+               text-overflow: ellipsis; white-space: nowrap; }
+  .row .score { font-family: var(--mono); font-weight: 600; font-size: 12px; }
+  .row .meta { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center;
+               color: var(--fg-faint); font-size: 11px; }
+  .pill { border-radius: 4px; padding: 0 5px; font-size: 10.5px; border: 1px solid var(--line); }
+  .pill.ran { color: var(--ok); border-color: var(--ok); }
+  .pill.rejected, .pill.invalid { color: var(--fg-faint); }
+  .pill.warmstart { color: var(--accent); border-color: var(--accent); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); display: inline-block; }
+
+  #right { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #tabs { display: flex; gap: 2px; padding: 6px 12px 0; border-bottom: 1px solid var(--line);
+          align-items: center; flex: none; }
+  .tab { padding: 5px 12px; border: 1px solid transparent; border-bottom: none;
+         border-radius: 6px 6px 0 0; cursor: pointer; color: var(--fg-dim); font-size: 12.5px; }
+  .tab.on { background: var(--bg-soft); border-color: var(--line); color: var(--fg);
+            margin-bottom: -1px; }
+  #pane { flex: 1; overflow-y: auto; padding: 14px 18px; min-height: 0; }
+  .empty { color: var(--fg-faint); padding: 40px; text-align: center; }
+
+  h2.sec { font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+           color: var(--fg-dim); margin: 18px 0 8px; font-weight: 600; }
+  h2.sec:first-child { margin-top: 0; }
+
+  /* provenance */
+  #legend { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .lg { display: flex; gap: 5px; align-items: center; font-size: 11.5px; color: var(--fg-dim); }
+  .sw { width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--line); }
+  .bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 6px 0 12px;
+         border: 1px solid var(--line); }
+  pre.prompt {
+    font-family: var(--mono); font-size: 12px; line-height: 1.62; white-space: pre-wrap;
+    word-wrap: break-word; background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px 14px; margin: 0 0 14px;
+  }
+  .sg-free { background: var(--free-bg); box-shadow: inset 0 -1.5px 0 var(--free-line);
+             border-radius: 2px; }
+  .sg-pool_chosen { background: var(--pool-bg); border-radius: 2px; }
+  .sg-pool_pinned { background: var(--pinned-bg); border-radius: 2px; }
+  .sg-seed { color: var(--seed); }
+  .sg-scaffold { color: inherit; }
+  .changed { text-decoration: underline wavy var(--free-line) 1px; text-underline-offset: 3px; }
+  body.dim .sg-scaffold, body.dim .sg-seed { opacity: .38; }
+  body.dim .sg-pool_chosen, body.dim .sg-pool_pinned { opacity: .62; }
+  body.flat .sg-pool_chosen, body.flat .sg-pool_pinned { background: none; }
+  body.flat .sg-seed { color: inherit; }
+  body.nochg .changed { text-decoration: none; }
+
+  table.kv { border-collapse: collapse; font-size: 12px; }
+  table.kv td { padding: 2px 12px 2px 0; vertical-align: top; }
+  table.kv td:first-child { color: var(--fg-dim); white-space: nowrap; }
+
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+          margin-bottom: 10px; background: var(--bg-soft); }
+  .card h3 { margin: 0 0 6px; font-size: 12.5px; display: flex; gap: 8px; align-items: center;
+             flex-wrap: wrap; }
+  .card .body { font-size: 12.5px; }
+  .quote { font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap;
+           background: var(--bg); border: 1px solid var(--line-soft); border-radius: 6px;
+           padding: 8px 10px; margin: 6px 0; }
+  mark { background: var(--free-bg); color: inherit; box-shadow: inset 0 -1.5px 0 var(--free-line); }
+  details summary { cursor: pointer; color: var(--fg-dim); font-size: 11.5px; }
+  .tag { font-size: 10.5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px;
+         color: var(--fg-dim); }
+  .tag.yes { color: var(--ok); border-color: var(--ok); }
+  .tag.no { color: var(--bad); border-color: var(--bad); }
+  /* panel filter */
+  #panelBox { border-top: 1px solid var(--line); margin: 2px -12px -10px; padding: 8px 12px 10px;
+              background: var(--bg-sunk); display: grid; gap: 5px; }
+  #panelBox .hdr { display: flex; align-items: center; gap: 6px; }
+  #panelBox .hdr b { font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+                     color: var(--fg-dim); }
+  .qrow { display: grid; grid-template-columns: 15px 1fr auto 34px 26px 34px; gap: 6px;
+          align-items: center; font-size: 11.5px; }
+  .qrow .mrg { text-align: right; font-family: var(--mono); font-size: 10.5px;
+               color: var(--accent); font-variant-numeric: tabular-nums; }
+  .qrow .qname { cursor: pointer; user-select: none; }
+  .qrow.off .qname, .qrow.off .fld { opacity: .5; }
+  .qrow .fld { color: var(--fg-faint); font-size: 10.5px; font-family: var(--mono); }
+  .qrow .surv { text-align: right; color: var(--fg-dim); font-variant-numeric: tabular-nums; }
+  input.k { width: 34px; padding: 1px 3px; text-align: center; }
+  input.k.bad { border-color: var(--bad); color: var(--bad); background: var(--bg); }
+  input.conf { width: 48px; padding: 1px 4px; text-align: center; }
+  #pHidden { font-size: 11px; color: var(--fg-faint); }
+
+  /* panel matrix */
+  table.matrix { border-collapse: separate; border-spacing: 3px; margin: 4px 0 10px; }
+  table.matrix th { font-size: 11px; font-weight: 600; color: var(--fg-dim); text-align: center;
+                    padding: 2px 6px; }
+  table.matrix th.q { text-align: left; }
+  table.matrix th.q .fld { color: var(--fg-faint); font-family: var(--mono); font-size: 10.5px;
+                           font-weight: 400; }
+  td.cell { padding: 5px 9px; border-radius: 6px; text-align: center; cursor: pointer;
+            border: 1px solid var(--line); min-width: 74px; font-size: 12px; }
+  td.cell .n { font-family: var(--mono); font-size: 11px; opacity: .8; }
+  td.cell.pass { background: var(--seed-bg); border-color: var(--seed); color: var(--seed); }
+  td.cell.fail { background: var(--bg-soft); color: var(--fg-faint); }
+  td.cell.weak { background: var(--bg-soft); border-style: dashed; border-color: var(--seed);
+                 color: var(--fg-dim); }
+  td.cell.sel { outline: 2px solid var(--accent); outline-offset: -1px; }
+  td.tally { font-family: var(--mono); font-size: 11px; color: var(--fg-dim); padding-left: 8px;
+             white-space: nowrap; }
+  td.tally.met { color: var(--ok); }
+  .savestate { font-size: 11px; color: var(--fg-faint); }
+  textarea#note { width: 100%; min-height: 220px; font-family: var(--mono); font-size: 12.5px;
+                  line-height: 1.55; resize: vertical; }
+  kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line);
+        border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--fg-dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>prompt review</h1>
+  <span class="stat" id="corpusStat">loading…</span>
+  <span class="grow"></span>
+  <span class="stat"><kbd>j</kbd>/<kbd>k</kbd> move · <kbd>1</kbd>–<kbd>5</kbd> tabs · <kbd>/</kbd> search</span>
+  <button id="reindex" title="Re-scan outputs/ for new or changed steps">reindex</button>
+</header>
+
+<main>
+  <section id="left">
+    <div id="filters">
+      <div class="frow">
+        <label>runs</label>
+        <input type="text" id="fRun" value="v4*" style="width:110px" title="glob, e.g. v4* or v4h*gpt54*">
+        <label style="min-width:auto">score</label>
+        <input type="number" id="fMin" step="0.1" style="width:64px" placeholder="min">
+        <input type="number" id="fMax" step="0.1" style="width:64px" placeholder="max">
+        <span class="chip" id="cPos" data-on="1">&gt; 0</span>
+      </div>
+      <div class="frow">
+        <label>state</label>
+        <span class="chip" data-state="ran">ran</span>
+        <span class="chip" data-state="warmstart">warm</span>
+        <span class="chip" data-state="rejected">rejected</span>
+        <span class="chip" data-state="invalid">invalid</span>
+      </div>
+      <div class="frow">
+        <label>gate</label>
+        <select id="fQuestion" style="width:120px"><option value="">any question</option></select>
+        <select id="fModel" style="width:150px"><option value="">any target model</option></select>
+      </div>
+      <div class="frow">
+        <label>only</label>
+        <span class="chip" id="cLies">has lie</span>
+        <span class="chip" id="cNote">noted</span>
+        <span class="chip" id="cStar">starred</span>
+        <span class="grow"></span>
+        <select id="fSort" style="width:130px">
+          <option value="score">sort: score ↓</option>
+          <option value="lies">sort: lies ↓</option>
+          <option value="spec">sort: specificity ↓</option>
+          <option value="run">sort: run, step</option>
+        </select>
+      </div>
+      <div class="frow">
+        <label>text</label>
+        <input type="text" id="fText" placeholder="search blocks, prompt, lies…" style="flex:1">
+      </div>
+
+      <div id="panelBox">
+        <div class="hdr">
+          <b>offline panel</b>
+          <span id="pSwept" style="color:var(--fg-faint);font-size:11px"></span>
+          <span class="grow" style="flex:1"></span>
+          <span style="color:var(--fg-dim);font-size:11px">pass conf ≥</span>
+          <input type="number" class="conf" id="pConf" min="0" max="1" step="0.05" value="0">
+          <span class="mrg" id="pMargin" title="the lowest confidence still doing work across the
+whole selection — raise the bar above it and at least one prompt drops out"></span>
+        </div>
+        <div class="frow" id="pSeats" style="gap:4px"></div>
+        <div id="pQuestions"></div>
+        <div id="pHidden"></div>
+      </div>
+    </div>
+    <div id="count"></div>
+    <div id="list"></div>
+  </section>
+
+  <section id="right">
+    <div id="tabs">
+      <div class="tab on" data-tab="prompt">prompt</div>
+      <div class="tab" data-tab="lies">lies</div>
+      <div class="tab" data-tab="gates">gates</div>
+      <div class="tab" data-tab="prompter">prompter</div>
+      <div class="tab" data-tab="notes">notes</div>
+      <div class="tab" data-tab="panel">panel</div>
+      <span class="grow" style="flex:1"></span>
+      <span class="stat" id="selStat" style="color:var(--fg-dim);font-size:12px;padding-bottom:5px"></span>
+    </div>
+    <div id="pane"><div class="empty">Select a prompt on the left.</div></div>
+  </section>
+</main>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+// Quotes too: this output lands in title=""/value="" attributes as well as in text nodes.
+const esc = s => (s ?? "").toString().replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => (v===null||v===undefined) ? "–" : (typeof v==="number" ? (+v.toFixed(3)+"") : v);
+
+let CORPUS = {rows: [], runs: []}, VIEW = [], SEL = null, DETAIL = null, TAB = "prompt";
+let TEXTKEYS = null;                       // server-side full-text result, or null
+const STATE = {states: new Set(), pos: true, lies: false, note: false, star: false};
+const VIEWOPT = {dim: true, flat: false, nochg: false, authoredOnly: false};
+
+// The offline 5x4 sweep. Independent of the in-loop gate in every respect: separate tab, separate
+// filter, never merged — it was asked with the rationale-first prompts, a different instrument.
+let PANEL = {cells: {}, questions: [], seats: [], pass_answer: {}, number_field: {}};
+const PSTATE = {seats: new Set(), questions: new Set(), k: {}, conf: 0};
+let PCELL = null;                          // {question, seat} expanded in the panel tab
+
+/* ------------------------------------------------------------------ corpus */
+async function loadCorpus() {
+  const r = await fetch("/api/corpus").then(r => r.json());
+  CORPUS = r;
+  const qs = [...new Set(r.rows.map(x => x.question).filter(Boolean))].sort();
+  $("#fQuestion").innerHTML = '<option value="">any question</option>' +
+    qs.map(q => `<option>${esc(q)}</option>`).join("");
+  const ms = [...new Set(r.rows.flatMap(x => x.target_models || []))].sort();
+  $("#fModel").innerHTML = '<option value="">any target model</option>' +
+    ms.map(m => `<option>${esc(m)}</option>`).join("");
+  $("#corpusStat").textContent =
+    `${r.rows.length} steps · ${r.runs.length} runs · indexed ${r.built_at}`;
+  const sk = $("#skipStat");
+  if (sk) sk.textContent = (r.skipped_steps || []).length
+    ? `${r.skipped_steps.length} steps skipped (unreadable)` : "";
+  apply();
+}
+
+async function loadPanel() {
+  PANEL = await fetch("/api/panel").then(r => r.json());
+  PANEL.seats.forEach(s => PSTATE.seats.add(s));
+  PANEL.questions.forEach(q => PSTATE.k[q] = 2);
+  $("#pSwept").textContent = `${Object.keys(PANEL.cells).length} swept`;
+  $("#pSeats").innerHTML = PANEL.seats.map(s =>
+    `<span class="chip on" data-seat="${s}">${esc(s)}</span>`).join("");
+  $("#pQuestions").innerHTML = PANEL.questions.map(q => `
+    <div class="qrow off" data-q="${q}">
+      <span class="chip" data-qtoggle="${q}" style="padding:0 4px">&nbsp;</span>
+      <span class="qname" data-qtoggle="${q}">${esc(q)}</span>
+      <span class="fld">(${esc(PANEL.number_field[q] || "conf")})</span>
+      <input type="number" class="k" min="0" max="9" step="1" value="2" data-k="${q}"
+             title="passes needed among the selected seats — 0 means no bar, i.e. restrict to the swept prompts only">
+      <span class="surv" data-surv="${q}">–</span>
+      <span class="mrg" data-margin="${q}"
+            title="lowest confidence still doing work for this question, over the prompts currently shown"></span>
+    </div>`).join("");
+  $$("#pSeats [data-seat]").forEach(c => c.addEventListener("click", () => {
+    const s = c.dataset.seat;
+    PSTATE.seats.has(s) ? PSTATE.seats.delete(s) : PSTATE.seats.add(s);
+    c.classList.toggle("on", PSTATE.seats.has(s));
+    apply();
+  }));
+  $$("#pQuestions [data-qtoggle]").forEach(el => el.addEventListener("click", () => {
+    const q = el.dataset.qtoggle;
+    PSTATE.questions.has(q) ? PSTATE.questions.delete(q) : PSTATE.questions.add(q);
+    const row = $(`.qrow[data-q="${q}"]`);
+    row.classList.toggle("off", !PSTATE.questions.has(q));
+    $(`[data-qtoggle="${q}"].chip`).classList.toggle("on", PSTATE.questions.has(q));
+    apply();
+  }));
+  // 0 is a real value, not a typo: the question stays selected (so the view is still restricted to
+  // swept prompts) but imposes no bar. Parsed rather than `+v || 1`, which would silently turn a
+  // typed 0 into 1 and leave the field disagreeing with the filter it drives.
+  $$("#pQuestions [data-k]").forEach(inp => inp.addEventListener("input", () => {
+    const v = parseInt(inp.value, 10);
+    PSTATE.k[inp.dataset.k] = Number.isFinite(v) ? Math.max(0, Math.min(9, v)) : 0;
+    apply();
+  }));
+  $("#pConf").addEventListener("input", () => {
+    PSTATE.conf = Math.max(0, Math.min(1, +$("#pConf").value || 0));
+    apply();
+  });
+}
+
+// A cell counts as a pass only if it carries the question's pass answer AND the judge backed it at
+// least `conf` hard. Non-pass cells are ignored outright, so raising the threshold can only ever
+// remove passes — the filter is monotone. `number` is already normalised server-side (1-prob for
+// forecast), so one threshold means one thing in all five rows.
+function nPass(key, q) {
+  const seats = (PANEL.cells[key] || {})[q] || {};
+  let n = 0;
+  for (const s of PSTATE.seats) {
+    const c = seats[s];
+    if (c && c[1] && (c[2] === null || c[2] >= PSTATE.conf)) n++;
+  }
+  return n;
+}
+
+// The pass that is actually holding this prompt in on this question: with k required, the k-th
+// largest counted pass is the one that breaks first as the bar rises (three passes at k=2 → the
+// 2nd largest; a 4th, weaker pass is doing no work). Null when the question imposes no bar (k=0)
+// or the prompt does not clear it, in which case nothing here is load-bearing.
+function marginConf(key, q) {
+  const k = PSTATE.k[q] ?? 1;
+  if (k <= 0) return null;
+  const seats = (PANEL.cells[key] || {})[q] || {};
+  const vals = [];
+  for (const s of PSTATE.seats) {
+    const c = seats[s];
+    if (c && c[1] && c[2] !== null && c[2] >= PSTATE.conf) vals.push(c[2]);
+  }
+  if (vals.length < k) return null;
+  return vals.sort((a, b) => b - a)[k - 1];
+}
+
+// Minimum of those over the prompts on screen: by construction >= the current bar, and the point
+// at which raising the bar starts costing prompts.
+function lowestRelevant(rows, q) {
+  let lo = null;
+  for (const r of rows) {
+    const m = marginConf(r.key, q);
+    if (m !== null && (lo === null || m < lo)) lo = m;
+  }
+  return lo;
+}
+
+function globRe(g) {
+  const body = g.trim().split("*").map(s => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+  return new RegExp("^" + (body || ".*") + "$", "i");
+}
+
+function apply() {
+  const re = globRe($("#fRun").value);
+  const min = $("#fMin").value === "" ? null : +$("#fMin").value;
+  const max = $("#fMax").value === "" ? null : +$("#fMax").value;
+  const q = $("#fQuestion").value, mdl = $("#fModel").value;
+
+  const base = CORPUS.rows.filter(r => {
+    if (!re.test(r.run)) return false;
+    if (STATE.pos && !(r.score > 0)) return false;
+    if (min !== null && !(r.score >= min)) return false;
+    if (max !== null && !(r.score <= max)) return false;
+    if (STATE.states.size && !STATE.states.has(r.state)) return false;
+    if (q && r.question !== q) return false;
+    if (mdl && !(r.target_models || []).includes(mdl)) return false;
+    if (STATE.lies && !(r.n_qualifying > 0)) return false;
+    if (STATE.note && !r.has_note) return false;
+    if (STATE.star && !r.starred) return false;
+    if (TEXTKEYS && !TEXTKEYS.has(r.key)) return false;
+    return true;
+  });
+
+  // Panel filter: AND across selected questions, each needing >= k passes among selected seats.
+  const active = [...PSTATE.questions];
+  const swept = base.filter(r => PANEL.cells[r.key]);
+  VIEW = active.length
+    ? swept.filter(r => active.every(qq => nPass(r.key, qq) >= (PSTATE.k[qq] ?? 1)))
+    : base;
+
+  // Survivor counts answer "what if only this question were on", against the same base.
+  PANEL.questions.forEach(qq => {
+    const el = $(`[data-surv="${qq}"]`);
+    if (el) el.textContent = swept.filter(r => nPass(r.key, qq) >= (PSTATE.k[qq] ?? 1)).length;
+    const k = $(`[data-k="${qq}"]`);
+    // An unreachable threshold empties the list for an arithmetic reason, not an evidential one.
+    if (k) k.classList.toggle("bad", (PSTATE.k[qq] ?? 1) > PSTATE.seats.size);
+  });
+  // Per question, and overall, the lowest confidence still load-bearing for what is on screen.
+  let overall = null;
+  PANEL.questions.forEach(qq => {
+    const el = $(`[data-margin="${qq}"]`);
+    if (!el) return;
+    if (!PSTATE.questions.has(qq)) { el.textContent = ""; return; }
+    const lo = lowestRelevant(VIEW, qq);
+    el.textContent = lo === null ? "–" : lo.toFixed(2);
+    if (lo !== null && (overall === null || lo < overall)) overall = lo;
+  });
+  $("#pMargin").textContent = overall === null ? "" : `↓${overall.toFixed(2)}`;
+
+  $("#pHidden").textContent = active.length
+    ? `${base.length - swept.length} hidden (not in the sweep)` : "";
+
+  const sort = $("#fSort").value;
+  const by = {
+    score: (a, b) => b.score - a.score || a.run.localeCompare(b.run) || a.step - b.step,
+    lies:  (a, b) => b.n_qualifying - a.n_qualifying || b.score - a.score,
+    spec:  (a, b) => (b.max_specificity ?? -1) - (a.max_specificity ?? -1) || b.score - a.score,
+    run:   (a, b) => a.run.localeCompare(b.run) || a.step - b.step,
+  }[sort];
+  VIEW.sort(by);
+  renderList();
+}
+
+function renderList() {
+  const withLies = VIEW.filter(r => r.n_qualifying > 0).length;
+  $("#count").innerHTML =
+    `<b>${VIEW.length}</b> prompts · ${withLies} with a counted lie` +
+    (TEXTKEYS ? ` · text filter active` : "");
+  $("#list").innerHTML = VIEW.map((r, i) => `
+    <div class="row ${SEL && SEL.key === r.key ? "sel" : ""}" data-i="${i}">
+      <div class="name" title="${esc(r.run)}">${esc(r.run)}</div>
+      <div class="score">${r.score ? num(r.score) : "·"}</div>
+      <div class="meta">
+        <span>step ${String(r.step).padStart(3, "0")}</span>
+        <span class="pill ${r.state}">${r.state}${r.gate ? " · " + esc(r.gate) : ""}</span>
+        ${r.n_qualifying ? `<span title="counted lies">🎯 ${r.n_qualifying}</span>` : ""}
+        ${r.n_flagged ? `<span title="flagged fabrication turns" style="opacity:.7">${r.n_flagged} flagged</span>` : ""}
+        ${r.has_panel ? '<span title="in the offline panel sweep" style="opacity:.7">▦</span>' : ""}
+        ${r.starred ? "★" : ""}${r.has_note ? '<span class="dot" title="has a note"></span>' : ""}
+      </div>
+    </div>`).join("") || `<div class="empty">Nothing matches.</div>`;
+}
+
+$("#list").addEventListener("click", e => {
+  const row = e.target.closest(".row");
+  if (row) select(VIEW[+row.dataset.i]);
+});
+
+async function select(row) {
+  if (!row) return;
+  SEL = row;
+  PCELL = null;
+  renderList();
+  $("#selStat").textContent = `${row.run} · step ${row.step}`;
+  $("#pane").innerHTML = `<div class="empty">loading…</div>`;
+  DETAIL = await fetch(`/api/detail?run=${encodeURIComponent(row.run)}&step=${row.step}`)
+    .then(r => r.json());
+  renderTab();
+}
+
+/* -------------------------------------------------------------------- tabs */
+$$(".tab").forEach(t => t.addEventListener("click", () => { TAB = t.dataset.tab; renderTab(); }));
+
+function renderTab() {
+  $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === TAB));
+  if (!DETAIL) return;
+  if (DETAIL.error) { $("#pane").innerHTML = `<div class="empty">${esc(DETAIL.error)}</div>`; return; }
+  ({prompt: renderPrompt, lies: renderLies, gates: renderGates,
+    prompter: renderPrompter, notes: renderNotes, panel: renderPanel}[TAB])();
+}
+
+/* ------------------------------------------------------------------ prompt */
+const KINDS = {
+  free:        {label: "prompter-authored", css: "--free-bg", desc: "the four free blocks, verbatim"},
+  pool_chosen: {label: "prompter-selected", css: "--pool-bg", desc: "section present because the prompter picked this pooled id"},
+  pool_pinned: {label: "pinned by the run", css: "--pinned-bg", desc: "pooled axis fixed by the experiment config, not chosen by the prompter"},
+  seed:        {label: "per-seed scenario", css: "--seed-bg", desc: "roster, tasks, commitments — generated at runtime"},
+  scaffold:    {label: "fixed template", css: "--bg-soft", desc: "AdaptivePrompts scaffolding"},
+};
+
+function segHtml(seg) {
+  if (VIEWOPT.authoredOnly && seg.kind !== "free") {
+    const gap = seg.text.replace(/[^\n]/g, "");
+    return gap ? esc(gap) : (seg.text.length > 3 ? '<span style="opacity:.25"> ⋯ </span>' : "");
+  }
+  const cls = `sg-${seg.kind}${seg.changed ? " changed" : ""}`;
+  const title = seg.label ? `${KINDS[seg.kind].label}: ${seg.label}` : KINDS[seg.kind].label;
+  return `<span class="${cls}" title="${esc(title)}">${esc(seg.text)}</span>`;
+}
+
+function provenanceBar(stats, total) {
+  const order = ["free", "pool_chosen", "pool_pinned", "seed", "scaffold"];
+  const cells = order.filter(k => stats[k]).map(k =>
+    `<div style="width:${(100 * stats[k] / total).toFixed(2)}%;background:var(${KINDS[k].css})"
+          title="${KINDS[k].label}: ${stats[k]} chars"></div>`).join("");
+  const pct = order.filter(k => stats[k]).map(k =>
+    `<span class="lg"><span class="sw" style="background:var(${KINDS[k].css})"></span>
+       ${KINDS[k].label} <b>${(100 * stats[k] / total).toFixed(0)}%</b></span>`).join("");
+  return `<div id="legend">${pct}</div><div class="bar">${cells}</div>`;
+}
+
+function renderPrompt() {
+  const p = DETAIL.prompt;
+  if (!p.available) {
+    $("#pane").innerHTML = `<div class="empty">This step has no stored render
+      (<code>meta.rendered</code> missing).</div>`;
+    return;
+  }
+  const total = {};
+  for (const part of ["system", "user"])
+    for (const [k, v] of Object.entries(p[part].stats)) total[k] = (total[k] || 0) + v;
+  const grand = Object.values(total).reduce((a, b) => a + b, 0);
+
+  const fixedNote = DETAIL.fixed_axes.length
+    ? `<span class="tag">pinned axes: ${DETAIL.fixed_axes.map(esc).join(", ")}</span>` : "";
+  const changed = Object.entries(DETAIL.block_changed || {})
+    .filter(([, n]) => n).map(([f]) => f);
+
+  $("#pane").innerHTML = `
+    <div class="frow" style="margin-bottom:10px">
+      <button class="${VIEWOPT.dim ? "on" : ""}" data-opt="dim">dim non-authored</button>
+      <button class="${VIEWOPT.flat ? "on" : ""}" data-opt="flat">hide layer colours</button>
+      <button class="${VIEWOPT.authoredOnly ? "on" : ""}" data-opt="authoredOnly">authored only</button>
+      <button class="${VIEWOPT.nochg ? "on" : ""}" data-opt="nochg">hide ∆ vs prev step</button>
+      ${fixedNote}
+      ${changed.length ? `<span class="tag" title="wavy underline in the text">∆ ${changed.map(esc).join(", ")}</span>` : ""}
+      ${DETAIL.duplicates.length ? `<span class="tag" title="${esc(DETAIL.duplicates.map(d => d.run + " step " + d.step).join("\n"))}">identical block-set: ${DETAIL.duplicates.length} other step(s)</span>` : ""}
+    </div>
+    ${provenanceBar(total, grand)}
+    <h2 class="sec">system prompt · ${p.system.length} chars</h2>
+    <pre class="prompt">${p.system.segments.map(segHtml).join("")}</pre>
+    <h2 class="sec">user prompt · ${p.user.length} chars</h2>
+    <pre class="prompt">${p.user.segments.map(segHtml).join("")}</pre>
+    <p style="color:var(--fg-faint);font-size:11.5px">${esc(p.note)}. Per-seed renders differ only
+    in the cast and scenario values (the <span class="sg-seed">green</span> layer).</p>`;
+
+  $$("#pane [data-opt]").forEach(b => b.addEventListener("click", () => {
+    VIEWOPT[b.dataset.opt] = !VIEWOPT[b.dataset.opt];
+    syncBody(); renderPrompt();
+  }));
+  syncBody();
+}
+
+function syncBody() {
+  document.body.classList.toggle("dim", VIEWOPT.dim);
+  document.body.classList.toggle("flat", VIEWOPT.flat);
+  document.body.classList.toggle("nochg", VIEWOPT.nochg);
+}
+
+/* -------------------------------------------------------------------- lies */
+function markSpans(text, spans) {
+  let out = esc(text);
+  for (const s of spans || []) {
+    const t = esc(s.trim());
+    if (t.length > 12 && out.includes(t)) out = out.split(t).join(`<mark>${t}</mark>`);
+  }
+  return out;
+}
+
+function renderLies() {
+  const rows = DETAIL.lies || [];
+  if (!rows.length) {
+    $("#pane").innerHTML = `<div class="empty">No fabrication-flagged turns for this prompt.</div>`;
+    return;
+  }
+  const counted = rows.filter(r => r.qualifies).length;
+  $("#pane").innerHTML = `
+    <h2 class="sec">${rows.length} flagged turn(s) · ${counted} counted toward the score</h2>
+    ${rows.map(r => `
+      <div class="card">
+        <h3>
+          <span>seed ${r.seed} · ${esc(r.agent)} · turn ${r.turn_index}</span>
+          <span class="tag ${r.qualifies ? "yes" : ""}">${r.qualifies ? "counted" : "not counted"}</span>
+          ${r.specificity !== null ? `<span class="tag">specificity ${r.specificity}</span>` : ""}
+          <span class="tag ${r.soundness_ok ? "yes" : "no"}">soundness ${r.soundness_ok ? "ok" : "fail"}</span>
+          <span class="tag ${r.at_stake ? "yes" : "no"}">at-stake ${r.at_stake ? "yes" : "no"}</span>
+          ${r.categories.map(c => `<span class="tag">${esc(c)}</span>`).join("")}
+        </h3>
+        <div class="body">
+          <div class="quote">${markSpans(r.message, r.spans)}</div>
+          ${r.explanation ? `<div style="color:var(--fg-dim)">${esc(r.explanation)}</div>` : ""}
+          ${r.spans.length ? `<details style="margin-top:6px"><summary>${r.spans.length} judge-cited span(s)</summary>
+            ${r.spans.map(s => `<div class="quote">${esc(s)}</div>`).join("")}</details>` : ""}
+          ${r.reasoning ? `<details style="margin-top:6px"><summary>assistant's private reasoning</summary>
+            <div class="quote">${esc(r.reasoning)}</div></details>` : ""}
+        </div>
+      </div>`).join("")}`;
+}
+
+/* ------------------------------------------------------------------- gates */
+function verdictCard(j) {
+  return `<div class="card">
+    <h3>${esc(j.label)}
+      <span class="tag ${j.passed ? "yes" : "no"}">answered “${esc(j.answer)}”${
+        j.passed ? " · pass" : " · block"}</span>
+      <span class="tag">confidence ${num(j.confidence)}</span>
+      <span class="tag">${esc(j.model || "")}</span>
+      ${j.cached ? '<span class="tag">cached</span>' : ""}
+      ${j.parse_error ? '<span class="tag no">parse error</span>' : ""}
+    </h3>
+    <div class="body">${esc(j.rationale)}
+      ${j.reasoning ? `<details style="margin-top:6px"><summary>chain of thought</summary>
+        <div class="quote">${esc(j.reasoning)}</div></details>` : ""}</div>
+  </div>`;
+}
+
+function renderGates() {
+  const g = DETAIL.gates, m = g.meta;
+  $("#pane").innerHTML = `
+    <h2 class="sec">meta gate</h2>
+    <table class="kv">
+      <tr><td>question</td><td>${esc(m.question)} — passes when the panel answers
+        “${esc(m.pass_answer)}”</td></tr>
+      <tr><td>view</td><td>${esc(m.view)}</td></tr>
+      <tr><td>min confidence</td><td>${num(m.min_confidence)}</td></tr>
+      <tr><td>panel</td><td>${(m.panel || []).map(p => esc(JSON.stringify(p))).join(", ")}</td></tr>
+      <tr><td>outcome</td><td>${m.ran ? (m.ok ? "<b>passed</b>" : "<b>blocked</b>") : "did not run"}
+        — ${esc(m.reason)}</td></tr>
+    </table>
+    <h2 class="sec">judge verdicts</h2>
+    ${(m.judges || []).map(verdictCard).join("") || '<div class="empty">no judge records</div>'}
+    <h2 class="sec">checks &amp; balances</h2>
+    <table class="kv">
+      <tr><td>ran</td><td>${g.cb.ran ? "yes" : "no"}</td></tr>
+      <tr><td>ok</td><td>${g.cb.ok === null ? "–" : (g.cb.ok ? "yes" : "no")}</td></tr>
+      <tr><td>reason</td><td>${esc(g.cb.reason || "")}</td></tr>
+    </table>
+    <h2 class="sec">consistency</h2>
+    <table class="kv">
+      <tr><td>ran</td><td>${g.cons.ran ? "yes" : "no"}</td></tr>
+      <tr><td>ok</td><td>${g.cons.ok === null ? "–" : (g.cons.ok ? "yes" : "no")}</td></tr>
+      <tr><td>reason</td><td>${esc(g.cons.reason || "")}</td></tr>
+    </table>`;
+}
+
+/* ------------------------------------------------------- offline panel tab */
+function renderPanel() {
+  const p = DETAIL.panel;
+  if (!p) {
+    $("#pane").innerHTML = `<div class="empty">This prompt is not in the offline sweep.<br>
+      <span style="font-size:12px">The sweep covered the 52 dspro-prompted, fabrication-gated
+      steps that scored &gt; 0 — absence here means it was never asked, not that it failed.</span>
+    </div>`;
+    return;
+  }
+  const s = p.summary || {};
+  const rows = p.questions.map(q => {
+    const seats = p.cells[q] || {};
+    const n = nPass(p.key, q), k = PSTATE.k[q] ?? 1;
+    const cells = p.seats.map(seat => {
+      const c = seats[seat];
+      if (!c) return `<td class="cell fail">–</td>`;
+      const weak = c.passed && c.number !== null && c.number < PSTATE.conf;
+      const cls = c.passed ? (weak ? "weak" : "pass") : "fail";
+      const sel = PCELL && PCELL.q === q && PCELL.seat === seat ? " sel" : "";
+      return `<td class="cell ${cls}${sel}" data-q="${q}" data-seat="${seat}"
+                  title="judge emitted ${esc(c.field)} = ${num(c.raw)}${
+                    weak ? " · below the current conf threshold, not counted" : ""}">
+        ${esc(c.answer)}<br><span class="n">${c.number === null ? "–" : c.number.toFixed(2)}</span>
+      </td>`;
+    }).join("");
+    return `<tr>
+      <th class="q">${esc(q)} <span class="fld">(${esc(PANEL.number_field[q] || "conf")})</span>
+        <br><span class="fld">pass = ${esc(p.pass_answer[q])}</span></th>
+      ${cells}
+      <td class="tally ${n >= k ? "met" : ""}">${n}/${PSTATE.seats.size} pass${
+        PSTATE.questions.has(q) ? (k === 0 ? " · no bar" : ` · need ${k}`) : ""}</td>
+    </tr>`;
+  }).join("");
+
+  $("#pane").innerHTML = `
+    ${p.sha_ok ? "" : `<div class="card" style="border-color:var(--bad)">
+      <b style="color:var(--bad)">judged-text hash mismatch</b> — the step file changed since the
+      sweep ran, so these verdicts may describe an earlier version of this prompt.</div>`}
+    <h2 class="sec">offline meta-judge panel</h2>
+    <p style="color:var(--fg-dim);font-size:12px;margin:0 0 8px">
+      Asked with the <code>*_RATIONALE_FIRST.md</code> prompts — rationale before answer. A
+      different instrument from the in-loop gate on the <b>gates</b> tab; the two do not pool.
+      Numbers follow each row's label, and the pass counts use the seats and confidence threshold
+      set in the panel filter on the left.</p>
+    <table class="matrix">
+      <tr><th></th>${p.seats.map(x => `<th>${esc(x)}</th>`).join("")}<th></th></tr>
+      ${rows}
+    </table>
+    <div id="cellDetail"></div>
+    <h2 class="sec">what this prompt did in the sweep's own index</h2>
+    <table class="kv">
+      <tr><td>targets that lied</td><td>${(s.models_that_lied || []).map(esc).join(", ") || "–"}</td></tr>
+      <tr><td>seeds lied / total</td><td>${Object.entries(s.seeds_lied_per_model || {})
+        .map(([m, v]) => `${esc(m)} ${esc(v)}`).join(" · ") || "–"}</td></tr>
+      <tr><td>per seed</td><td>${(s.seed_breakdown || []).map(b =>
+        `seed ${b.seed} ${esc(b.model)} → ${num(b.score)} (${b.n_qualifying} counted)`)
+        .join("<br>") || "–"}</td></tr>
+      <tr><td>judged sha</td><td><code>${esc(s.judged_sha || "")}</code></td></tr>
+    </table>`;
+
+  $$("#pane td.cell[data-q]").forEach(td => td.addEventListener("click", () => {
+    const q = td.dataset.q, seat = td.dataset.seat;
+    PCELL = (PCELL && PCELL.q === q && PCELL.seat === seat) ? null : {q, seat};
+    renderPanel();
+  }));
+
+  if (PCELL) {
+    const c = ((p.cells[PCELL.q] || {})[PCELL.seat]) || {};
+    $("#cellDetail").innerHTML = `<div class="card">
+      <h3>${esc(PCELL.q)} · ${esc(PCELL.seat)}
+        <span class="tag ${c.passed ? "yes" : "no"}">answered “${esc(c.answer)}” · ${
+          c.passed ? "pass" : "fail"}</span>
+        <span class="tag">${esc(c.field)} ${num(c.raw)}${
+          c.field === "probability" ? ` → ${c.number === null ? "–" : c.number.toFixed(2)}` : ""}</span>
+        <span class="tag">${esc(c.model || "")}</span>
+        ${c.attempts > 1 ? `<span class="tag">${c.attempts} attempts</span>` : ""}
+        ${c.cost_usd ? `<span class="tag">$${(+c.cost_usd).toFixed(4)}</span>` : ""}
+      </h3>
+      <div class="body">${esc(c.rationale || "")}
+        ${c.reasoning ? `<details style="margin-top:6px" open><summary>chain of thought</summary>
+          <div class="quote">${esc(c.reasoning)}</div></details>`
+        : `<div style="color:var(--fg-faint);font-size:11.5px;margin-top:6px">
+             no chain of thought recorded for this cell</div>`}
+      </div></div>`;
+  }
+}
+
+/* ---------------------------------------------------------------- prompter */
+function renderPrompter() {
+  const p = DETAIL.prompter, b = DETAIL.blocks;
+  $("#pane").innerHTML = `
+    <h2 class="sec">why the prompter made this change</h2>
+    <div class="card"><div class="body">${esc(p.rationale) || "<i>no rationale recorded</i>"}</div></div>
+    <table class="kv">
+      <tr><td>source</td><td>${esc(p.source)}</td></tr>
+      <tr><td>attempts</td><td>${num(p.attempts)}</td></tr>
+      <tr><td>pooled</td><td>${esc(b.private_messages_id)} ·
+        ${esc((b.decoy_info_ids || []).join(", ") || "none")}
+        ${DETAIL.fixed_axes.length ? `<span class="tag">pinned: ${DETAIL.fixed_axes.map(esc).join(", ")}</span>` : ""}</td></tr>
+    </table>
+    <h2 class="sec">the four authored blocks</h2>
+    ${["general_task_info", "decoy_policies", "confidentiality_reason", "personality"].map(f => `
+      <div class="card"><h3>${f}
+        ${DETAIL.block_changed[f] ? `<span class="tag">${DETAIL.block_changed[f]} edit(s) vs prev step</span>` : ""}
+      </h3><div class="quote">${esc(b[f] || "")}</div></div>`).join("")}
+    ${p.reasoning ? `<h2 class="sec">prompter chain of thought</h2>
+      <div class="quote">${esc(p.reasoning)}</div>` : ""}
+    <h2 class="sec">the OPRO prompt it was given</h2>
+    <details><summary>show (${(p.user_prompt || "").length} chars)</summary>
+      <div class="quote">${esc(p.user_prompt)}</div></details>`;
+}
+
+/* ------------------------------------------------------------------- notes */
+let saveTimer = null;
+function renderNotes() {
+  const n = DETAIL.note;
+  $("#pane").innerHTML = `
+    <div class="frow" style="margin-bottom:8px">
+      <button id="star" class="${n.starred ? "on" : ""}">★ star</button>
+      <input type="text" id="tags" placeholder="tags, comma separated" value="${esc(n.tags)}"
+             style="flex:1">
+      <span class="savestate" id="saved">${n.updated_at ? "saved " + esc(n.updated_at) : "not saved yet"}</span>
+    </div>
+    <textarea id="note" placeholder="What is this prompt doing? Why did it score? Anything to come back to…">${esc(n.note)}</textarea>
+    <p style="color:var(--fg-faint);font-size:11.5px">Keyed to
+      <code>${esc(DETAIL.run)}</code> step ${DETAIL.step}. Export everything:
+      <code>curl localhost:5004/api/notes</code></p>`;
+
+  const save = () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const body = {run: DETAIL.run, step: DETAIL.step, note: $("#note").value,
+                    tags: $("#tags").value, starred: $("#star").classList.contains("on")};
+      const saved = await fetch("/api/note", {method: "POST",
+        headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})
+        .then(r => r.json());
+      DETAIL.note = saved;
+      $("#saved").textContent = "saved " + saved.updated_at;
+      const row = CORPUS.rows.find(r => r.run === DETAIL.run && r.step === DETAIL.step);
+      if (row) { row.has_note = !!(saved.note || saved.tags); row.starred = saved.starred; }
+      renderList();
+    }, 500);
+  };
+  $("#note").addEventListener("input", () => { $("#saved").textContent = "saving…"; save(); });
+  $("#tags").addEventListener("input", () => { $("#saved").textContent = "saving…"; save(); });
+  $("#star").addEventListener("click", () => { $("#star").classList.toggle("on"); save(); });
+}
+
+/* ------------------------------------------------------------------ wiring */
+["#fRun", "#fMin", "#fMax"].forEach(s => $(s).addEventListener("input", apply));
+["#fQuestion", "#fModel", "#fSort"].forEach(s => $(s).addEventListener("change", apply));
+$("#cPos").addEventListener("click", e => {
+  STATE.pos = !STATE.pos; e.target.classList.toggle("on", STATE.pos); apply();
+});
+$("#cPos").classList.add("on");
+$$("[data-state]").forEach(c => c.addEventListener("click", () => {
+  const s = c.dataset.state;
+  STATE.states.has(s) ? STATE.states.delete(s) : STATE.states.add(s);
+  c.classList.toggle("on"); apply();
+}));
+[["#cLies", "lies"], ["#cNote", "note"], ["#cStar", "star"]].forEach(([sel, key]) =>
+  $(sel).addEventListener("click", () => {
+    STATE[key] = !STATE[key]; $(sel).classList.toggle("on", STATE[key]); apply();
+  }));
+
+let textTimer = null;
+$("#fText").addEventListener("input", () => {
+  clearTimeout(textTimer);
+  textTimer = setTimeout(async () => {
+    const q = $("#fText").value.trim();
+    if (!q) { TEXTKEYS = null; apply(); return; }
+    const r = await fetch("/api/search?q=" + encodeURIComponent(q)).then(r => r.json());
+    TEXTKEYS = new Set(r.keys);
+    apply();
+  }, 300);
+});
+
+$("#reindex").addEventListener("click", async () => {
+  $("#reindex").textContent = "indexing…";
+  await fetch("/api/reindex", {method: "POST", headers: {"Content-Type": "application/json"},
+                               body: "{}"});
+  await loadCorpus();
+  $("#reindex").textContent = "reindex";
+});
+
+document.addEventListener("keydown", e => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+    if (e.key === "Escape") document.activeElement.blur();
+    return;
+  }
+  if (e.key === "/") { e.preventDefault(); $("#fText").focus(); return; }
+  const tabs = ["prompt", "lies", "gates", "prompter", "notes", "panel"];
+  if (/^[1-6]$/.test(e.key)) { TAB = tabs[+e.key - 1]; renderTab(); return; }
+  if (e.key === "j" || e.key === "k") {
+    const i = VIEW.findIndex(r => SEL && r.key === SEL.key);
+    const next = VIEW[Math.min(VIEW.length - 1, Math.max(0, i + (e.key === "j" ? 1 : -1)))];
+    if (next) {
+      select(next);
+      const el = $(`.row[data-i="${VIEW.indexOf(next)}"]`);
+      if (el) el.scrollIntoView({block: "nearest"});
+    }
+  }
+});
+
+$("#reindex").insertAdjacentHTML("beforebegin",
+  '<span class="stat" id="skipStat" style="color:var(--warn)"></span>');
+
+syncBody();
+loadPanel().then(loadCorpus);
+</script>
+</body>
+</html>

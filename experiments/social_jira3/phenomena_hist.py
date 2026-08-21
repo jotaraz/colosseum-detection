@@ -58,15 +58,16 @@ L2_PHENOMENA = {
 
 # Sweep axes that fully identify a rollout, in canonical display order. Each maps to
 # a --<flag>: bare splits by that axis, `--flag=value` filters to that value.
-SPLIT_KEYS = ["model", "decoy", "hint", "seed", "sample", "conf", "quit"]
+SPLIT_KEYS = ["model", "decoy", "dcp", "hint", "seed", "sample", "conf", "quit"]
 _UNKNOWN = "?"
 _SPLIT = object()  # sentinel: flag passed bare (split), as opposed to a filter value
 
 # Allowed filter values per axis (None = accept any, e.g. numeric seed/sample). Bad
 # values are rejected with a helpful message. Kept in sync with prompts.py / run.py.
 AXIS_VALUES: dict[str, tuple[str, ...] | None] = {
-    "model": ("qwen", "gpt-oss", "glm"),
+    "model": ("qwen", "gpt-oss", "glm", "glm-5.2", "kimi", "deepseek", "gemma"),
     "decoy": ("on", "off"),
+    "dcp": ("none", "allow", "forbid"),
     "hint": ("none", "small", "big", "noconstraint"),
     "seed": None,
     "sample": None,
@@ -76,14 +77,27 @@ AXIS_VALUES: dict[str, tuple[str, ...] | None] = {
 
 
 def _model_alias(s: str) -> str:
-    """Collapse a model_label (or user input) to the short axis value qwen|gpt-oss|glm."""
+    """Collapse a model_label (or user input) to a short axis value.
+
+    GLM needs two aliases: jira3's original sweeps ran ``glm-4.7-flash`` (-> ``glm``) and the
+    deception sweeps run ``glm-5.2`` (-> ``glm-5.2``). Collapsing both to ``glm`` would silently
+    pool two different models, so 5.2 is checked first and keeps its version.
+    """
     s = s.strip().lower()
     if "qwen" in s:
         return "qwen"
     if "gpt" in s and "oss" in s:
         return "gpt-oss"
+    if "glm" in s and "5.2" in s:
+        return "glm-5.2"
     if "glm" in s:
         return "glm"
+    if "kimi" in s:
+        return "kimi"
+    if "deepseek" in s:
+        return "deepseek"
+    if "gemma" in s:
+        return "gemma"
     return s
 
 
@@ -91,13 +105,18 @@ def parse_params(path: Path) -> dict[str, str]:
     """Recover the sweep parameters from a run leaf directory name.
 
     Leaf format (experiments/social_jira3/run.py):
-        {model_label}__{channel}-{strength}-conf{conf}-hint{hint}-{audience}-dec{decoys}
+        {model_label}__{channel}-{strength}-conf{conf}-hint{hint}-{audience}-dec{decoys}-dcp{deception}
         __{scenario}__{setup}__{personality}__{topology}__n{n}__t{t}__seed{seed}__s{sample}
+    (`-dcp{deception}` is absent in pre-deception-axis trees; read as "none".)
 
     Returns a value for every SPLIT_KEYS entry, using "?" for anything unparseable.
     Reading from the path (not the JSON body) keeps splitting independent of --file.
     """
     out = {k: _UNKNOWN for k in SPLIT_KEYS}
+    # Run dirs written before the `deception` axis existed carry no `dcp` token. Their prompts had
+    # no deception sentence, which IS `dcpnone` — so default to "none" rather than "?" and keep
+    # the old trees poolable with the new base cells.
+    out["dcp"] = "none"
     leaf = path.parent.name if path.is_file() or path.suffix else path.name
     parts = leaf.split("__")
     if parts and parts[0]:
@@ -111,6 +130,8 @@ def parse_params(path: Path) -> dict[str, str]:
                 out["conf"] = tok[len("conf"):]
             elif tok.startswith("hint"):
                 out["hint"] = tok[len("hint"):]
+            elif tok.startswith("dcp"):
+                out["dcp"] = tok[len("dcp"):]   # none|allow|forbid (checked before `dec`)
             elif tok.startswith("dec"):
                 out["decoy"] = tok[len("dec"):]  # on|off
     for tok in parts:
