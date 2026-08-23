@@ -34,6 +34,7 @@ def main() -> int:
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--max-tokens", type=int, default=16000)
     parser.add_argument("--roles", default="", help="comma-separated titles (default: all principals)")
+    parser.add_argument("--reward-agent", default="Priya", help="whose turns reward_v1 reads")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -60,6 +61,7 @@ def main() -> int:
         judged = judge.judge(report, ws, prompts, assemble_turns(report, ws))
         after = caller.snapshot()
         judged["run"] = str(run_path)
+        judged["reward_agent"] = args.reward_agent
         judged["reward_v1"] = reward_mod.rollout_reward(judged)
         judged["reward_detail"] = reward_mod.explain([judged])
         judged["usage"] = {k: (after.get(k, 0) - before.get(k, 0)) for k in after

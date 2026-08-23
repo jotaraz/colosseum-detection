@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from experiments.agent1 import run as agent1_run
-from experiments.agent3.candidate import REWARD_AGENT
+from experiments.agent3.candidate import DEFAULT_OPTIMIZED, DEFAULT_REWARD_AGENT
 from experiments.agent3.judge import CATEGORIES, FABRICATION
 
 logger = logging.getLogger("experiments.agent3.verdict_export")
@@ -38,7 +38,7 @@ def _slug(model: str) -> str:
     return model.replace("/", "-").replace(".", "").replace("-", "") or "judge"
 
 
-def _majority_row(turn: Dict[str, Any]) -> Dict[str, Any]:
+def _majority_row(turn: Dict[str, Any], reward_agent: str) -> Dict[str, Any]:
     maj = turn.get("majority") or {}
     verdicts = maj.get("verdicts") or {}
     findings: List[Dict[str, Any]] = []
@@ -68,7 +68,7 @@ def _majority_row(turn: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "agent": turn["agent"], "turn_index": turn["turn_index"],
         "round": turn.get("round"), "clock": turn.get("clock"),
-        "stake": turn["agent"] == REWARD_AGENT,
+        "stake": turn["agent"] == reward_agent,
         "output": turn.get("output") or "",
         "description": f"{desc}  [votes: {per_call}]",
         "findings": findings,
@@ -86,9 +86,9 @@ def _majority_row(turn: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _vote_row(turn: Dict[str, Any], vote: Dict[str, Any]) -> Dict[str, Any]:
+def _vote_row(turn: Dict[str, Any], vote: Dict[str, Any], reward_agent: str) -> Dict[str, Any]:
     row = dict(vote)
-    row.setdefault("stake", turn["agent"] == REWARD_AGENT)
+    row.setdefault("stake", turn["agent"] == reward_agent)
     row.setdefault("considered", dict(_NOT_RUN))
     row.setdefault("considered_not_asserted", False)
     row.setdefault("round", turn.get("round"))
@@ -136,13 +136,12 @@ _ASKS_CSS = ("margin:.6rem 0 0; max-width:60rem; background:var(--card); border:
 _K_CSS = "color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;"
 
 
-def asks_block(asks: Dict[str, str]) -> str:
-    """The optimizer's output — the two written asks — as a card for the page head."""
+def asks_block(asks: Dict[str, str], optimized: List[str]) -> str:
+    """The optimizer's output — the written asks — as a card for the page head."""
     from experiments.agent1.viewer import esc
-    from experiments.agent3.candidate import OPTIMIZED
 
     parts = [f'<div class="asks" style="{_ASKS_CSS}"><div style="{_K_CSS}">optimizer output · opening asks</div>']
-    for who in OPTIMIZED:
+    for who in optimized:
         parts.append(f'<p style="margin:.35rem 0 0"><b>{esc(who)}\'s prompt:</b> {esc(asks.get(who, ""))}</p>')
     parts.append("</div>")
     return "".join(parts)
@@ -156,11 +155,13 @@ def inject_asks(run_dir: Path) -> bool:
     html_path, asks_path = run_dir / "run.html", run_dir / "candidate.json"
     if not (html_path.exists() and asks_path.exists()):
         return False
-    asks = (json.loads(asks_path.read_text(encoding="utf-8")).get("asks") or {})
+    cand = json.loads(asks_path.read_text(encoding="utf-8"))
+    asks = cand.get("asks") or {}
+    optimized = list(cand.get("optimized") or [k for k in DEFAULT_OPTIMIZED if k in asks] or asks)
     html = html_path.read_text(encoding="utf-8")
     if 'class="asks"' in html:
         return False  # already injected (a re-render would have removed it)
-    card = asks_block(asks)
+    card = asks_block(asks, optimized)
     # Inside `.titles`, after the button bar: the close of `.titles` is the last </div> before the
     # first honesty panel. Without verdicts there is no panel; fall back to just above the stats.
     anchor = html.find('<div class="vset" data-vset="0"><div class="honesty')
@@ -182,9 +183,10 @@ def export(run_dir: Path, judged: Dict[str, Any] | None = None, *, rerender: boo
     short = model.split("/")[-1]
     slug = _slug(model)
     turns = judged.get("turns") or []
+    reward_agent = str(judged.get("reward_agent") or DEFAULT_REWARD_AGENT)
     written: List[Path] = []
 
-    maj_rows = [_majority_row(t) for t in turns]
+    maj_rows = [_majority_row(t, reward_agent) for t in turns]
     path = run_dir / f"run.category2_{judged.get('judge_version')}_{slug}.json"
     path.write_text(json.dumps(_file(judged, maj_rows, judge_label=f"{short} · majority",
                                      replicate=1, run_path=run_path),
@@ -196,7 +198,7 @@ def export(run_dir: Path, judged: Dict[str, Any] | None = None, *, rerender: boo
         for t in turns:
             vote = next((v for v in (t.get("votes") or []) if v.get("replicate") == rep), None)
             if vote is not None:
-                rows.append(_vote_row(t, vote))
+                rows.append(_vote_row(t, vote, reward_agent))
         path = run_dir / f"run.category2_{judged.get('judge_version')}_{slug}_r{rep + 1}.json"
         path.write_text(json.dumps(_file(judged, rows, judge_label=f"{short} · vote {rep + 1}",
                                          replicate=rep + 1, run_path=run_path),

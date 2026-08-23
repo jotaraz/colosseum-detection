@@ -39,11 +39,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
-from experiments.agent1.prompts import TaskAssignPrompts, default_ask
+from experiments.agent1.prompts import TaskAssignPrompts
 from experiments.agent1.workspace import Workspace
 from experiments.agent3 import reward as reward_mod
 from experiments.agent3 import verdict_export
-from experiments.agent3.candidate import FIXED_ASK, OPTIMIZED, REWARD_AGENT, Candidate
+from experiments.agent3.candidate import (DEFAULT_OPTIMIZED, DEFAULT_REWARD_AGENT, Candidate,
+                                          check_roles, fixed_ask_for)
 from experiments.agent3.judge import JUDGE_VERSION, MajorityJudge
 from experiments.agent3.prompter import Attempt, Prompter, ScriptedPrompter
 from experiments.agent3.target_run import RunArtifacts, TargetRunner
@@ -74,7 +75,11 @@ def _usage_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any
 class Loop:
     def __init__(self, *, prompter: Any, runner: TargetRunner, judge: Any, base: Workspace,
                  seeds: Sequence[int], out_dir: Path, repair_attempts: int = 3,
-                 callers: Optional[Dict[str, Any]] = None):
+                 callers: Optional[Dict[str, Any]] = None,
+                 optimized: Sequence[str] = DEFAULT_OPTIMIZED,
+                 reward_agent: str = DEFAULT_REWARD_AGENT):
+        self.optimized = tuple(optimized)
+        self.reward_agent = reward_agent
         self.prompter = prompter
         self.runner = runner
         self.judge = judge
@@ -92,7 +97,8 @@ class Loop:
         began = time.monotonic()
         usage_before = {role: _usage_of(c) for role, c in self.callers.items()}
         self.attempt_no += 1
-        attempt = Attempt(step=self.attempt_no, candidate=Candidate({}))
+        attempt = Attempt(step=self.attempt_no, candidate=Candidate(
+            {}, optimized=self.optimized, reward_agent=self.reward_agent))
 
         try:
             candidate = self.prompter.propose(self.history)
@@ -127,6 +133,8 @@ class Loop:
         for art, judged in zip(ok_arts, judged_all):
             judged["seed"] = art.seed
             judged["run_path"] = art.run_path
+            judged["reward_agent"] = self.reward_agent
+            judged["optimized"] = list(self.optimized)
             attempt.judged.append(judged)
             per_seed.append(reward_mod.rollout_reward(judged))
             if art.run_dir:
@@ -137,7 +145,7 @@ class Loop:
                 except Exception as exc:  # noqa: BLE001 — the page is a convenience, never fatal
                     logger.warning("verdict export failed for %s: %s", art.run_dir, exc)
         attempt.reward = reward_mod.aggregate(per_seed)
-        attempt.reward_detail = reward_mod.explain(attempt.judged)
+        attempt.reward_detail = reward_mod.explain(attempt.judged, self.reward_agent)
         attempt.duration_s = round(time.monotonic() - began, 1)
         attempt.usage = {role: _usage_delta(usage_before.get(role, {}), _usage_of(c))
                          for role, c in self.callers.items()}
@@ -259,8 +267,8 @@ class Loop:
             "fixture": {"path": str(self.runner.fixture_path), "version": self.base.version,
                         "sha": self.base.sha},
             "seeds": self.seeds,
-            "optimized": list(OPTIMIZED), "reward_agent": REWARD_AGENT,
-            "fixed_ask": self.runner.settings.get("ask") or FIXED_ASK,
+            "optimized": list(self.optimized), "reward_agent": self.reward_agent,
+            "fixed_ask": self.runner.settings.get("ask") or fixed_ask_for(self.base),
             "reward": {"name": reward_mod.NAME, "weights": reward_mod.WEIGHTS,
                        "counted_intents": list(reward_mod.COUNTED_INTENTS)},
             "judge_version": JUDGE_VERSION,
@@ -282,6 +290,10 @@ def main() -> None:
     parser.add_argument("--fixture", default=DEFAULT_FIXTURE)
     parser.add_argument("--config", default=None, help="YAML config for the target model")
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--optimize", default=",".join(DEFAULT_OPTIMIZED),
+                        help="comma-separated principals whose asks the prompter writes")
+    parser.add_argument("--reward-agent", default=DEFAULT_REWARD_AGENT,
+                        help="the principal whose turns reward_v1 reads")
     parser.add_argument("--repair-attempts", type=int, default=3)
     parser.add_argument("--parallel-seeds", type=int, default=3)
     parser.add_argument("--prompter-model", default=DEFAULT_PROMPTER)
@@ -311,6 +323,18 @@ def main() -> None:
     seeds = [int(s) for s in str(args.seeds).split(",") if s.strip()]
     base = Workspace.load(args.fixture)
     out_dir = Path(args.out_dir or f"experiments/agent3/outputs/{'offline' if args.offline else 'run'}")
+    optimized = tuple(p.strip() for p in args.optimize.split(",") if p.strip())
+    reward_agent = args.reward_agent.strip()
+    if args.resume and (out_dir / "metadata.json").exists():
+        # A run's roles are part of what its candidates are; a resume continues them, whatever
+        # the flags say, so an old step file and a new one never disagree about who was written.
+        meta = json.loads((out_dir / "metadata.json").read_text(encoding="utf-8"))
+        optimized = tuple(meta.get("optimized") or optimized)
+        reward_agent = str(meta.get("reward_agent") or reward_agent)
+        if args.fixture != meta.get("fixture", {}).get("path", args.fixture):
+            parser.error(f"{out_dir} was run on {meta['fixture']['path']}, not {args.fixture}")
+    if (problems := check_roles(base, optimized, reward_agent)):
+        parser.error("; ".join(problems))
 
     settings: Dict[str, Any] = {}
     make_client = None
@@ -322,7 +346,7 @@ def main() -> None:
         with open(args.config, "r", encoding="utf-8") as fh:
             settings = agent1_run.resolve_settings(yaml.safe_load(fh) or {})
     # The month comes from the fixture's clock, as agent1's own prompts now do; a config `ask` wins.
-    fixed_ask = str(settings.get("ask") or default_ask(base.now.strftime("%B")))
+    fixed_ask = str(settings.get("ask") or fixed_ask_for(base))
 
     callers: Dict[str, Any] = {}
     if args.offline:
@@ -330,12 +354,14 @@ def main() -> None:
 
         from experiments.agent3.smoke import StubJudgeCaller, offline_candidates, offline_scripts
 
-        prompter: Any = ScriptedPrompter(base, offline_candidates(fixed_ask))
-        judge: Any = MajorityJudge(StubJudgeCaller(), workers=1)
-        make_client = lambda _s: (lambda name: ScriptedClient(offline_scripts(name)))  # noqa: E731
+        prompter: Any = ScriptedPrompter(base, offline_candidates(fixed_ask, optimized, reward_agent))
+        judge: Any = MajorityJudge(StubJudgeCaller(reward_agent), workers=1)
+        make_client = lambda _s: (lambda name: ScriptedClient(  # noqa: E731
+            offline_scripts(Workspace.load(args.fixture), name, reward_agent)))
         settings = {"max_rounds": 3, "max_conversation_steps": 8, "turn_jitter": 0,
                     "harness": "full", "confidentiality": "inference",
-                    "discussion_norms": "self_and_others", "calendar_example_day": "2026-09-07"}
+                    "discussion_norms": "self_and_others",
+                    "calendar_example_day": base.now.strftime("%Y-%m-%d")}
     else:
         if not args.config:
             parser.error("--config is required for a live run")
@@ -355,7 +381,8 @@ def main() -> None:
                                          temperature=args.judge_temperature,
                                          provider_routing=routing)
         callers = {"prompter": prompter_caller, "judge": judge_caller}
-        prompter = Prompter(prompter_caller, base, fixed_ask=fixed_ask)
+        prompter = Prompter(prompter_caller, base, fixed_ask=fixed_ask,
+                            optimized=optimized, reward_agent=reward_agent)
         roles = [r for r in args.judge_roles.split(",") if r.strip()] or None
         judge = MajorityJudge(judge_caller, workers=args.judge_workers, roles=roles,
                               retries=args.judge_retries)
@@ -363,7 +390,8 @@ def main() -> None:
     runner = TargetRunner(args.fixture, settings, out_dir / "runs", make_client=make_client,
                           parallel_seeds=args.parallel_seeds)
     loop = Loop(prompter=prompter, runner=runner, judge=judge, base=base, seeds=seeds,
-                out_dir=out_dir, repair_attempts=args.repair_attempts, callers=callers)
+                out_dir=out_dir, repair_attempts=args.repair_attempts, callers=callers,
+                optimized=optimized, reward_agent=reward_agent)
     start_at = 1
     if args.resume:
         start_at = loop.resume() + 1

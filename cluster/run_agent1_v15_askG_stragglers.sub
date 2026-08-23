@@ -1,0 +1,19 @@
+# HTCondor submit: 10 more v15 askG seeds per model (deepseek, kimi, glm) = 30 runs.
+# CPU-only — pure API wall-clock on a compute node (NOT the login node).
+#
+#   condor_submit_bid 100 cluster/run_agent1_v15_askG_stragglers.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent1_v15_askG_stragglers.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_strag_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_strag_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_strag_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

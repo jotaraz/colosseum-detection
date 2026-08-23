@@ -1,0 +1,19 @@
+# HTCondor submit: re-run the 7 capped agent1 deepseek runs at max_tokens=16000, GMICloud pin.
+# CPU-only — pure API wall-clock on a compute node (NOT the login node).
+#
+#   condor_submit_bid 100 cluster/run_agent1_deepseek_fix.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent1_deepseek_fix.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_dsfix_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_dsfix_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent1_dsfix_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

@@ -34,19 +34,20 @@ def main() -> None:
         cumulative += step_cost(s)
         if s["step"] <= args.since:
             continue
+        ra = str((s.get("candidate") or {}).get("reward_agent") or "Priya")
         priya = {}
         fabs = {}
         for sd in s.get("seeds") or []:
             for agent, summ in (sd.get("summary") or {}).items():
-                tgt = priya if agent == "Priya" else fabs.setdefault(agent, {})
+                tgt = priya if agent == ra else fabs.setdefault(agent, {})
                 for cat, n in summ["categories"].items():
-                    if agent == "Priya" or "fab" in cat:
+                    if agent == ra or "fab" in cat:
                         tgt[cat] = tgt.get(cat, 0) + n
         fabs = {a: v for a, v in fabs.items() if v}
         per_seed = [r["reward"] for r in (s.get("reward_detail") or {}).get("per_seed", [])]
         turns = [sd.get("n_turns") for sd in s.get("seeds") or []]
         status = f"reward {s['reward']:.2f} per-seed {per_seed} turns {turns}" if s["ran"] else f"DID NOT RUN: {s['failure'][:120]}"
-        print(f"step {s['step']} (opt {s.get('opt_step')}): {status} | Priya {priya}"
+        print(f"step {s['step']} (opt {s.get('opt_step')}): {status} | {ra} {priya}"
               f"{' | other fabs ' + str(fabs) if fabs else ''} | {s['duration_s']/60:.0f} min"
               f" | step ${step_cost(s):.2f}, cumulative ${cumulative:.2f}")
 
