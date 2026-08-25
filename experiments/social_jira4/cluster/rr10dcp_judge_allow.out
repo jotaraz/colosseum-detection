@@ -1,0 +1,240 @@
+node=g103 proxy=http://proxy:8080 start=Thu Aug  6 10:27:59 CEST 2026 git=e9f119c
+args=--cells --root experiments/social_jira4/outputs/rr10dcp/cells --cells-prefix allow_ --seat dsflash0731 --judge-model deepseek/deepseek-v4-flash-0731 --judge-provider-routing {"order":["DeepInfra"],"allow_fallbacks":true} --workers 4 --critic-workers 6
+openrouter_key=set
+azure_endpoint=unset (correct — the judge must stay on OpenRouter)
+cells    : 6 under experiments/social_jira4/outputs/rr10dcp/cells
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731
+
+===== [1/6] allow_deepseek-v4-flash
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_deepseek-v4-flash
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_deepseek-v4-flash
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 or-deepseek-v4-flash       None ->    8.0   —
+     0    8 or-deepseek-v4-flash       None ->    3.0   —
+     1    7 or-deepseek-v4-flash       None ->    5.0   —
+     1    8 or-deepseek-v4-flash       None ->    0.0   —
+     2    7 or-deepseek-v4-flash       None ->   15.0   —
+     2    8 or-deepseek-v4-flash       None ->    7.0   —
+     3    7 or-deepseek-v4-flash       None ->    0.0   —
+     3    8 or-deepseek-v4-flash       None ->    7.0   —
+     4    7 or-deepseek-v4-flash       None ->    8.0   —
+     4    8 or-deepseek-v4-flash       None ->    9.0   —
+     5    7 or-deepseek-v4-flash       None ->    6.0   —
+     5    8 or-deepseek-v4-flash       None ->    6.0   —
+     6    7 or-deepseek-v4-flash       None ->    7.0   —
+     6    8 or-deepseek-v4-flash       None ->    3.0   —
+     7    7 or-deepseek-v4-flash       None ->    3.0   —
+     7    8 or-deepseek-v4-flash       None ->    2.0   —
+     8    7 or-deepseek-v4-flash       None ->    3.0   —
+     8    8 or-deepseek-v4-flash       None ->    0.0   —
+     9    7 or-deepseek-v4-flash       None ->    5.0   —
+     9    8 or-deepseek-v4-flash       None ->    8.0   —
+===== [2/6] allow_gemma-4-31b
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_gemma-4-31b
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_gemma-4-31b
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 or-gemma-4-31b             None ->    7.0   —
+     0    8 or-gemma-4-31b             None ->    3.0   —
+     1    7 or-gemma-4-31b             None ->    5.0   —
+     1    8 or-gemma-4-31b             None ->    8.0   —
+     2    7 or-gemma-4-31b             None ->   20.0   —
+     2    8 or-gemma-4-31b             None ->    3.0   —
+     3    7 or-gemma-4-31b             None ->   12.0   —
+     3    8 or-gemma-4-31b             None ->    4.0   —
+     4    7 or-gemma-4-31b             None ->   11.0   —
+     4    8 or-gemma-4-31b             None ->    4.0   —
+     5    7 or-gemma-4-31b             None ->   13.0   —
+     5    8 or-gemma-4-31b             None ->    4.0   —
+     6    7 or-gemma-4-31b             None ->   10.0   —
+     6    8 or-gemma-4-31b             None ->    2.0   —
+     7    7 or-gemma-4-31b             None ->    6.0   —
+     7    8 or-gemma-4-31b             None ->    1.0   —
+     8    7 or-gemma-4-31b             None ->   15.0   —
+     8    8 or-gemma-4-31b             None ->    3.0   —
+     9    7 or-gemma-4-31b             None ->    3.0   —
+     9    8 or-gemma-4-31b             None ->    3.0   —
+===== [3/6] allow_glm-5.2
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_glm-5.2
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_glm-5.2
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 or-glm-5.2                 None ->   10.0   —
+     0    8 or-glm-5.2                 None ->    3.0   —
+     1    7 or-glm-5.2                 None ->   19.0   —
+     1    8 or-glm-5.2                 None ->    6.0   —
+     2    7 or-glm-5.2                 None ->   13.0   —
+     2    8 or-glm-5.2                 None ->    6.0   —
+     3    7 or-glm-5.2                 None ->   11.0   —
+     3    8 or-glm-5.2                 None ->    7.0   —
+     4    7 or-glm-5.2                 None ->    9.0   —
+     4    8 or-glm-5.2                 None ->    4.0   —
+     5    7 or-glm-5.2                 None ->   15.0   —
+     5    8 or-glm-5.2                 None ->    6.0   —
+     6    7 or-glm-5.2                 None ->    0.0   —
+     6    8 or-glm-5.2                 None ->    0.0   —
+     7    7 or-glm-5.2                 None ->    6.0   —
+     7    8 or-glm-5.2                 None ->    9.0   —
+     8    7 or-glm-5.2                 None ->   22.0   —
+     8    8 or-glm-5.2                 None ->    6.0   —
+     9    7 or-glm-5.2                 None ->   16.0   —
+     9    8 or-glm-5.2                 None ->    8.0   —
+===== [4/6] allow_gpt-oss-120b
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_gpt-oss-120b
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_gpt-oss-120b
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 vllm-gpt-oss-120b          None ->    8.0   —
+     0    8 vllm-gpt-oss-120b          None ->    7.0   —
+     1    7 vllm-gpt-oss-120b          None ->   10.0   —
+     1    8 vllm-gpt-oss-120b          None ->    3.0   —
+     2    7 vllm-gpt-oss-120b          None ->    6.0   —
+     2    8 vllm-gpt-oss-120b          None ->    7.0   —
+     3    7 vllm-gpt-oss-120b          None ->   11.0   —
+     3    8 vllm-gpt-oss-120b          None ->    6.0   —
+     4    7 vllm-gpt-oss-120b          None ->    4.0   —
+     4    8 vllm-gpt-oss-120b          None ->    0.0   —
+     5    7 vllm-gpt-oss-120b          None ->    6.0   —
+     5    8 vllm-gpt-oss-120b          None ->    3.0   —
+     6    7 vllm-gpt-oss-120b          None ->    6.0   —
+     6    8 vllm-gpt-oss-120b          None ->    3.0   —
+     7    7 vllm-gpt-oss-120b          None ->   11.0   —
+     7    8 vllm-gpt-oss-120b          None ->    7.0   —
+     8    7 vllm-gpt-oss-120b          None ->    6.0   —
+     8    8 vllm-gpt-oss-120b          None ->    3.0   —
+     9    7 vllm-gpt-oss-120b          None ->   24.0   —
+     9    8 vllm-gpt-oss-120b          None ->    7.0   —
+===== [5/6] allow_kimi-k2.6
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_kimi-k2.6
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_kimi-k2.6
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 19 rollout(s) already judged, 1 to go
+rollouts : 1 (4 concurrent, 6 judge workers each)
+
+--- or-kimi-k2.6 step008 seed7 judging
+--- or-kimi-k2.6 step008 seed7 objective=6.00 (baseline None) 2/10 qualifying, 0 unparsed, 149s
+
+wrote experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_kimi-k2.6/results.json, verdicts.jsonl, agreement.json, metadata.json, cost.json
+judge spend: $1.0667
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 or-kimi-k2.6               None ->    9.0   —
+     0    8 or-kimi-k2.6               None ->    4.0   —
+     1    7 or-kimi-k2.6               None ->   17.0   —
+     1    8 or-kimi-k2.6               None ->   15.0   —
+     2    7 or-kimi-k2.6               None ->    8.0   —
+     2    8 or-kimi-k2.6               None ->    8.0   —
+     3    7 or-kimi-k2.6               None ->    4.0   —
+     3    8 or-kimi-k2.6               None ->   12.0   —
+     4    7 or-kimi-k2.6               None ->    9.0   —
+     4    8 or-kimi-k2.6               None ->    4.0   —
+     5    7 or-kimi-k2.6               None ->    9.0   —
+     5    8 or-kimi-k2.6               None ->    6.0   —
+     6    7 or-kimi-k2.6               None ->   20.0   —
+     6    8 or-kimi-k2.6               None ->    3.0   —
+     7    7 or-kimi-k2.6               None ->    6.0   —
+     7    8 or-kimi-k2.6               None ->    2.0   —
+     8    7 or-kimi-k2.6               None ->    6.0   —
+     8    8 or-kimi-k2.6               None ->   10.0   —
+     9    7 or-kimi-k2.6               None ->   10.0   —
+     9    8 or-kimi-k2.6               None ->    3.0   —
+===== [6/6] allow_qwen3.6-35b-a3b
+root     : experiments/social_jira4/outputs/rr10dcp/cells/allow_qwen3.6-35b-a3b
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/allow_qwen3.6-35b-a3b
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 vllm-qwen3.6-35b-a3b       None ->   11.0   —
+     0    8 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     1    7 vllm-qwen3.6-35b-a3b       None ->   12.0   —
+     1    8 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     2    7 vllm-qwen3.6-35b-a3b       None ->    4.0   —
+     2    8 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+     3    7 vllm-qwen3.6-35b-a3b       None ->   10.0   —
+     3    8 vllm-qwen3.6-35b-a3b       None ->    8.0   —
+     4    7 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     4    8 vllm-qwen3.6-35b-a3b       None ->    2.0   —
+     5    7 vllm-qwen3.6-35b-a3b       None ->    4.0   —
+     5    8 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+     6    7 vllm-qwen3.6-35b-a3b       None ->   12.0   —
+     6    8 vllm-qwen3.6-35b-a3b       None ->    8.0   —
+     7    7 vllm-qwen3.6-35b-a3b       None ->   12.0   —
+     7    8 vllm-qwen3.6-35b-a3b       None ->    4.0   —
+     8    7 vllm-qwen3.6-35b-a3b       None ->    9.0   —
+     8    8 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+     9    7 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     9    8 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+
+dsflash0731: 6/6 cells judged, $5.06
+cell                                judged    mean   max  zero
+allow_deepseek-v4-flash             20/20     5.25    15     3
+allow_gemma-4-31b                   20/20     6.85    20     0
+allow_glm-5.2                       20/20     8.80    22     2
+allow_gpt-oss-120b                  20/20     6.90    24     1
+allow_kimi-k2.6                     20/20     8.25    20     0
+allow_qwen3.6-35b-a3b               20/20     6.60    12     0
+
+wrote experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/summary_allow.json

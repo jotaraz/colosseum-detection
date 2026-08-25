@@ -1,0 +1,34 @@
+# HTCondor submit: agent3 on v15 / deepseek, prompter **moonshotai/kimi-k3**, climbing **reward_v4**.
+#
+#   condor_submit_bid 100 cluster/run_agent3_v4_kimi.sub
+#
+# 12 steps x 3 candidates x M=4 = 12 rollouts a step, all in one pool, 4 judge workers each.
+# reward_v4 reads jv9 (CRITIC_LIE2) lie verdicts, deception_power=2 (overt lies doubled to 8/4,
+# not-shown/no-cot unchanged at 2/1) — see reward.py's V4 spec.
+#
+# Warm start is NOT a fresh sweep: it reads the jv9 lie_* files agent2 already wrote (targeted
+# turns only, understates what a full sweep would find — accepted tradeoff, see warm_start.py's
+# load_targeted) for the 9 arms, PLUS run05/run06's own candidates re-judged under jv9
+# (load_prior_run) — the more informative half, since it directly re-scores what the v3
+# campaign already found, including its 5.00 leader.
+#
+# Requires (already pushed): experiments/agent2/CRITIC_LIE2.md, the .lie_jv9_*.json files
+# beside the relevant v15 corpus rollouts and beside run05/run06's own rollouts.
+#
+# Pairs with run_agent3_v4_glm.sub: same world, target, judge, warm data, reward and
+# replicate count. Only the prompter model differs.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh run08 12 4 askA,askG,askK,askL,askM,askP1,askP3,askP4,askP5 v4 4 moonshotai/kimi-k3 1 run05,run06"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run08_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run08_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run08_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+
+queue 1

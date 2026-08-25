@@ -174,6 +174,15 @@ def inject_asks(run_dir: Path) -> bool:
     return True
 
 
+def _rerender(run_path: Path) -> None:
+    """Rebuild the run page so the freshly written verdicts appear in its picker."""
+    try:
+        from experiments.agent1 import run as agent1_run
+        agent1_run.write_viewer(json.loads(run_path.read_text(encoding="utf-8")), run_path)
+    except Exception:  # noqa: BLE001 — the page is a convenience, the records are the artefact
+        pass
+
+
 def export(run_dir: Path, judged: Dict[str, Any] | None = None, *, rerender: bool = True) -> List[Path]:
     run_dir = Path(run_dir)
     run_path = run_dir / "run.json"
@@ -185,6 +194,26 @@ def export(run_dir: Path, judged: Dict[str, Any] | None = None, *, rerender: boo
     turns = judged.get("turns") or []
     reward_agent = str(judged.get("reward_agent") or DEFAULT_REWARD_AGENT)
     written: List[Path] = []
+
+    # A jv8 record has `lies`, not `majority`, and the viewer dispatches on the verdict's shape.
+    # Writing the raw lie votes under the name the viewer globs is the whole job: no row
+    # rewriting, because `lie_over_agent1.judge_turn` already emits what `render_verdict_lie`
+    # reads. The `sweep_` prefix matches the arm-sweep files so one glob finds both.
+    if str(judged.get("judge_version") or "").startswith(("jv8", "jv9")):
+        for rep in range(int(judged.get("replicates") or 3)):
+            rows = [v for t in turns for v in (t.get("votes") or [])
+                    if v.get("replicate") == rep]
+            suffix = "" if rep == 0 else f"_r{rep + 1}"
+            path = run_dir / f"run.sweep_{judged.get('judge_version')}_{slug}{suffix}.json"
+            path.write_text(json.dumps({
+                "judge_version": judged.get("judge_version"), "judge_model": model,
+                "judge": f"{short} · vote {rep + 1}", "replicate": rep + 1,
+                "reward_agent": reward_agent, "reward": judged.get("reward"),
+                "turns": rows}, indent=1, ensure_ascii=False, default=str), encoding="utf-8")
+            written.append(path)
+        if rerender:
+            _rerender(run_path)
+        return written
 
     maj_rows = [_majority_row(t, reward_agent) for t in turns]
     path = run_dir / f"run.category2_{judged.get('judge_version')}_{slug}.json"

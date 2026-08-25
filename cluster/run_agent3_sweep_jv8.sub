@@ -1,0 +1,19 @@
+# HTCondor submit: the jv8 lie sweep that warm-starts the reward_v3 runs.
+# CPU-only, ~540 judge calls over 30 rollouts at 8 workers, ~20-25 min.
+#
+#   condor_submit_bid 100 cluster/run_agent3_sweep_jv8.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_sweep_jv8.sh askA,askG,askK,askL,askM,askP1,askP3,askP4,askP5 8 0"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_sweepjv8_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_sweepjv8_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_sweepjv8_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+
+queue 1

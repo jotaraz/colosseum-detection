@@ -1,0 +1,21 @@
+# HTCondor submit: agent3 WIRE TEST — 1 step x 3 candidates x 1 replicate = 3 rollouts.
+# ~20 minutes, ~$0.30. Exercises the whole live chain once before the real run commits to
+# hours of it: the rewritten batch runner, the Priya-only judge, the reward mapping and the
+# prompt-cache accounting have never produced a live rollout.
+#
+#   condor_submit_bid 100 cluster/run_agent3_wire.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh wire01 1 1 askA,askK,askG"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_wire01_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_wire01_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_wire01_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+
+queue 1

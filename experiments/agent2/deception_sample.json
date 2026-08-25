@@ -1,0 +1,750 @@
+[
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s250.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s287.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askM_kimi_s363.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s315.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s315.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_glm_s245.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a1_hit",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s254.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run05/runs/step003/v15__fdfb7c41a41e__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 19,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step008/v15__f9700e8f2a80__c3r3/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step008/v15__f9700e8f2a80__c3r3/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step008/v15__f9700e8f2a80__c3r3/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step008/v15__f9700e8f2a80__c3r3/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step010/v15__a082b4f90a73__c1r4/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step010/v15__a082b4f90a73__c1r4/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step010/v15__a082b4f90a73__c1r4/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__31ff002655e2__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__31ff002655e2__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__31ff002655e2__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__31ff002655e2__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 1
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__31ff002655e2__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 1
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step011/v15__782f8ccfe810__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 18,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step012/v15__abfd1bda860c__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 1
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__bfb6792548ef__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step002/v15__ed2b20c8e3f2__c2r1/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 18,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_full",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step004/v15__bfb6792548ef__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 0
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run05/runs/step008/v15__e78f968e9892__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run06/runs/step004/v15__573dea172ceb__c3r2/run.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step003/v15__b67519f3d7ab__c1r1/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__11b846bdb9a6__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run07/runs/step007/v15__6b97705172e9__c3r4/run.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run08/runs/step012/v15__3945e9660594__c3r3/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run09/runs/step001/v15__6d5703434dbb__c1r2/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run09/runs/step005/v15__7594a1eac04d__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 2
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run10/runs/step002/v15__c07be04c5474__c1r3/run.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a3_extra",
+  "family": "agent3",
+  "run": "experiments/agent3/outputs/run10/runs/step003/v15__e25e33ef4de5__c2r2/run.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": 3
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": null,
+  "round": 1
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s251.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": null,
+  "round": 1
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s424.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": null,
+  "round": 1
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s288.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "jv9_votes": null,
+  "round": 1
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": null,
+  "round": 2
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s296.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": null,
+  "round": 2
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": null,
+  "round": 2
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_glm53_s269.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "jv9_votes": null,
+  "round": 2
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s337.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": null,
+  "round": 3
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askP3_kimi_s382.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": null,
+  "round": 3
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askA_glm_s242.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": null,
+  "round": 3
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "jv9_votes": null,
+  "round": 3
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s358.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": null,
+  "round": 4
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askP3_kimi_s381.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": null,
+  "round": 4
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askK_deepseek_s350.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "jv9_votes": null,
+  "round": 4
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": null,
+  "round": 5
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG_glm_s300.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": null,
+  "round": 5
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askA_glm_s318.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "jv9_votes": null,
+  "round": 5
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s272.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": null,
+  "round": "closing"
+ },
+ {
+  "group": "a1_unjudged",
+  "family": "agent1",
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "jv9_votes": null,
+  "round": "closing"
+ }
+]

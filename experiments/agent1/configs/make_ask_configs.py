@@ -25,11 +25,13 @@ from typing import Dict
 
 try:
     from experiments.agent1.prompts import (
-        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, ask_arm_set, ask_arms)
+        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, _TICKET_COUPLED, ask_arm_set,
+        ask_arms)
 except ImportError:  # run as a plain script rather than `python -m`
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from experiments.agent1.prompts import (
-        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, ask_arm_set, ask_arms)
+        ASK_ARM_SET_NAMES, ASK_ARM_SETS, ASK_ARMS, _TICKET_COUPLED, ask_arm_set,
+        ask_arms)
 
 #: Per fixture: which sprint the ask names, who sits in the fourth seat, and who the
 #: challenger arms (askG2/askG3) address.
@@ -39,14 +41,27 @@ except ImportError:  # run as a plain script rather than `python -m`
 #: askG2/askG3 config for v17 that still named Tomas would be an override for a non-principal:
 #: never looked up, silently inert, and recorded in the run record as though the arm had run.
 #: `TaskAssignPrompts` now raises on that, and this table is what keeps it from arising.
+#:
+#: v18 splits the two apart for the first time. It moves the grievance off Marcus and onto
+#: Tomas, so Tomas keeps the fourth seat but can no longer be the challenger: the challenger
+#: exists to push back on the group, and pointing it at the person both data scientists are
+#: privately refusing would fold the antagonist and the sceptic into one man and confound
+#: every arm that uses him. It moves to Marcus, who on v18 is the colleague nobody minds.
+#: The four pair arms whose clause presupposes the product manager (askJ, askK, askN, askP3)
+#: therefore do NOT render on v18 — `ask_arm_set` raises rather than emit them.
 FIXTURES: Dict[str, Dict[str, str]] = {
     "v17": {"sprint": "September", "fourth": "Rafael", "challenger": "Rafael"},
+    "v18": {"sprint": "August", "fourth": "Tomas", "challenger": "Marcus",
+            "avoid": "Tomas"},
 }
-DEFAULT_FIXTURE = {"sprint": "August", "fourth": "Tomas", "challenger": "Tomas"}
+DEFAULT_FIXTURE = {"sprint": "August", "fourth": "Tomas", "challenger": "Tomas",
+                   "avoid": "Marcus"}
 
 
 def fixture_spec(fixture: str) -> Dict[str, str]:
-    return FIXTURES.get(fixture, DEFAULT_FIXTURE)
+    """Per-key fallback, not wholesale: an entry overrides only what it names, so adding a
+    field here cannot silently break a fixture whose entry predates it."""
+    return {**DEFAULT_FIXTURE, **FIXTURES.get(fixture, {})}
 
 
 def principals_for(fixture: str) -> tuple:
@@ -61,9 +76,16 @@ PRINCIPALS = principals_for("v16")
 def overrides_for(arm: str, fixture: str = "v16") -> Dict[str, str]:
     """An arm is either one principal's ask (`ASK_ARMS`) or several (`ASK_ARM_SETS`)."""
     spec = fixture_spec(fixture)
+    avoid = spec["avoid"]
+    if (why := _TICKET_COUPLED.get(arm)) and avoid != DEFAULT_FIXTURE["avoid"]:
+        raise ValueError(
+            f"{arm} cannot be rendered for a fixture whose mandate avoids {avoid!r}: {why}. "
+            f"Re-target the sentence and give the result a name of its own rather than "
+            f"rendering this one."
+        )
     if arm in ASK_ARM_SET_NAMES:
-        return ask_arm_set(arm, spec["sprint"], spec["challenger"])
-    return {"Nadia": ask_arms(spec["sprint"])[arm]}
+        return ask_arm_set(arm, spec["sprint"], spec["challenger"], avoid=avoid)
+    return {"Nadia": ask_arms(spec["sprint"], avoid)[arm]}
 
 HERE = Path(__file__).resolve().parent
 

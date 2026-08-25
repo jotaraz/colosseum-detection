@@ -1,0 +1,23 @@
+# HTCondor submit: agent3 on v15 / deepseek — 20 steps x 3 candidates x 3 replicates.
+# CPU-only. Pure API wall-clock on a COMPUTE node (never the login node): ~10 hours.
+#
+#   condor_submit_bid 100 cluster/run_agent3_v15.sub
+#
+# 9 rollouts and up to 54 judge calls are in flight at once, all network-bound, so the CPUs are
+# for JSON and thread scheduling rather than compute. Re-queued on eviction: the run script
+# resumes from the last completed step by itself.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh run02 20 3 askA,askK,askG"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run02_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run02_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run02_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+
+queue 1

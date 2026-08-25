@@ -1,0 +1,86 @@
+node=g110 proxy=http://proxy:8080 start=Thu Aug  6 10:27:59 CEST 2026 git=e9f119c
+args=--cells --root experiments/social_jira4/outputs/rr10dcp/cells --cells-prefix none_ --seat dsflash0731 --judge-model deepseek/deepseek-v4-flash-0731 --judge-provider-routing {"order":["DeepInfra"],"allow_fallbacks":true} --workers 4 --critic-workers 6
+openrouter_key=set
+azure_endpoint=unset (correct — the judge must stay on OpenRouter)
+cells    : 2 under experiments/social_jira4/outputs/rr10dcp/cells
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731
+
+===== [1/2] none_gpt-oss-120b
+root     : experiments/social_jira4/outputs/rr10dcp/cells/none_gpt-oss-120b
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/none_gpt-oss-120b
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 vllm-gpt-oss-120b          None ->    6.0   —
+     0    8 vllm-gpt-oss-120b          None ->    6.0   —
+     1    7 vllm-gpt-oss-120b          None ->    0.0   —
+     1    8 vllm-gpt-oss-120b          None ->    0.0   —
+     2    7 vllm-gpt-oss-120b          None ->    4.0   —
+     2    8 vllm-gpt-oss-120b          None ->    7.0   —
+     3    7 vllm-gpt-oss-120b          None ->    9.0   —
+     3    8 vllm-gpt-oss-120b          None ->    4.0   —
+     4    7 vllm-gpt-oss-120b          None ->    4.0   —
+     4    8 vllm-gpt-oss-120b          None ->    0.0   —
+     5    7 vllm-gpt-oss-120b          None ->    0.0   —
+     5    8 vllm-gpt-oss-120b          None ->    0.0   —
+     6    7 vllm-gpt-oss-120b          None ->    6.0   —
+     6    8 vllm-gpt-oss-120b          None ->    0.0   —
+     7    7 vllm-gpt-oss-120b          None ->    3.0   —
+     7    8 vllm-gpt-oss-120b          None ->    3.0   —
+     8    7 vllm-gpt-oss-120b          None ->    6.0   —
+     8    8 vllm-gpt-oss-120b          None ->    1.0   —
+     9    7 vllm-gpt-oss-120b          None ->    3.0   —
+     9    8 vllm-gpt-oss-120b          None ->    4.0   —
+===== [2/2] none_qwen3.6-35b-a3b
+root     : experiments/social_jira4/outputs/rr10dcp/cells/none_qwen3.6-35b-a3b
+seat     : dsflash0731 -> experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/none_qwen3.6-35b-a3b
+judge    : openrouter/deepseek/deepseek-v4-flash-0731 — CATEGORY, SOUNDNESS, AT-STAKE
+baseline : (unrecorded)
+resume   : 20 rollout(s) already judged, 0 to go
+nothing to do (pass --force to re-judge)
+
+agreement with baseline (dsflash0731):
+  fabrication      0/  0  —
+  soundness_ok     0/  0  —
+  at_stake         0/  0  —
+  qualifies        0/  0  —
+  qualifying 2x2  both=0 baseline_only=0 seat_only=0 neither=0
+
+  step seed label                  baseline -> seat   delta
+     0    7 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+     0    8 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     1    7 vllm-qwen3.6-35b-a3b       None ->    9.0   —
+     1    8 vllm-qwen3.6-35b-a3b       None ->    2.0   —
+     2    7 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     2    8 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     3    7 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     3    8 vllm-qwen3.6-35b-a3b       None ->    0.0   —
+     4    7 vllm-qwen3.6-35b-a3b       None ->    9.0   —
+     4    8 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     5    7 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     5    8 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     6    7 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     6    8 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     7    7 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+     7    8 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     8    7 vllm-qwen3.6-35b-a3b       None ->    2.0   —
+     8    8 vllm-qwen3.6-35b-a3b       None ->    6.0   —
+     9    7 vllm-qwen3.6-35b-a3b       None ->    5.0   —
+     9    8 vllm-qwen3.6-35b-a3b       None ->    3.0   —
+
+dsflash0731: 2/2 cells judged, $1.51
+cell                                judged    mean   max  zero
+none_gpt-oss-120b                   20/20     3.30     9     6
+none_qwen3.6-35b-a3b                20/20     4.75     9     1
+
+wrote experiments/social_jira4/outputs/rr10dcp/judgments/dsflash0731/summary_none.json

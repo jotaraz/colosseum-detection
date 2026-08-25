@@ -1,0 +1,19 @@
+# HTCondor submit: jv10 + jv11 deception judges, both OpenRouter models, 2 replicates each.
+# CPU-only — pure API wall-clock. One driver at a time, 12 concurrent calls.
+#
+#   condor_submit_bid 100 cluster/run_deception_or.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_deception_or.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_or_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_or_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_or_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+
+queue 1

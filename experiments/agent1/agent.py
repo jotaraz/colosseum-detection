@@ -204,6 +204,24 @@ def install_stream(client: Any) -> Any:
                     client._stream = context
                 owner._turn_salvages = spent + 1
             else:
+                # Accepting a dud as the end of the turn still has to drop it from the stream.
+                # A message carrying neither content nor tool calls is not a valid *history*
+                # entry: on the NEXT turn the provider rejects the whole request with HTTP 400
+                # "Invalid assistant message: content or tool_calls must be set" (seen on
+                # GMICloud; DeepSeek's own API is the same), and that is unrecoverable — the dud
+                # stays in the context, 400 is not in the retryable set, and retrying would
+                # resend the same bad history. The rollout dies a turn after the empty reply,
+                # which is why the failure never looks like it came from one.
+                #
+                # The retry path above already pops it; this is the same pop for the path that
+                # gives up. Nothing is lost — the message has no content and made no call, and
+                # the turn's recorded text comes from the response, not from the stream.
+                # Guarded on identity, so a client that appends differently loses nothing real.
+                if (context and context[-1] is reply
+                        and not (reply.get("tool_calls") or [])
+                        and not str(reply.get("content") or "").strip()):
+                    context.pop()
+                    client._stream = context
                 owner._env_state_committed = True
         return executed, context, step_tools
 
@@ -248,6 +266,14 @@ def install_step_capture(
                 "agent": agent_name, "step": step,
                 "reasoning": thought or "", "text": text or "",
                 "cost": float(usage.get("cost") or 0.0),
+                # Prompt-cache hit for this call. OpenRouter reports it under
+                # `usage.prompt_tokens_details.cached_tokens` whenever the upstream prefix-caches
+                # (measured 2026-08-23: GMICloud, DeepInfra, Together and StreamLake all do on a
+                # growing conversation; Baidu does not). Recorded because caching is otherwise
+                # invisible — nothing in the request asks for it and nothing in the record showed
+                # whether it happened, so a provider that silently stopped caching would only turn
+                # up as a bigger bill.
+                "cached_tokens": int((usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0),
                 # Provenance for the step, without which a routing-caused failure cannot be
                 # diagnosed after the fact — you cannot tell a model that emitted no call from
                 # an upstream that dropped one, or a considered stop from a `length` cut-off.

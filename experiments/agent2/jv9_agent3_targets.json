@@ -1,0 +1,362 @@
+[
+  {
+    "run": "agent3/outputs/run05/runs/step001/v15__75a9b25dc953__c2r3/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c2r3",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step001/v15__a71b859b56fc__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step002/v15__9deb3c389480__c3r2/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c3r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step002/v15__aeb612428a6c__c1r3/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c1r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step002/v15__e2297fc8cfa3__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step003/v15__1c5ad5a5c425__c1r2/run.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "deepseek",
+    "ask": "c1r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step003/v15__2837fbe56db4__c2r1/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c2r1",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step003/v15__fdfb7c41a41e__c3r4/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c3r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__7422a3bffe9f__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__7422a3bffe9f__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__bfb6792548ef__c2r1/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c2r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__bfb6792548ef__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__bfb6792548ef__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__bfb6792548ef__c2r3/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c2r3",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step004/v15__bfb6792548ef__c2r4/run.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "c2r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step006/v15__f745c14cc23c__c1r3/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step007/v15__6e7ab42133f1__c3r3/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c3r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step007/v15__bfb6792548ef__c1r1/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step007/v15__bfb6792548ef__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step008/v15__792ba8e7b52d__c1r2/run.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "c1r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run05/runs/step008/v15__e78f968e9892__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step001/v15__ab58036eb1c4__c2r4/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c2r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step002/v15__2d167bae7f29__c3r4/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c3r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step002/v15__c56c3c9b462c__c2r3/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c2r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step002/v15__fa20440d857b__c1r1/run.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "deepseek",
+    "ask": "c1r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step003/v15__484bd4d23c58__c3r1/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c3r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step003/v15__484bd4d23c58__c3r3/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c3r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step003/v15__55b2ac6fb9e0__c2r1/run.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "deepseek",
+    "ask": "c2r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step003/v15__55b2ac6fb9e0__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__573dea172ceb__c3r2/run.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "deepseek",
+    "ask": "c3r2",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__7989362d8f7a__c1r3/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r3",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__7989362d8f7a__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__d8c04c6eb884__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__d8c04c6eb884__c2r2/run.json",
+    "agent": "Priya",
+    "turn_index": 15,
+    "model": "deepseek",
+    "ask": "c2r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step004/v15__d8c04c6eb884__c2r4/run.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "c2r4",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step005/v15__896451c47c71__c3r1/run.json",
+    "agent": "Priya",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "c3r1",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step005/v15__efedf10dbdba__c1r2/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c1r2",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step007/v15__d8c04c6eb884__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step009/v15__7989362d8f7a__c1r3/run.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "deepseek",
+    "ask": "c1r3",
+    "n_replicates_hardfab_purposeful": 2,
+    "source": "agent3-sweep-jv8-maj3"
+  },
+  {
+    "run": "agent3/outputs/run06/runs/step009/v15__7989362d8f7a__c1r4/run.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "c1r4",
+    "n_replicates_hardfab_purposeful": 3,
+    "source": "agent3-sweep-jv8-maj3"
+  }
+]

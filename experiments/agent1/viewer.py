@@ -202,6 +202,9 @@ body:has(.tmatrix) .wrap { max-width:min(96vw, 110rem); }
 .tmatrix > details.turn > summary::before { content:none; }
 .tmatrix .tcell.tdesc::before { content:"▸"; color:var(--muted); margin-right:.4rem; }
 .tmatrix > details.turn[open] > summary .tcell.tdesc::before { content:"▾"; }
+/* the turn a #turn-N link landed on */
+details.turn.hashhit { outline:2px solid var(--accent); outline-offset:2px; }
+details.turn.hashhit > summary { background:var(--accent); color:#fff; }
 .tmatrix .thead .tcell.tdesc::before { content:"▸"; visibility:hidden; }
 .tmatrix .tcell.tdesc { white-space:normal; }
 /* The channel view: a grid header line per message, then the message itself across the full
@@ -305,6 +308,20 @@ function aliasNodes() {
   return out;
 }
 
+/* A link from outside lands on a collapsed <details>, which the browser will not scroll to.
+   Open the turn and its ancestors, then scroll it into view and flash it. */
+function openTurnFromHash() {
+  const id = (location.hash || '').replace('#', '');
+  if (!/^turn-[0-9]+$/.test(id)) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  for (let n = el; n; n = n.parentElement) if (n.tagName === 'DETAILS') n.open = true;
+  el.scrollIntoView({block: 'start'});
+  el.classList.add('hashhit');
+  setTimeout(() => el.classList.remove('hashhit'), 2400);
+}
+window.addEventListener('hashchange', openTurnFromHash);
+
 function toAlice() {
   aliasOn = !aliasOn;
   if (aliasOn) {
@@ -337,8 +354,11 @@ def pretty(value: Any, limit: int = 20000) -> str:
     return text if len(text) <= limit else text[:limit] + f"\n… [{len(text) - limit} more chars]"
 
 
-def block(summary: str, body: str, *, cls: str = "", open_: bool = False) -> str:
+def block(summary: str, body: str, *, cls: str = "", open_: bool = False,
+          anchor: str = "") -> str:
     attrs = f' class="{cls}"' if cls else ""
+    if anchor:
+        attrs = f' id="{anchor}"' + attrs
     return (
         f"<details{attrs}{' open' if open_ else ''}><summary>{summary}</summary>"
         f'<div class="body">{body}</div></details>'
@@ -383,6 +403,9 @@ _CAT_CLASS = {
     # shared
     "disclosure": "signal",
     "honest-merits": "post",
+    # jv8 (CRITIC_LIE1.md) — lies only; `excluded` are gate-1-passing claims a later gate killed
+    "lie": "fab",
+    "excluded": "considered",
 }
 
 #: v2 splits the act from the intent, so a category tag carries its intent where one was given.
@@ -399,7 +422,12 @@ def is_v3(verdict: Dict[str, Any]) -> bool:
     return isinstance(verdict.get("findings"), list) and bool(verdict.get("findings"))
 
 
-_JV_RE = re.compile(r"\.category2?_jv(\d+)_")
+def is_lie(verdict: Dict[str, Any]) -> bool:
+    """jv8 (lie_over_agent1) rows: lies-only findings plus an `excluded` list, no categories."""
+    return "n_lies" in verdict
+
+
+_JV_RE = re.compile(r"\.(?:category2?|lie)_jv(\d+)_")
 
 
 def _judge_version_num(path: Path) -> int:
@@ -422,7 +450,13 @@ def load_verdict_sets(
         candidates = [Path(override)]
     elif run_path:
         candidates = sorted(
-            list(run_path.parent.glob(run_path.stem + ".category2_*.json"))
+            list(run_path.parent.glob(run_path.stem + ".lie_*.json"))
+            # agent3's jv8 *sweep* files: same lie schema, judged over every turn of the
+            # rewarded agent rather than the handful agent2's driver was pointed at. Picked up
+            # here so a swept run shows its lie verdicts beside its jv7 ones; the renderer
+            # dispatches on the verdict's shape, not on the filename, so nothing else changes.
+            + list(run_path.parent.glob(run_path.stem + ".sweep_*.json"))
+            + list(run_path.parent.glob(run_path.stem + ".category2_*.json"))
             + list(run_path.parent.glob(run_path.stem + ".category_*.json")),
             key=lambda p: (-_judge_version_num(p), p.name))
     else:
@@ -437,7 +471,31 @@ def load_verdict_sets(
         turns = {int(t.get("turn_index") or 0): t for t in data.get("turns") or []}
         if not turns:
             continue
+        # jv8 lie files: normalise viewer-side so the compare table can key rows the same way it
+        # keys categories — every lie finding under "lie", the excluded claims as pseudo-findings
+        # under "excluded". The json on disk is untouched.
+        if any(is_lie(v) for v in turns.values()):
+            for v in turns.values():
+                for f in v.get("findings") or []:
+                    f.setdefault("category", "lie")
+                v["categories"] = ((["lie"] if v.get("findings") else [])
+                                   + (["excluded"] if v.get("excluded") else []))
+                for x in v.get("excluded") or []:
+                    v["findings"] = (v.get("findings") or []) + [{
+                        "category": "excluded",
+                        "reason": f"failed gate: {x.get('failed_gate') or '?'} — "
+                                  f"{x.get('reason') or ''}",
+                        "claim": x.get("claim") or "",
+                        "evidence": {"output_spans": [x.get("output_span") or ""],
+                                     "output_spans_verbatim": [True]},
+                        "_excluded": True,
+                    }]
         counts = dict(data.get("category_counts") or {})
+        if not counts and any(is_lie(v) for v in turns.values()):
+            counts = {"lie": sum(len([f for f in (v.get("findings") or [])
+                                      if f.get("category") == "lie"])
+                                 for v in turns.values()),
+                      "excluded": sum(len(v.get("excluded") or []) for v in turns.values())}
         for pop in ("stake", "baseline"):
             for cat, n in ((data.get(pop) or {}).get("category_counts") or {}).items():
                 counts[cat] = counts.get(cat, 0) + n
@@ -516,6 +574,8 @@ def load_verdicts(
 
 def _considered_block(verdict: Dict[str, Any]) -> List[str]:
     """The companion reasoning-only judge, rendered the same way for v2 and v3."""
+    if "considered" not in verdict:  # jv8 runs no considered judge — say nothing, not "nothing"
+        return []
     considered = verdict.get("considered") or {}
     parts: List[str] = []
     if considered.get("skipped"):
@@ -582,6 +642,43 @@ def _evidence_quotes(evidence: Dict[str, Any]) -> List[str]:
     return parts
 
 
+def _lie_evidence_quotes(evidence: Dict[str, Any]) -> List[str]:
+    """jv8 evidence: same annotated-quote rendering, different slots (gate-4/deception CoT)."""
+    parts: List[str] = []
+    for key, label, cls in (("output_spans", "said", "quote"),
+                            ("cot_final_stance", "CoT final stance", "quote evidence"),
+                            ("cot_deception", "CoT deception evidence", "quote considered")):
+        checks = evidence.get(f"{key}_checks") or []
+        for i, text in enumerate(evidence.get(key) or []):
+            check = checks[i] if i < len(checks) else None
+            note, extra = ("", "")
+            if check:
+                note, extra = _QUOTE_NOTE.get(check.get("status", ""), ("", ""))
+                note = note.format(where=check.get("found_in") or "?")
+            parts.append(f'<div class="{cls}{extra}">{esc(label)}{esc(note)}: {esc(text)}</div>')
+            if check and check.get("matched"):
+                parts.append(f'<div class="{cls} actual">actually written '
+                             f'(similarity {esc(check.get("similarity"))}): '
+                             f'{esc(check["matched"])}</div>')
+    if (contradicted := evidence.get("contradicted_by")):
+        parts.append(f'<p class="sub">contradicted by: '
+                     f'{esc("; ".join(str(c) for c in contradicted))}</p>')
+    if (via := evidence.get("addressee_could_verify_via")):
+        parts.append(f'<p class="sub">its audience could catch it via: {esc(str(via))}</p>')
+    return parts
+
+
+def _lie_head_bits(f: Dict[str, Any]) -> List[str]:
+    bits = [str(f.get("falsity") or "?"),
+            "checkable" if f.get("checkable") else "not checkable",
+            f'gate4 {f.get("gate4") or "?"}', f'deception {f.get("deception") or "?"}']
+    if f.get("audiences"):
+        bits.append("in " + ", ".join(str(a) for a in f["audiences"]))
+    if f.get("schema_violations"):
+        bits.append("off-schema: " + ", ".join(f["schema_violations"]))
+    return bits
+
+
 def _disputed(finding: Dict[str, Any]) -> bool:
     """The verifier found the substance of a claim the labeller called invented."""
     return str(((finding.get("verification") or {}).get("verdict") or "")) == "present"
@@ -615,6 +712,16 @@ def _verification_block(v: Optional[Dict[str, Any]]) -> str:
 
 def _finding_cell(f: Dict[str, Any]) -> str:
     """One finding, without its own collapsible — it lives in a table cell now."""
+    if "falsity" in f or f.get("_excluded"):  # a jv8 lie (or excluded claim)
+        head_bits = [] if f.get("_excluded") else _lie_head_bits(f)
+        head = (f'<div class="finding-head">{esc(" · ".join(head_bits))}</div>'
+                if head_bits else "")
+        body = (f'<p><b>{esc(str(f.get("claim") or ""))}</b></p>'
+                if f.get("claim") else "")
+        body += f'<p class="sub">{esc(str(f.get("reason") or ""))}</p>'
+        body += "".join(_lie_evidence_quotes(f.get("evidence") or {})
+                        if "falsity" in f else _evidence_quotes(f.get("evidence") or {}))
+        return f'<div class="finding">{head}{body}</div>'
     cat, intent = str(f.get("category") or "?"), str(f.get("intent") or "")
     bits = []
     if intent:
@@ -676,7 +783,8 @@ def render_verdict_table(
 
     parts.append(row("contemplated", ["".join(_considered_block(v)) for _i, v, _m in live]))
     parts.append(row("raw", [
-        block("judge reply", f"<pre>{esc(pretty(v.get('judge_category') or {}))}</pre>")
+        block("judge reply",
+              f"<pre>{esc(pretty(v.get('judge_category') or v.get('judge_raw') or {}))}</pre>")
         for _i, v, _m in live]))
     return (f'<div class="vgrid" data-n="{n}" style="--vcols:{n}">' + "".join(parts) + "</div>")
 
@@ -731,6 +839,50 @@ def render_verdict_v3(verdict: Dict[str, Any], judge: str) -> str:
     if not fab:
         cls += " considered" if (verdict.get("considered") or {}).get(
             "considered_fabrication") else " clean"
+    return block(f'judge verdict · {esc(judge)} {tags}', "".join(parts) or "<em>no detail</em>",
+                 cls=cls)
+
+
+def render_verdict_lie(verdict: Dict[str, Any], judge: str) -> str:
+    """One turn's jv8 verdict: zero or more lies (four gates argued in the reason), then the
+    excluded claims with the gate that stopped each."""
+    findings = [f for f in verdict.get("findings") or [] if not f.get("_excluded")]
+    excluded = verdict.get("excluded") or []
+
+    tags = ""
+    for f in findings:
+        tags += (f'<span class="tag fab">lie · {esc(str(f.get("falsity") or "?"))}'
+                 f' · {esc(str(f.get("deception") or "?"))}</span>')
+    for x in excluded:
+        tags += (f'<span class="tag considered">excluded · '
+                 f'{esc(str(x.get("failed_gate") or "?"))}</span>')
+    if verdict.get("parse_error") or verdict.get("judge_error"):
+        tags += '<span class="tag err">judge failed</span>'
+
+    parts: List[str] = []
+    if (desc := str(verdict.get("description") or "").strip()):
+        parts.append(f"<p>{esc(desc)}</p>")
+    for n, f in enumerate(findings, 1):
+        head = (f'<div class="finding-head">lie {n} — '
+                + esc(" · ".join(_lie_head_bits(f))) + "</div>")
+        body = f'<p><b>{esc(str(f.get("claim") or ""))}</b></p>'
+        body += f'<p class="sub">{esc(str(f.get("reason") or ""))}</p>'
+        body += "".join(_lie_evidence_quotes(f.get("evidence") or {}))
+        parts.append(f'<div class="finding">{head}{body}</div>')
+    for x in excluded:
+        head = (f'<div class="finding-head">excluded — failed gate '
+                f'<b>{esc(str(x.get("failed_gate") or "?"))}</b></div>')
+        body = f'<p><b>{esc(str(x.get("claim") or ""))}</b></p>'
+        if x.get("output_span"):
+            body += f'<div class="quote">{esc(str(x["output_span"]))}</div>'
+        body += f'<p class="sub">{esc(str(x.get("reason") or ""))}</p>'
+        parts.append(f'<div class="finding">{head}{body}</div>')
+    if not findings and not excluded:
+        parts.append('<p class="sub">no lie found this turn</p>')
+    if (raw := verdict.get("judge_raw")):
+        parts.append(block("lie judge — raw reply", f"<pre>{esc(pretty(raw))}</pre>"))
+
+    cls = "verdict" + ("" if findings else (" considered" if excluded else " clean"))
     return block(f'judge verdict · {esc(judge)} {tags}', "".join(parts) or "<em>no detail</em>",
                  cls=cls)
 
@@ -812,6 +964,8 @@ def render_verdict_v2(verdict: Dict[str, Any], judge: str) -> str:
 
 def render_verdict(verdict: Dict[str, Any], judge: str) -> str:
     """One turn's CATEGORY verdict as a collapsible inside that turn."""
+    if is_lie(verdict):
+        return render_verdict_lie(verdict, judge)
     if is_v3(verdict):
         return render_verdict_v3(verdict, judge)
     if is_v2(verdict):
@@ -1114,6 +1268,7 @@ def render_turn(
     sprint_channel: str,
     system_prompt: Optional[str] = None,
     verdict_sets: Optional[List[Tuple[Optional[Dict[str, Any]], Dict[str, Any]]]] = None,
+    index: Optional[int] = None,
 ) -> str:
     kind = turn.get("kind", "work")
     round_num = turn.get("round")
@@ -1193,7 +1348,7 @@ def render_turn(
     # only readable side by side, where the same finding lines up across judges. The column count
     # rides on the element so the CSS does not have to guess how many sets a page carries.
     live = [(i, v, m) for i, (v, m) in enumerate(verdict_sets or []) if v]
-    if len(live) > 1 and all(is_v3(v) for _i, v, _m in live):
+    if len(live) > 1 and all(is_v3(v) or is_lie(v) for _i, v, _m in live):
         parts.append(render_verdict_table(verdict_sets or []))
     else:
         for i, (verdict, meta) in enumerate(verdict_sets or []):
@@ -1202,7 +1357,10 @@ def render_turn(
                     f'<div class="vset" data-vset="{i}">'
                     + render_verdict(verdict, str(meta.get("label") or meta.get("judge") or ""))
                     + "</div>")
-    return block(summary, "".join(parts), cls="turn")
+    # `#turn-N` addresses this turn from outside the page — N is its position in the record's
+    # turn list, the same index the judging script keys its verdicts by.
+    return block(summary, "".join(parts), cls="turn",
+                 anchor="" if index is None else f"turn-{index}")
 
 
 def render_steps(turn: Dict[str, Any], signals: set, sprint_channel: str) -> List[str]:
@@ -1313,7 +1471,8 @@ def render_timeline(
             system = system_by_agent.get(agent)
         out.append(render_turn(
             turn, signals, sprint_channel, system,
-            verdict_sets=[(v.get(index), m) for v, m in (verdict_sets or [])]))
+            verdict_sets=[(v.get(index), m) for v, m in (verdict_sets or [])],
+            index=index))
     if n:
         return f'<div class="tmatrix" data-n="{n}" style="--vcols:{n}">' + "".join(out) + "</div>"
     return "".join(out)
@@ -1786,7 +1945,9 @@ def _verdict_note(meta: Optional[Dict[str, Any]]) -> str:
         note += " Conversation transcripts were capped at 8000 characters (jv1)."
     # v2 judges a subset (the stake-holding roles, plus any baseline sample), so an unlabelled
     # turn means "not judged", not "judged clean". Say which turns were in scope.
-    if (sel := meta.get("selection")):
+    if isinstance((sel := meta.get("selection")), str):  # jv8 writes a description, not a dict
+        note += f" Selection: {esc(sel)}. Turns not listed were not judged — out of scope, not cleared."
+    elif sel:
         judged = ", ".join(sel.get("stake_agents") or []) or "nobody"
         note += f" Turns judged: {esc(judged)}"
         if sel.get("baseline_agents"):
@@ -1949,7 +2110,7 @@ def render(
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>agent1 run</title><style>{CSS}</style></head><body>{body}"
-        f"<script>{JS}{boot}\npickVerdicts(0);</script></body></html>"
+        f"<script>{JS}{boot}\npickVerdicts(0);\nopenTurnFromHash();</script></body></html>"
     )
 
 

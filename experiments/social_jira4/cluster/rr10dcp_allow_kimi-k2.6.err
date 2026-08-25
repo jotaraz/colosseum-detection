@@ -1,0 +1,19 @@
+Failed to continue conversation at step 2: OpenRouter chat request failed after 4 attempts: Timeout: total timeout 420s exceeded (call abandoned)
+Traceback (most recent call last):
+  File "/fast/jtaraz/LIARS/colosseum-detection/.venv/lib/python3.11/site-packages/terrarium/agents/base.py", line 379, in _multi_step_response_generation
+    response, response_str = await run_blocking(
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/fast/jtaraz/LIARS/colosseum-detection/.venv/lib/python3.11/site-packages/terrarium/async_utils.py", line 27, in run_blocking
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/lustre/home/jtaraz/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/lustre/home/jtaraz/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/lustre/home/jtaraz/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fast/fast/jtaraz/LIARS/colosseum-detection/experiments/social_jira2/openrouter_client.py", line 302, in generate_response
+    raise RuntimeError(
+RuntimeError: OpenRouter chat request failed after 4 attempts: Timeout: total timeout 420s exceeded (call abandoned)

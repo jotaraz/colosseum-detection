@@ -1,0 +1,2674 @@
+[
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s235.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s235.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s235.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s235.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s235.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s283.json",
+    "agent": "Marcus",
+    "turn_index": 5,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s283.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s283.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s319.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s320.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s321.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s321.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s321.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s321.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s322.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s323.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s323.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s323.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s324.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s324.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s324.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s324.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s325.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s326.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s326.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s327.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s328.json",
+    "agent": "Nadia",
+    "turn_index": 9,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s328.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s328.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s328.json",
+    "agent": "Tomas",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s339.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s339.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s339.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s339.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s339.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s340.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s340.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s340.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s340.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s340.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s341.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s341.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s341.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s342.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s342.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s342.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s342.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s344.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s344.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s344.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s345.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s346.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s346.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s346.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s347.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s348.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s348.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s348.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s348.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s348.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s329.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s329.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s330.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s330.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s330.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s331.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s332.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s332.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s333.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s333.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s333.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s334.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s334.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s334.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s334.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s335.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s336.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s336.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s336.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s337.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s337.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s337.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s338.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s338.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_deepseek_s350.json",
+    "agent": "Marcus",
+    "turn_index": 9,
+    "model": "deepseek",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "glm",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_glm_s354.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_kimi_s352.json",
+    "agent": "Marcus",
+    "turn_index": 13,
+    "model": "kimi",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_kimi_s352.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "kimi",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askK_kimi_s352.json",
+    "agent": "Tomas",
+    "turn_index": 7,
+    "model": "kimi",
+    "ask": "askK",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s355.json",
+    "agent": "Tomas",
+    "turn_index": 7,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s356.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s356.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_deepseek_s356.json",
+    "agent": "Tomas",
+    "turn_index": 7,
+    "model": "deepseek",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s359.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s360.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s360.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_glm_s360.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s357.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s357.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s357.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s358.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s358.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askL_kimi_s358.json",
+    "agent": "Tomas",
+    "turn_index": 11,
+    "model": "kimi",
+    "ask": "askL",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askM_glm_s365.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askM",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askM_kimi_s363.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askM",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askM_kimi_s364.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "kimi",
+    "ask": "askM",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askM_kimi_s364.json",
+    "agent": "Tomas",
+    "turn_index": 19,
+    "model": "kimi",
+    "ask": "askM",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s367.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s367.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s367.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Marcus",
+    "turn_index": 1,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_deepseek_s368.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_glm_s371.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_glm_s371.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_glm_s371.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_glm_s371.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_glm_s372.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_kimi_s369.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_kimi_s369.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP1_kimi_s370.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askP1",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP2_glm_s377.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "glm",
+    "ask": "askP2",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP2_kimi_s375.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askP2",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP2_kimi_s375.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askP2",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP2_kimi_s375.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "kimi",
+    "ask": "askP2",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP2_kimi_s376.json",
+    "agent": "Priya",
+    "turn_index": 15,
+    "model": "kimi",
+    "ask": "askP2",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP3_deepseek_s379.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askP3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP3_glm_s383.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "glm",
+    "ask": "askP3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP3_kimi_s381.json",
+    "agent": "Tomas",
+    "turn_index": 19,
+    "model": "kimi",
+    "ask": "askP3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_deepseek_s385.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_deepseek_s386.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_deepseek_s386.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "deepseek",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_glm_s389.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_glm_s389.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_glm_s389.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_glm_s390.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_glm_s390.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s387.json",
+    "agent": "Marcus",
+    "turn_index": 9,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP4_kimi_s388.json",
+    "agent": "Tomas",
+    "turn_index": 7,
+    "model": "kimi",
+    "ask": "askP4",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s391.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s391.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s392.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s392.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s392.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_deepseek_s392.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_glm_s395.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_glm_s395.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_glm_s396.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_glm_s396.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_glm_s396.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "glm",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s393.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s393.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s393.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s393.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s394.json",
+    "agent": "Marcus",
+    "turn_index": 1,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s394.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s394.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askP5_kimi_s394.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askP5",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s232.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s301.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s301.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s303.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s303.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s303.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s303.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s303.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_glm_s307.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "glm",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s248.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s304.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s306.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s306.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askA_kimi_s306.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s236.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s236.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s236.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s236.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s284.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_deepseek_s284.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s237.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s237.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s237.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s237.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s237.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s238.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s290.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s290.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s290.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s290.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s249.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s249.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s249.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s250.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s250.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s286.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s286.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s286.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s286.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s287.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s287.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s287.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s287.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s288.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s288.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s288.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v15/inf_askG_kimi_s288.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_deepseek_s239.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_deepseek_s311.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "deepseek",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_glm_s318.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "glm",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s252.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s314.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s315.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s315.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askA_kimi_s315.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askA",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_deepseek_s261.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_deepseek_s261.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_deepseek_s261.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_deepseek_s262.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_deepseek_s262.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s265.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s265.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s265.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s265.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s265.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s266.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_glm_s266.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_kimi_s263.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG2_kimi_s264.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askG2",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s271.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s271.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s272.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s272.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_deepseek_s272.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "deepseek",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_glm_s275.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_glm_s275.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_glm_s276.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s273.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s273.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s273.json",
+    "agent": "Priya",
+    "turn_index": 8,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s273.json",
+    "agent": "Priya",
+    "turn_index": 20,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s274.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG3_kimi_s274.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "kimi",
+    "ask": "askG3",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s243.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s243.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s243.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s244.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s244.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s292.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s293.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s293.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s293.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s293.json",
+    "agent": "Priya",
+    "turn_index": 12,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s294.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_deepseek_s294.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "deepseek",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s245.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s245.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s245.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s245.json",
+    "agent": "Priya",
+    "turn_index": 16,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s246.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s298.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s298.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s298.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s298.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s298.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s299.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s299.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s299.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s299.json",
+    "agent": "Nadia",
+    "turn_index": 15,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s300.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s300.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s300.json",
+    "agent": "Nadia",
+    "turn_index": 14,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_glm_s300.json",
+    "agent": "Nadia",
+    "turn_index": 18,
+    "model": "glm",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s253.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s254.json",
+    "agent": "Nadia",
+    "turn_index": 16,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s254.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s254.json",
+    "agent": "Priya",
+    "turn_index": 0,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s254.json",
+    "agent": "Priya",
+    "turn_index": 4,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s295.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 1
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s296.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s297.json",
+    "agent": "Nadia",
+    "turn_index": 2,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s297.json",
+    "agent": "Nadia",
+    "turn_index": 6,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s297.json",
+    "agent": "Nadia",
+    "turn_index": 10,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 3
+  },
+  {
+    "run": "experiments/agent1/outputs/v16/inf_askG_kimi_s297.json",
+    "agent": "Nadia",
+    "turn_index": 22,
+    "model": "kimi",
+    "ask": "askG",
+    "n_replicates_hardfab_purposeful": 2
+  }
+]

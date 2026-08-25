@@ -1,0 +1,27 @@
+# HTCondor submit: agent3 on v15 / deepseek, climbing **reward_v2** — 20 steps.
+# Runs in parallel with the v1 job (run02) against the same OpenRouter account.
+#
+#   condor_submit_bid 100 cluster/run_agent3_v2.sub
+#
+# `--judge-workers 3`, not the default 6: a run peaks at ~9 concurrent calls while rolling out
+# and ~54 while judging, and two runs' judging bursts would otherwise collide at ~108 against
+# one account and one GMICloud upstream. Halving this run's judge fan-out caps the combined
+# peak near 81. A 429 is not fatal — the client backs off and honours Retry-After — so the cost
+# of being wrong here is slower steps, not lost rollouts.
+#
+# Separate out-dir from run02, so neither run can resume into the other's history.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh run03 20 3 askA,askK,askG v2 3"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run03_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run03_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run03_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+
+queue 1

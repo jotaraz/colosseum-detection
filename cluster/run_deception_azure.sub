@@ -1,0 +1,19 @@
+# HTCondor submit: jv10 + jv11 deception judges, Azure gpt-5.4, 2 replicates each.
+# CPU-only — pure API wall-clock. One driver at a time, 8 concurrent calls; 429s self-limit via Retry-After.
+#
+#   condor_submit_bid 100 cluster/run_deception_azure.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_deception_azure.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_azure_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_azure_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/deception_azure_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+
+queue 1

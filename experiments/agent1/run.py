@@ -427,6 +427,10 @@ class Runner:
                 "prompt": sum((t.get("usage") or {}).get("prompt_tokens", 0) for t in self.turns),
                 "completion": sum((t.get("usage") or {}).get("completion_tokens", 0)
                                   for t in self.turns),
+                # How much of `prompt` the upstream served from its prefix cache. An assistant's
+                # context is one append-only conversation, so after the first call of a run almost
+                # all of it should hit; a collapse here is the signal that routing changed.
+                "cached": sum(int(r.get("cached_tokens") or 0) for r in self.reasoning),
             },
             "reminder_fired": self.reminder_fired,
             "deadline": {

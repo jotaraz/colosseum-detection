@@ -1,0 +1,19 @@
+# HTCondor submit: jv8 lie judge over every Priya turn in v15 askA+askG, 3 replicates.
+# CPU-only — pure API wall-clock on a compute node. 3 procs x 4 workers = 12 concurrent calls.
+#
+#   condor_submit_bid 100 cluster/run_jv8_priya_v15.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_jv8_priya_v15.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/jv8_priya_v15_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/jv8_priya_v15_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/jv8_priya_v15_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

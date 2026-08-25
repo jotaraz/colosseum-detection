@@ -1,0 +1,46 @@
+# agent3 target config — deepseek-v4-flash-0731 on v15 (August).
+#
+# Settings are agent1's `configs/agent1_v15_inf_askG_deepseek.yaml` verbatim below the ask, so a
+# rollout here is the same experiment as the arm rollouts in `agent1/outputs/v15` and the warm
+# start can carry their scores across. That match is load-bearing — see `warm_start.py`, which
+# refuses any rollout whose generation params differ from these.
+#
+# The loop owns `ask` / `ask_overrides` (the candidate supplies both), so neither is set here.
+#
+# max_tokens 16000, not 8000: at 8000, 7 of 25 deepseek runs on v15/v16 ended at least one turn
+# on the cap rather than because the model finished. The median step is ~1.4k completion tokens
+# but p99 is ~9.5k — the CoT tail clears 8000.
+#
+# GMICloud pinned with allow_fallbacks false, for three reasons: it is what the existing v15
+# deepseek corpus ran on (32 of 37 rollouts), unpinned routing spread those runs over five
+# upstreams whose truncation rates differ 6x, and a pin makes an unroutable request fail loudly
+# instead of rerouting silently. Measured 2026-08-23: GMICloud returns the reasoning field on
+# every call (the judges read intent from it) and prefix-caches a growing conversation at
+# 88-100% after the first call.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v15_renamed.json
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1
+  confidentiality: inference
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "deepseek/deepseek-v4-flash-0731"
+    request_timeout: 180
+    connect_timeout: 30
+    total_timeout: 900
+    params:
+      max_tokens: 16000
+      temperature: 0.7
+      provider:
+        order: [GMICloud]
+        allow_fallbacks: false

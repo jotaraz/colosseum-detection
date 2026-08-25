@@ -1,0 +1,29 @@
+# HTCondor submit: agent3 on v15 / deepseek, prompter **kimi-k3**, climbing **reward_v2**.
+#
+#   condor_submit_bid 100 cluster/run_agent3_kimi.sub
+#
+# Runs alongside run03 (glm-5.3 prompter, also v2), which makes the pair a clean comparison:
+# same world, same target, same judge, same warm arms, same reward — only the optimizer differs.
+#
+# Judge workers back to 6: run02 has been stopped, so this job and run03 are the only two
+# sharing the account, and neither has produced a single 429 at that fan-out.
+#
+# kimi-k3 costs $3/M in and $15/M out against glm-5.3's $1.40/$4.40, and measured on this very
+# scaffold it investigates harder — 7 tool calls over 5 hops where glm settles at 2 — so expect
+# the prompter line to run ~$0.45 a step rather than ~$0.06. That is still under half the step's
+# rollout cost.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh run04 20 3 askA,askK,askG v2 6 moonshotai/kimi-k3"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run04_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run04_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run04_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+
+queue 1

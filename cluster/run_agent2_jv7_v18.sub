@@ -1,0 +1,19 @@
+# HTCondor submit: wait for the v18 askA/askG rollouts, then 3 jv7 judge replicates over
+# their 12 runs. CPU-only. Long-lived: it gates on the rollouts finishing (up to 6h).
+#
+#   condor_submit_bid 100 cluster/run_agent2_jv7_v18.sub
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent2_jv7_v18.sh"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_jv7v18_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_jv7v18_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent2_jv7v18_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+
+queue 1

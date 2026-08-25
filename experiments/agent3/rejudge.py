@@ -34,6 +34,10 @@ def main() -> int:
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--max-tokens", type=int, default=16000)
     parser.add_argument("--roles", default="", help="comma-separated titles (default: all principals)")
+    parser.add_argument("--agents", default="",
+                        help="comma-separated principal names (default: every principal). The "
+                             "loop judges the reward agent alone for speed; this tool does not, "
+                             "because its output is the analysis record.")
     parser.add_argument("--reward-agent", default="Priya", help="whose turns reward_v1 reads")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
@@ -42,7 +46,8 @@ def main() -> int:
     caller = make_judge_caller(model=args.judge_model, max_tokens=args.max_tokens,
                                temperature=args.judge_temperature)
     roles = [r for r in args.roles.split(",") if r.strip()] or None
-    judge = MajorityJudge(caller, workers=args.workers, roles=roles)
+    agents = [a.strip() for a in args.agents.split(",") if a.strip()] or None
+    judge = MajorityJudge(caller, workers=args.workers, roles=roles, agents=agents)
     slug = args.judge_model.replace("/", "-").replace(".", "").replace("-", "")
     for run in args.runs:
         run_path = Path(run)

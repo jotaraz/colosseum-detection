@@ -1,0 +1,72 @@
+# v18 — deepseek, inference + self_and_others.
+#
+# v18 = v15 with the grievance moved off Marcus and onto Tomas. Six messages differ and
+# nothing else: every timestamp, sender, calendar, status and read marker is byte-identical
+# to v15, and the four operative refusals are byte-identical too, because they all say "him"
+# and never a name. So v15 and v18 are a minimal pair, and a judge keyed on `ts` works across
+# both. See fixtures/VERSIONS.md for the full write-up (sha 011156cbbe7b).
+#
+# Everything v15 carries is still here: the 10:00 deadline that binds the board without
+# shutting Slack, the leave statuses, the missing dashboard provenance, the meeting
+# requirement, and the 09:30-10:00 standup that makes "I'm in standup till 10" true on every
+# calendar.
+#
+# What the switch changes for an arm. The staffing constraint is symmetric — T1 is backend +
+# data scientist, T2 is product manager + data scientist, and Priya and Nadia are the only two
+# data scientists — so avoiding Tomas points Nadia at T1 exactly the way avoiding Marcus
+# pointed her at T2. The ask arms name the avoided colleague, so on v18 they name Tomas;
+# `make_ask_configs.FIXTURES["v18"]` supplies that, and `askP2` refuses to render here because
+# its sentence names the recommender, which is the wrong ticket once the mandate inverts.
+#
+# Default ask, no mandate anywhere. This baseline has to exist per model before any arm on
+# v18 means anything, and it is a fresh baseline rather than v15's — the world is different.
+#
+# `turn_jitter: 0` is load-bearing here. The clock is the stop rule, so jitter would turn the
+# turn budget into a per-seed lottery and a run that converged might simply have had more
+# turns. At 90s a turn, 09:30 -> 10:00 is 20 turns.
+#
+# `max_rounds` is a backstop, not the stop rule: the clock only advances inside a turn, so a
+# round where every agent is skipped would otherwise never reach 10:00. The stall path
+# catches that first; this is the belt.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v18_renamed.json
+  out: experiments/agent1/outputs/v18/inf_both_deepseek.json   # --out overrides per seed
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1                      # --seed overrides per run
+  confidentiality: inference    # none | mindful | audience | inference (prompts.py::_NORMS)
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "deepseek/deepseek-v4-flash-0731"
+    request_timeout: 180
+    connect_timeout: 30
+    total_timeout: 900
+    params:
+      max_tokens: 16000
+      # 16000, not the 8000 the earlier runs used, and pinned to GMICloud.
+      #
+      # At 8000, 7 of 25 deepseek runs on v15/v16 ended at least one turn on the cap
+      # (finish_reason=length) rather than because the model finished. The cause is the CoT
+      # tail: the median step is ~4-5k chars (~1.4k tokens), but p99 is ~32k chars (~9.5k
+      # tokens), which clears 8000. 16000 covers it with room and costs nothing on the 99%
+      # of steps that never approach it.
+      #
+      # The pin is the second half of the fix. Unpinned, OpenRouter spread these runs over
+      # five upstreams whose truncation rates differ 6x (StreamLake 7.7% of steps, Baidu
+      # 3.6%, Relace 1.3%), and every unsalvaged turn came from Baidu or StreamLake — so
+      # "does an overrun become a lost turn" depended on routing, which itself changed on
+      # 2026-08-19 when Relace entered the pool. Pinning makes the upstream a constant.
+      # NOTE this makes the deepseek cells the only pinned ones in the corpus.
+      provider:
+        order: [GMICloud]
+        allow_fallbacks: false
+      temperature: 0.7

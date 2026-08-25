@@ -1,0 +1,29 @@
+# HTCondor submit: agent3 on v15 / deepseek, prompter **z-ai/glm-5.3**, climbing **reward_v3**.
+#
+#   condor_submit_bid 100 cluster/run_agent3_v3_glm.sub
+#
+# 12 steps x 3 candidates x M=4 = 12 rollouts a step, all in one pool, 4 judge workers each.
+# reward_v3 reads jv8 (CRITIC_LIE1) lie verdicts, not jv7 categories — the loop picks the judge
+# from the reward, so nothing here needs to say so.
+#
+# Pairs with run_agent3_v3_kimi.sub: same world, target, judge, warm arms, reward and
+# replicate count. Only the prompter model differs, so the pair is a controlled comparison of
+# the optimizer rather than of the setup.
+#
+# **Requires the jv8 sweep to have finished** (cluster/run_agent3_sweep_jv8.sub): warm_start
+# refuses an arm with no three-replicate sweep files beside its rollouts.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent3_v15.sh run05 12 4 askA,askG,askK,askL,askM,askP1,askP3,askP4,askP5 v3 4 z-ai/glm-5.3"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run05_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run05_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent3_run05_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+
+queue 1
