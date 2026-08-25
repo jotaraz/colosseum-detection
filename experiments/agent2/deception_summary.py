@@ -74,10 +74,11 @@ def main(argv=None) -> int:
         version, model, rep = key
         cells = got[key]
         dec = {k for k, c in cells.items() if c["findings"]}
-        labelled = [k for k in cells if (jv9[k]["jv9_votes"] or 0) is not None
-                    and jv9[k]["jv9_votes"] is not None]
-        agree = sum(1 for k in labelled
-                    if (k in dec) == ((jv9[k]["jv9_votes"] or 0) >= 2))
+        # Only turns jv9 actually judged can agree or disagree with it: the a1_unjudged
+        # group carries `jv9_votes: null`, and scoring those as jv9-negative would silently
+        # turn "never asked" into "jv9 said no".
+        labelled = [k for k in cells if jv9[k]["jv9_votes"] is not None]
+        agree = sum(1 for k in labelled if (k in dec) == (jv9[k]["jv9_votes"] >= 2))
         pct = f"{100 * agree / len(labelled):.0f}%" if labelled else "-"
         print(f"{version:<7} {model:<34} {rep:>3} {len(cells):>6} "
               f"{sum(c['units'] for c in cells.values()):>6} "
