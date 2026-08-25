@@ -355,6 +355,12 @@ def main(argv: List[str] | None = None) -> int:
                              "variant's default is wrong (v15/v16 Marcus, v18 Tomas)")
     parser.add_argument("--replicate", type=int, default=1)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--repair", action="store_true",
+                        help="re-judge only the units whose recorded verdict is broken — a "
+                             "parse error or a judge error. Everything that parsed is kept as "
+                             "is, so a repair pass costs only the failures. Pair it with a "
+                             "larger --max-tokens when the failure was the model spending its "
+                             "whole budget on reasoning and returning empty content.")
     parser.add_argument("--dry-run", action="store_true",
                         help="build packages and fill the template; no API calls")
     parser.add_argument("--selection-label",
@@ -454,7 +460,15 @@ def main(argv: List[str] | None = None) -> int:
         def _key(t: Dict[str, Any]) -> tuple:
             return (t["agent"], t["turn_index"], t.get("step"))
 
-        done = {_key(t) for t in existing.get("turns", [])}
+        rows_kept = existing.get("turns") or []
+        if args.repair:
+            broken = [t for t in rows_kept if t.get("parse_error") or t.get("judge_error")]
+            if broken:
+                logger.info("repair: dropping %d broken verdict(s) in %s", len(broken),
+                            out_path.name)
+            rows_kept = [t for t in rows_kept if not (t.get("parse_error") or t.get("judge_error"))]
+            existing = dict(existing, turns=rows_kept)
+        done = {_key(t) for t in rows_kept}
         todo = [t for t in run_targets if _key(t) not in done]
         if not todo:
             logger.info("skip (all %d units already judged): %s",
@@ -512,6 +526,10 @@ def main(argv: List[str] | None = None) -> int:
             "selection": args.selection_label,
             "turns": all_rows,
             "unit": "step" if version in PER_STEP else "turn",
+            # Recorded because a repair pass may run at a different budget from the sweep it
+            # patches, and a verdict is not comparable with its siblings if nobody can see that.
+            "max_tokens": args.max_tokens,
+            "repaired": bool(args.repair) or bool(existing.get("repaired")),
             "n_turns": len(all_rows),
             "n_lie_turns": sum(1 for r in all_rows if r.get("n_lies")),
             "usage_totals": caller.snapshot() if hasattr(caller, "snapshot") else {},

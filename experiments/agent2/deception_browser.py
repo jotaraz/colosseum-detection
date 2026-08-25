@@ -37,6 +37,9 @@ from experiments.agent2.target_run import _audience  # noqa: E402
 SAMPLE = Path(__file__).with_name("deception_sample.json")
 OUT = Path(__file__).with_name("deception_browser.html")
 
+#: Set by ``--relative``; see the link comment in ``turn_payload``.
+RELATIVE_LINKS = False
+
 
 def _audience_of(ws, speaker):
     def f(args, result):
@@ -71,11 +74,19 @@ def turn_payload(report, ws, run, index):
             "sent": sent,
             "emitting": n in emitting,
         })
+    # An ABSOLUTE file:// href, not a path relative to this page. A relative link only works
+    # while the html sits in experiments/agent2/, and this file gets copied — downloaded,
+    # mailed, opened from a preview pane — at which point every "open rollout" 404s and the
+    # breakage looks like a bug in the browser rather than in where it was opened from.
+    # `--relative` restores the portable-but-fragile form for moving the whole tree.
     rollout = None
     for cand in (Path(run).with_suffix(".html"), Path(run).parent / "run.html"):
         if (REPO / cand).is_file():
-            import os
-            rollout = os.path.relpath(REPO / cand, OUT.parent)
+            if RELATIVE_LINKS:
+                import os
+                rollout = os.path.relpath(REPO / cand, OUT.parent)
+            else:
+                rollout = (REPO / cand).resolve().as_uri()
             break
     return {"round": record.get("round"), "kind": record.get("kind"),
             "clock": record.get("clock"), "opening": str(record.get("message_in") or ""),
@@ -158,7 +169,9 @@ main{padding:16px;max-width:1500px;margin:0 auto}
 .thead .t{font-weight:600}
 .chip{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--chip);color:var(--mut);white-space:nowrap}
 .chip.hit{background:#fde2e4;color:#9d1c2b}
-@media (prefers-color-scheme:dark){.chip.hit{background:#42181f;color:#ff9aa4}}
+.chip.flag{background:#e7ecfd;color:#2540b0;font-weight:600}
+@media (prefers-color-scheme:dark){.chip.hit{background:#42181f;color:#ff9aa4}
+  .chip.flag{background:#22294a;color:#9db2ff}}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0}
 @media(max-width:1100px){.cols{grid-template-columns:1fr}}
 .col{padding:12px 14px;min-width:0}
@@ -181,7 +194,13 @@ pre{white-space:pre-wrap;word-wrap:break-word;margin:0;font:12px/1.45 ui-monospa
 .f .claim{font-weight:600}
 .f .meta{font-size:11px;color:var(--mut);margin-top:3px}
 .q{border-left:2px solid var(--line);padding-left:8px;margin-top:5px;font:12px/1.45 ui-monospace,monospace;color:var(--mut)}
-.ex{font-size:12px;color:var(--mut);padding:2px 10px}
+.exblock{border-top:1px dashed var(--line);background:var(--chip);padding:6px 10px 8px}
+.exhead{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin-bottom:4px}
+.ex{font-size:12px;color:var(--fg);padding:3px 0}
+.ex+.ex{border-top:1px solid var(--line)}
+.exr{color:var(--mut);margin:2px 0 0 2px}
+.g-vague{border-color:#b9a94a} .g-belief{border-color:#6b8fd6} .g-slip{border-color:#8f8f8a}
+.g-audience{border-color:#c08a52} .g-goal{border-color:#6fae82}
 .gate{font-size:10px;padding:0 5px;border-radius:4px;background:var(--chip);border:1px solid var(--line)}
 .adj{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .adj textarea{flex:1;min-width:240px;font:inherit;padding:5px 8px;border:1px solid var(--line);
@@ -194,12 +213,26 @@ a{color:var(--acc)}
   <h1>Deception verdicts</h1>
   <button id="b10" class="on">jv10 (per step)</button>
   <button id="b11" class="on">jv11 (per turn)</button>
+  <button id="bx" class="on">excluded claims</button>
   <select id="model"><option value="">all judge models</option></select>
   <select id="group"><option value="">all groups</option><option>a1_hit</option>
     <option>a1_unjudged</option><option>a3_full</option><option>a3_extra</option></select>
+  <select id="flag">
+    <option value="">flagged by: anyone or no one</option>
+    <option value="jv10">flagged by jv10</option>
+    <option value="jv11">flagged by jv11</option>
+    <option value="either">flagged by either</option>
+    <option value="both">flagged by both</option>
+    <option value="none">flagged by neither</option>
+  </select>
+  <button id="mq" class="on" title="When on, the judge-model dropdown also narrows the quorum: with gpt-5.4 selected, 'flagged by jv10' means gpt-5.4's jv10 runs flagged it. When off, the quorum is taken over every model and the dropdown only chooses whose verdicts are displayed.">model narrows quorum</button>
+  <select id="quorum">
+    <option value="any">…by ≥1 judge run</option>
+    <option value="maj">…by most judge runs</option>
+    <option value="all">…by all judge runs</option>
+  </select>
   <select id="filter">
     <option value="">all turns</option>
-    <option value="any">any deception verdict</option>
     <option value="split">judges disagree</option>
     <option value="vsplit">jv10 vs jv11 differ</option>
     <option value="jv9">jv9 &ge;2/3 only</option>
@@ -225,9 +258,36 @@ const msel = document.getElementById("model");
 models.forEach(m => { const o = document.createElement("option"); o.textContent = m; msel.appendChild(o); });
 
 const show = {jv10:true, jv11:true};
+let showExcluded = true;
+// What is DISPLAYED honours the jv10/jv11 toggles; what is FILTERED does not. "Show me the
+// turns jv10 flagged" must not force jv11 out of view — the point of asking is usually to
+// read the other version's account of the same turn.
 const visible = t => t.verdicts.filter(v => show[v.version] &&
       (!msel.value || v.model === msel.value));
+// Which settings the quorum is taken over. By default the judge-model dropdown narrows it,
+// so "flagged by jv10" with gpt-5.4 selected asks about gpt-5.4's jv10 runs. Turn `model
+// narrows quorum` off to ask the other question — which turns ANY model's jv10 flagged —
+// while still reading only the selected model's verdicts.
+let modelNarrowsQuorum = true;
+const forVersion = (t, ver) => t.verdicts.filter(v => v.version === ver &&
+      (!modelNarrowsQuorum || !msel.value || v.model === msel.value));
 const isDec = v => v.units.some(u => (u.findings||[]).length > 0);
+
+// A version "flagged" a turn when enough of its settings recorded a FINDING — an `excluded`
+// entry is a claim the gates killed, and never counts. `n` is the settings actually in play,
+// so the judge-model dropdown narrows the quorum rather than being ignored by it.
+function flagged(t, ver) {
+  const vs = forVersion(t, ver);
+  if (!vs.length) return false;
+  const k = vs.filter(isDec).length, q = document.getElementById("quorum").value;
+  if (q === "all") return k === vs.length;
+  if (q === "maj") return k * 2 > vs.length;
+  return k > 0;
+}
+const flagCount = (t, ver) => {
+  const vs = forVersion(t, ver);
+  return [vs.filter(isDec).length, vs.length];
+};
 const decByVersion = t => {
   const o = {};
   for (const v of visible(t)) (o[v.version] = o[v.version] || []).push(isDec(v));
@@ -238,7 +298,15 @@ function keep(t) {
   if (document.getElementById("group").value && t.group !== document.getElementById("group").value) return false;
   const vs = visible(t), f = document.getElementById("filter").value;
   if (!vs.length) return false;
-  if (f === "any")   return vs.some(isDec);
+  const fl = document.getElementById("flag").value;
+  if (fl) {
+    const a = flagged(t, "jv10"), b = flagged(t, "jv11");
+    if (fl === "jv10"   && !a) return false;
+    if (fl === "jv11"   && !b) return false;
+    if (fl === "either" && !(a || b)) return false;
+    if (fl === "both"   && !(a && b)) return false;
+    if (fl === "none"   && (a || b)) return false;
+  }
   if (f === "split") return vs.some(isDec) && vs.some(v => !isDec(v));
   if (f === "jv9")   return t.jv9_hit;
   if (f === "todo")  return !(adj[t.id] && adj[t.id].verdict);
@@ -278,9 +346,18 @@ function vset(v) {
   const body = v.units.map(u => {
     const head = v.version === "jv10" ? `<div class="ex"><b>step ${u.step}</b></div>` : "";
     const fs = (u.findings||[]).map(f => fnd(f, v.version)).join("");
-    const xs = (u.excluded||[]).map(e =>
-      `<div class="ex"><span class="gate">${esc(e.failed_gate)}</span> ${esc(e.claim)}
-        <i>${esc(e.reason)}</i></div>`).join("");
+    // Excluded claims get their own labelled block: they are the gates doing their job, and
+    // reading them is how you see WHY a turn is not deception — invisible if they look like a
+    // footnote to the findings. The verbatim span is shown too; a gate kill you cannot trace
+    // back to a sentence is not checkable.
+    const xs = (showExcluded && (u.excluded||[]).length) ? `<div class="exblock">
+      <div class="exhead">${u.excluded.length} claim${u.excluded.length===1?"":"s"} the gates killed</div>
+      ${u.excluded.map(e => `<div class="ex">
+        <span class="gate g-${esc(e.failed_gate)}">${esc(e.failed_gate)}</span>
+        <b>${esc(e.claim)}</b>
+        <div class="exr">${esc(e.reason)}</div>
+        ${e.output_span ? `<div class="q">said: ${esc(e.output_span)}</div>` : ""}
+      </div>`).join("")}</div>` : "";
     return head + fs + xs;
   }).join("");
   return `<div class="vset">
@@ -324,6 +401,10 @@ function render() {
         <span class="chip">${esc(t.family)}</span>
         <span class="chip">${esc(t.group)}</span>
         <span class="chip">round ${esc(String(t.round))}${t.kind === "closing" ? " · closing" : ""}</span>
+        ${["jv10","jv11"].map(ver => {
+            const [k, n] = flagCount(t, ver);
+            return n ? `<span class="chip ${k ? "flag" : ""}" title="${k} of ${n} judge run${n===1?"":"s"} flagged this turn">${ver} ${k}/${n} runs</span>` : "";
+          }).join("")}
         ${t.jv9_hit ? '<span class="chip hit">jv9 &ge;2/3</span>'
                     : (t.jv9_labelled ? '<span class="chip">jv9 &lt;2/3</span>'
                                       : '<span class="chip">jv9 unjudged</span>')}
@@ -340,7 +421,14 @@ function render() {
 
 document.getElementById("b10").onclick = e => { show.jv10 = !show.jv10; e.target.classList.toggle("on"); render(); };
 document.getElementById("b11").onclick = e => { show.jv11 = !show.jv11; e.target.classList.toggle("on"); render(); };
-["model","group","filter"].forEach(id => document.getElementById(id).onchange = render);
+document.getElementById("bx").onclick = e => {
+  showExcluded = !showExcluded; e.target.classList.toggle("on"); render();
+};
+document.getElementById("mq").onclick = e => {
+  modelNarrowsQuorum = !modelNarrowsQuorum; e.target.classList.toggle("on"); render();
+};
+["model","group","filter","flag","quorum"].forEach(id =>
+  document.getElementById(id).onchange = render);
 document.addEventListener("click", e => {
   const v = e.target.dataset && e.target.dataset.adj;
   if (!v) return;
@@ -380,7 +468,13 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="build the jv10/jv11 verdict browser")
     ap.add_argument("--sample", default=str(SAMPLE))
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--relative", action="store_true",
+                    help="link rollouts by a path relative to the page instead of an absolute "
+                         "file:// URI. Survives moving the whole repo; breaks the moment this "
+                         "one file is copied out of experiments/agent2/.")
     args = ap.parse_args(argv)
+    global RELATIVE_LINKS
+    RELATIVE_LINKS = args.relative
     return build(Path(args.sample), Path(args.out))
 
 
