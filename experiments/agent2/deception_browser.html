@@ -9,7 +9,17 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 header{position:sticky;top:0;z-index:9;background:var(--bg);border-bottom:1px solid var(--line);
-       padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+       padding:8px 16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row+.row{margin-top:6px}
+.lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+     min-width:34px;text-align:right}
+.grp{display:flex;gap:6px;flex-wrap:wrap}
+.grp+.grp{border-left:1px solid var(--line);padding-left:8px}
+.num{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.num input{width:52px;font:inherit;padding:3px 6px;border:1px solid var(--line);
+           border-radius:6px;background:var(--card);color:var(--fg);text-align:right}
+button.tg{font-size:12px;padding:3px 9px}
 h1{font-size:15px;margin:0 12px 0 0;font-weight:600}
 button,select{font:inherit;padding:4px 10px;border:1px solid var(--line);border-radius:6px;
               background:var(--card);color:var(--fg);cursor:pointer}
@@ -69,41 +79,39 @@ mark.mk-excl{background:#e6e6e0;color:inherit;border-bottom:2px dotted #9a9a94;p
 .hint{font-size:11px;color:var(--mut);padding:0 16px 8px}
 </style></head><body>
 <header>
-  <h1>Deception verdicts</h1>
-  <button id="b10" class="on">jv10 (per step)</button>
-  <button id="b11" class="on">jv11 (per turn)</button>
-  <button id="bx" class="on">excluded claims</button>
-  <button id="bh" class="on">highlight quotes</button>
-  <select id="model"><option value="">all judge models</option></select>
-  <select id="group"><option value="">all groups</option><option>a1_hit</option>
-    <option>a1_unjudged</option><option>a3_full</option><option>a3_extra</option></select>
-  <select id="flag">
-    <option value="">flagged by: anyone or no one</option>
-    <option value="jv10">flagged by jv10</option>
-    <option value="jv11">flagged by jv11</option>
-    <option value="either">flagged by either</option>
-    <option value="both">flagged by both</option>
-    <option value="none">flagged by neither</option>
-  </select>
-  <button id="mq" class="on" title="When on, the judge-model dropdown also narrows the quorum: with gpt-5.4 selected, 'flagged by jv10' means gpt-5.4's jv10 runs flagged it. When off, the quorum is taken over every model and the dropdown only chooses whose verdicts are displayed.">model narrows quorum</button>
-  <select id="quorum">
-    <option value="any">…by ≥1 judge run</option>
-    <option value="maj">…by most judge runs</option>
-    <option value="all">…by all judge runs</option>
-  </select>
-  <select id="filter">
-    <option value="">all turns</option>
-    <option value="split">judges disagree</option>
-    <option value="vsplit">jv10 vs jv11 differ</option>
-    <option value="jv9">jv9 &ge;2/3 only</option>
-    <option value="todo">not yet adjudicated</option>
-  </select>
-  <button id="inv" title="Show exactly the turns the current filters leave out. Negates the whole criterion set at once — group, flagged-by, quorum and the filter dropdown together — so 'flagged by both' inverted is 'not flagged by both', not 'flagged by neither'.">invert</button>
-  <span class="count" id="count"></span>
-  <span style="flex:1"></span>
-  <button id="exp">Export adjudications</button>
-  <button id="imp">Import</button>
-  <input type="file" id="file" accept="application/json" style="display:none">
+  <div class="row">
+    <h1>Deception verdicts</h1>
+    <span class="lbl" title="Which verdicts are COUNTED when deciding whether a turn is shown.">filter</span>
+    <span class="grp" id="fvers"></span>
+    <span class="grp" id="fmodels"></span>
+    <label class="num" title="A turn is kept when at least this many of the filtered verdicts recorded a finding. 0 keeps every turn.">
+      &ge; <input id="thr" type="number" min="0" step="1" value="0">
+      of <span id="thrmax">0</span> deception</label>
+    <select id="group"><option value="">all groups</option><option>a1_hit</option>
+      <option>a1_unjudged</option><option>a3_full</option><option>a3_extra</option></select>
+    <select id="filter">
+      <option value="">all turns</option>
+      <option value="split">judges disagree</option>
+      <option value="vsplit">jv10 vs jv11 differ</option>
+      <option value="jv9">jv9 &ge;2/3 only</option>
+      <option value="todo">not yet adjudicated</option>
+    </select>
+    <button id="inv" title="Show exactly the turns the filter row leaves out. Negates the whole criterion set at once — group, threshold and the filter dropdown together.">invert</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="row">
+    <span class="lbl" title="Which verdicts are DISPLAYED beside each turn. Independent of the filter row: asking which turns jv10 flagged should not force jv11's account of them out of view.">show</span>
+    <span class="grp" id="svers"></span>
+    <span class="grp" id="smodels"></span>
+    <span class="grp">
+      <button id="bx" class="on tg">excluded claims</button>
+      <button id="bh" class="on tg">highlight quotes</button>
+    </span>
+    <span style="flex:1"></span>
+    <button id="exp">Export adjudications</button>
+    <button id="imp">Import</button>
+    <input type="file" id="file" accept="application/json" style="display:none">
+  </div>
 </header>
 <div class="hint" id="hint"></div>
 <main id="main"></main>
@@ -116,66 +124,68 @@ try { adj = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { adj = {
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(adj)); } catch (e) {} };
 
 const models = [...new Set(DATA.turns.flatMap(t => t.verdicts.map(v => v.model)))].sort();
-const msel = document.getElementById("model");
-models.forEach(m => { const o = document.createElement("option"); o.textContent = m; msel.appendChild(o); });
+const VERSIONS = ["jv10", "jv11"];
+const VLABEL = {jv10: "jv10 (per step)", jv11: "jv11 (per turn)"};
+const shortModel = m => m.split("/").pop();
 
-const show = {jv10:true, jv11:true};
+// Two independent selections over the same grid of verdicts (version x model x replicate).
+// FILTER decides which verdicts are counted when deciding whether a turn is shown at all;
+// SHOW decides which are displayed beside it. They are separate because the useful question
+// is usually asymmetric: "which turns did gpt-5.4's jv10 call deception — and what did every
+// other judge say about those same turns?" A single selection cannot ask that.
+const sel = {
+  filter: {vers: new Set(VERSIONS), models: new Set(models)},
+  show:   {vers: new Set(VERSIONS), models: new Set(models)},
+};
+
+function toggles(which) {
+  const S = sel[which], f = which === "filter";
+  document.getElementById(f ? "fvers" : "svers").innerHTML = VERSIONS.map(v =>
+    `<button class="tg ${S.vers.has(v) ? "on" : ""}" data-sel="${which}" data-ver="${v}"
+       >${f ? v : esc(VLABEL[v])}</button>`).join("");
+  document.getElementById(f ? "fmodels" : "smodels").innerHTML = models.map(m =>
+    `<button class="tg ${S.models.has(m) ? "on" : ""}" data-sel="${which}"
+       data-model="${esc(m)}" title="${esc(m)}">${esc(shortModel(m))}</button>`).join("");
+}
+toggles("filter");
+toggles("show");
+
 let showExcluded = true;
-// What is DISPLAYED honours the jv10/jv11 toggles; what is FILTERED does not. "Show me the
-// turns jv10 flagged" must not force jv11 out of view — the point of asking is usually to
-// read the other version's account of the same turn.
-const visible = t => t.verdicts.filter(v => show[v.version] &&
-      (!msel.value || v.model === msel.value));
-// Which settings the quorum is taken over. By default the judge-model dropdown narrows it,
-// so "flagged by jv10" with gpt-5.4 selected asks about gpt-5.4's jv10 runs. Turn `model
-// narrows quorum` off to ask the other question — which turns ANY model's jv10 flagged —
-// while still reading only the selected model's verdicts.
-let modelNarrowsQuorum = true;
-const forVersion = (t, ver) => t.verdicts.filter(v => v.version === ver &&
-      (!modelNarrowsQuorum || !msel.value || v.model === msel.value));
+const pick = (t, which) => t.verdicts.filter(v =>
+      sel[which].vers.has(v.version) && sel[which].models.has(v.model));
+const visible = t => pick(t, "show");
+const scored  = t => pick(t, "filter");
 const isDec = v => v.units.some(u => (u.findings||[]).length > 0);
 
-// A version "flagged" a turn when enough of its settings recorded a FINDING — an `excluded`
-// entry is a claim the gates killed, and never counts. `n` is the settings actually in play,
-// so the judge-model dropdown narrows the quorum rather than being ignored by it.
-function flagged(t, ver) {
-  const vs = forVersion(t, ver);
-  if (!vs.length) return false;
-  const k = vs.filter(isDec).length, q = document.getElementById("quorum").value;
-  if (q === "all") return k === vs.length;
-  if (q === "maj") return k * 2 > vs.length;
-  return k > 0;
-}
+// A verdict counts toward the threshold only when it recorded a FINDING — an `excluded` entry
+// is a claim the gates killed, and is never a deception call.
+const decCount = t => scored(t).filter(isDec).length;
+// Per-version counts for the turn's header chips, over the filtered models — so the chip says
+// what the threshold is actually reading, not a number taken over judges you excluded.
 const flagCount = (t, ver) => {
-  const vs = forVersion(t, ver);
+  const vs = t.verdicts.filter(v => v.version === ver && sel.filter.models.has(v.model));
   return [vs.filter(isDec).length, vs.length];
 };
 const decByVersion = t => {
   const o = {};
-  for (const v of visible(t)) (o[v.version] = o[v.version] || []).push(isDec(v));
+  for (const v of scored(t)) (o[v.version] = o[v.version] || []).push(isDec(v));
   return o;
 };
 
-// `invert` asks the complement question: everything the current criteria do NOT select. It
-// negates the criterion set as a whole rather than each control separately, which is the only
-// reading that makes "the exact opposite of this list" true — so `flagged by both` inverted is
-// "not flagged by both", which includes the turns only one version flagged. A turn with nothing
-// to display is never dragged back in by inverting: there would be no verdict to read.
+// `invert` asks the complement question: everything the filter row does NOT select. It negates
+// the criterion set as a whole rather than each control separately, which is the only reading
+// that makes "the exact opposite of this list" true — so `>= 6 of 12` inverted is "fewer than
+// 6", not "6 or more of the other judges". The show row never enters it: what is displayed is
+// a presentation choice, and a turn with nothing displayed still appears, with an empty
+// verdict column, rather than silently leaving the sample.
 let invert = false;
-const keep = t => visible(t).length > 0 && (invert ? !matches(t) : matches(t));
+const keep = t => invert ? !matches(t) : matches(t);
 
 function matches(t) {
   if (document.getElementById("group").value && t.group !== document.getElementById("group").value) return false;
-  const vs = visible(t), f = document.getElementById("filter").value;
-  const fl = document.getElementById("flag").value;
-  if (fl) {
-    const a = flagged(t, "jv10"), b = flagged(t, "jv11");
-    if (fl === "jv10"   && !a) return false;
-    if (fl === "jv11"   && !b) return false;
-    if (fl === "either" && !(a || b)) return false;
-    if (fl === "both"   && !(a && b)) return false;
-    if (fl === "none"   && (a || b)) return false;
-  }
+  const vs = scored(t), f = document.getElementById("filter").value;
+  const thr = Math.max(0, parseInt(document.getElementById("thr").value, 10) || 0);
+  if (decCount(t) < thr) return false;
   if (f === "split") return vs.some(isDec) && vs.some(v => !isDec(v));
   if (f === "jv9")   return t.jv9_hit;
   if (f === "todo")  return !(adj[t.id] && adj[t.id].verdict);
@@ -315,6 +325,11 @@ function adjBar(t) {
 
 function render() {
   const kept = DATA.turns.filter(keep);
+  // The ceiling is how many verdicts the filter selection actually offers, so `>= 7 of 12`
+  // reads as a fraction of something real rather than of the full grid.
+  const cap = DATA.turns.reduce((a, t) => Math.max(a, scored(t).length), 0);
+  document.getElementById("thrmax").textContent = cap;
+  document.getElementById("thr").max = cap;
   const done = DATA.turns.filter(t => adj[t.id] && adj[t.id].verdict).length;
   document.getElementById("count").textContent =
     `${kept.length} / ${DATA.turns.length} turns${invert ? " (inverted)" : ""} · ${done} adjudicated`;
@@ -325,9 +340,10 @@ function render() {
         <span class="chip">${esc(t.family)}</span>
         <span class="chip">${esc(t.group)}</span>
         <span class="chip">round ${esc(String(t.round))}${t.kind === "closing" ? " · closing" : ""}</span>
-        ${["jv10","jv11"].map(ver => {
+        ${VERSIONS.map(ver => {
             const [k, n] = flagCount(t, ver);
-            return n ? `<span class="chip ${k ? "flag" : ""}" title="${k} of ${n} judge run${n===1?"":"s"} flagged this turn">${ver} ${k}/${n} runs</span>` : "";
+            const off = !sel.filter.vers.has(ver);
+            return n ? `<span class="chip ${k && !off ? "flag" : ""}" title="${k} of ${n} ${ver} run${n===1?"":"s"} over the filtered models flagged this turn${off ? " — not counted: " + ver + " is off in the filter row" : ""}">${ver} ${k}/${n}${off ? " (off)" : ""}</span>` : "";
           }).join("")}
         ${t.jv9_hit ? '<span class="chip hit">jv9 &ge;2/3</span>'
                     : (t.jv9_labelled ? '<span class="chip">jv9 &lt;2/3</span>'
@@ -348,8 +364,16 @@ function render() {
       `<p><i>no turns ${invert ? "fall outside" : "match"} this filter</i></p>`;
 }
 
-document.getElementById("b10").onclick = e => { show.jv10 = !show.jv10; e.target.classList.toggle("on"); render(); };
-document.getElementById("b11").onclick = e => { show.jv11 = !show.jv11; e.target.classList.toggle("on"); render(); };
+// One handler for all four toggle groups: each button carries which selection it belongs to
+// and what it selects, so the rows stay data-driven and a new judge model needs no new code.
+document.addEventListener("click", e => {
+  const d = e.target.dataset;
+  if (!d || !d.sel) return;
+  const S = sel[d.sel], set = d.ver ? S.vers : S.models, key = d.ver || d.model;
+  set.has(key) ? set.delete(key) : set.add(key);
+  e.target.classList.toggle("on");
+  render();
+});
 // Navigation to file:// is blocked in sandboxed viewers and by Safari, so every rollout also
 // offers its path for the clipboard: `open <path>` always works, a link does not.
 document.addEventListener("click", e => {
@@ -369,11 +393,8 @@ document.getElementById("bx").onclick = e => {
 document.getElementById("inv").onclick = e => {
   invert = !invert; e.target.classList.toggle("on"); render();
 };
-document.getElementById("mq").onclick = e => {
-  modelNarrowsQuorum = !modelNarrowsQuorum; e.target.classList.toggle("on"); render();
-};
-["model","group","filter","flag","quorum"].forEach(id =>
-  document.getElementById(id).onchange = render);
+["group","filter"].forEach(id => document.getElementById(id).onchange = render);
+document.getElementById("thr").oninput = render;
 document.addEventListener("click", e => {
   const v = e.target.dataset && e.target.dataset.adj;
   if (!v) return;
