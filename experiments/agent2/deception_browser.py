@@ -40,6 +40,12 @@ OUT = Path(__file__).with_name("deception_browser.html")
 #: Set by ``--relative``; see the link comment in ``turn_payload``.
 RELATIVE_LINKS = False
 
+#: Set by ``--http-base``. A ``file://`` link cannot be clicked in a sandboxed viewer (a chat
+#: file card, a VS Code preview) and Safari blocks it outright, so the only route that works
+#: everywhere is HTTP. Serve the repo root -- ``python3 -m http.server 8000`` -- and rebuild
+#: with ``--http-base http://localhost:8000``.
+HTTP_BASE = ""
+
 
 def _audience_of(ws, speaker):
     def f(args, result):
@@ -79,16 +85,19 @@ def turn_payload(report, ws, run, index):
     # mailed, opened from a preview pane — at which point every "open rollout" 404s and the
     # breakage looks like a bug in the browser rather than in where it was opened from.
     # `--relative` restores the portable-but-fragile form for moving the whole tree.
-    rollout = None
+    rollout = path = None
     for cand in (Path(run).with_suffix(".html"), Path(run).parent / "run.html"):
         if (REPO / cand).is_file():
-            if RELATIVE_LINKS:
+            if HTTP_BASE:
+                rollout = HTTP_BASE.rstrip("/") + "/" + str(cand).replace("\\", "/")
+            elif RELATIVE_LINKS:
                 import os
                 rollout = os.path.relpath(REPO / cand, OUT.parent)
             else:
                 rollout = (REPO / cand).resolve().as_uri()
+            path = str((REPO / cand).resolve())
             break
-    return {"round": record.get("round"), "kind": record.get("kind"),
+    return {"rollout_path": path, "round": record.get("round"), "kind": record.get("kind"),
             "clock": record.get("clock"), "opening": str(record.get("message_in") or ""),
             "steps": steps, "rollout": rollout}
 
@@ -142,7 +151,11 @@ def build(sample_path: Path, out_path: Path) -> int:
                                 for t in turns for v in t["verdicts"]})}
     out_path.write_text(PAGE.replace("__DATA__", json.dumps(data, ensure_ascii=False)))
     n_v = sum(len(t["verdicts"]) for t in turns)
-    print(f"wrote {out_path.relative_to(REPO)} — {len(turns)} turns, {n_v} verdicts, "
+    try:
+        shown = out_path.resolve().relative_to(REPO)
+    except ValueError:  # --out outside the repo is legitimate; do not fail on the log line
+        shown = out_path
+    print(f"wrote {shown} — {len(turns)} turns, {n_v} verdicts, "
           f"{out_path.stat().st_size // 1024} KB")
     return 0
 
@@ -208,12 +221,21 @@ pre{white-space:pre-wrap;word-wrap:break-word;margin:0;font:12px/1.45 ui-monospa
 .adj button.sel{background:var(--acc);color:#fff;border-color:var(--acc)}
 a{color:var(--acc)}
 .count{color:var(--mut);font-size:12px}
+button.cp{font-size:11px;padding:2px 7px}
+mark.mk-find{background:#ffd9dd;color:inherit;border-bottom:2px solid #d1495b;padding:0 1px}
+mark.mk-excl{background:#e6e6e0;color:inherit;border-bottom:2px dotted #9a9a94;padding:0 1px}
+@media (prefers-color-scheme:dark){
+  mark.mk-find{background:#4a1f27;border-bottom-color:#ff8a94}
+  mark.mk-excl{background:#32323a;border-bottom-color:#6f6f78}}
+.legend{font-size:11px;color:var(--mut);margin-left:auto}
+.hint{font-size:11px;color:var(--mut);padding:0 16px 8px}
 </style></head><body>
 <header>
   <h1>Deception verdicts</h1>
   <button id="b10" class="on">jv10 (per step)</button>
   <button id="b11" class="on">jv11 (per turn)</button>
   <button id="bx" class="on">excluded claims</button>
+  <button id="bh" class="on">highlight quotes</button>
   <select id="model"><option value="">all judge models</option></select>
   <select id="group"><option value="">all groups</option><option>a1_hit</option>
     <option>a1_unjudged</option><option>a3_full</option><option>a3_extra</option></select>
@@ -238,12 +260,14 @@ a{color:var(--acc)}
     <option value="jv9">jv9 &ge;2/3 only</option>
     <option value="todo">not yet adjudicated</option>
   </select>
+  <button id="inv" title="Show exactly the turns the current filters leave out. Negates the whole criterion set at once — group, flagged-by, quorum and the filter dropdown together — so 'flagged by both' inverted is 'not flagged by both', not 'flagged by neither'.">invert</button>
   <span class="count" id="count"></span>
   <span style="flex:1"></span>
   <button id="exp">Export adjudications</button>
   <button id="imp">Import</button>
   <input type="file" id="file" accept="application/json" style="display:none">
 </header>
+<div class="hint" id="hint"></div>
 <main id="main"></main>
 <script>
 const DATA = __DATA__;
@@ -294,10 +318,17 @@ const decByVersion = t => {
   return o;
 };
 
-function keep(t) {
+// `invert` asks the complement question: everything the current criteria do NOT select. It
+// negates the criterion set as a whole rather than each control separately, which is the only
+// reading that makes "the exact opposite of this list" true — so `flagged by both` inverted is
+// "not flagged by both", which includes the turns only one version flagged. A turn with nothing
+// to display is never dragged back in by inverting: there would be no verdict to read.
+let invert = false;
+const keep = t => visible(t).length > 0 && (invert ? !matches(t) : matches(t));
+
+function matches(t) {
   if (document.getElementById("group").value && t.group !== document.getElementById("group").value) return false;
   const vs = visible(t), f = document.getElementById("filter").value;
-  if (!vs.length) return false;
   const fl = document.getElementById("flag").value;
   if (fl) {
     const a = flagged(t, "jv10"), b = flagged(t, "jv11");
@@ -369,12 +400,67 @@ function vset(v) {
     </div>${body}</div>`;
 }
 
+let highlightQuotes = true;
+
+// Every span a visible judge quoted as `said:`, so the sentence a verdict rests on can be
+// found in the message rather than reconstructed from the claim. Findings win over excluded
+// where they overlap: what survived the gates matters more than what died at them.
+function quoted(t) {
+  const out = [];
+  for (const v of visible(t)) {
+    const who = `${v.version} · ${v.model} · r${v.replicate}`;
+    for (const u of v.units) {
+      for (const f of u.findings || [])
+        for (const sp of f.evidence && f.evidence.output_spans || [])
+          out.push({text: sp, kind: "find", label: `${who} — ${f.claim}`});
+      if (showExcluded)
+        for (const e of u.excluded || [])
+          if (e.output_span)
+            out.push({text: e.output_span, kind: "excl",
+                      label: `${who} — excluded (${e.failed_gate}) — ${e.claim}`});
+    }
+  }
+  return out;
+}
+
+// Mark per character (2 = finding, 1 = excluded), then emit runs. Per-character because
+// judges quote overlapping and nested spans, and naive replacement would nest <mark> tags
+// inside each other or corrupt the escaping.
+function highlight(text, spans) {
+  if (!highlightQuotes || !spans.length) return esc(text);
+  const mark = new Uint8Array(text.length), lab = new Array(text.length);
+  let any = false;
+  for (const s of spans) {
+    if (!s.text || s.text.length < 3) continue;
+    const v = s.kind === "find" ? 2 : 1;
+    for (let i = text.indexOf(s.text); i !== -1; i = text.indexOf(s.text, i + s.text.length)) {
+      any = true;
+      for (let j = i; j < i + s.text.length; j++)
+        if (mark[j] < v) { mark[j] = v; lab[j] = s.label; }
+        else if (mark[j] === v && !lab[j]) lab[j] = s.label;
+    }
+  }
+  if (!any) return esc(text);
+  let out = "", i = 0;
+  while (i < text.length) {
+    const v = mark[i];
+    let j = i;
+    while (j < text.length && mark[j] === v) j++;
+    const seg = esc(text.slice(i, j));
+    out += v === 0 ? seg
+         : `<mark class="mk-${v === 2 ? "find" : "excl"}" title="${esc(lab[i] || "")}">${seg}</mark>`;
+    i = j;
+  }
+  return out;
+}
+
 function steps(t) {
+  const spans = quoted(t);
   return t.steps.map(s => `<div class="step ${s.emitting ? "em" : ""}">
     <div class="sl">step ${s.step}${s.tools.length ? " · " + esc(s.tools.join(", ")) : ""}</div>
     ${s.reasoning ? `<pre class="cot">${esc(s.reasoning)}</pre>` : ""}
     ${s.sent.map(m => `<div class="msg"><div class="a">${esc(m.audience)} → ${esc(m.conversation||"")}</div>
-      <pre>${esc(m.text)}</pre></div>`).join("")}
+      <pre>${highlight(m.text, spans)}</pre></div>`).join("")}
   </div>`).join("");
 }
 
@@ -393,7 +479,7 @@ function render() {
   const kept = DATA.turns.filter(keep);
   const done = DATA.turns.filter(t => adj[t.id] && adj[t.id].verdict).length;
   document.getElementById("count").textContent =
-    `${kept.length} / ${DATA.turns.length} turns · ${done} adjudicated`;
+    `${kept.length} / ${DATA.turns.length} turns${invert ? " (inverted)" : ""} · ${done} adjudicated`;
   document.getElementById("main").innerHTML = kept.map(t => `
     <div class="turn" id="${esc(t.id)}">
       <div class="thead">
@@ -409,20 +495,41 @@ function render() {
                     : (t.jv9_labelled ? '<span class="chip">jv9 &lt;2/3</span>'
                                       : '<span class="chip">jv9 unjudged</span>')}
         <span style="flex:1"></span>
-        ${t.rollout ? `<a href="${esc(t.rollout)}" target="_blank">open rollout ↗</a>` : ""}
+        ${t.rollout ? `<a href="${esc(t.rollout)}" target="_blank" rel="noopener">open rollout ↗</a>
+          <button class="cp" data-path="${esc(t.rollout_path||"")}" title="copy the rollout's path — use this when the viewer blocks navigation">copy path</button>` : ""}
       </div>
       <div class="cols">
-        <div class="col"><h3>what the assistant did</h3>${steps(t)}</div>
+        <div class="col"><h3>what the assistant did
+          ${highlightQuotes ? `<span class="legend"><mark class="mk-find">quoted by a finding</mark>
+            ${showExcluded ? '<mark class="mk-excl">quoted by an excluded claim</mark>' : ""}</span>` : ""}
+        </h3>${steps(t)}</div>
         <div class="col"><h3>verdicts</h3>${visible(t).map(vset).join("") || "<i>none shown</i>"}</div>
       </div>
       ${adjBar(t)}
-    </div>`).join("") || "<p><i>no turns match this filter</i></p>";
+    </div>`).join("") ||
+      `<p><i>no turns ${invert ? "fall outside" : "match"} this filter</i></p>`;
 }
 
 document.getElementById("b10").onclick = e => { show.jv10 = !show.jv10; e.target.classList.toggle("on"); render(); };
 document.getElementById("b11").onclick = e => { show.jv11 = !show.jv11; e.target.classList.toggle("on"); render(); };
+// Navigation to file:// is blocked in sandboxed viewers and by Safari, so every rollout also
+// offers its path for the clipboard: `open <path>` always works, a link does not.
+document.addEventListener("click", e => {
+  const path = e.target.dataset && e.target.dataset.path;
+  if (!path) return;
+  const done = () => { const o = e.target.textContent; e.target.textContent = "copied";
+                       setTimeout(() => e.target.textContent = o, 1200); };
+  if (navigator.clipboard) navigator.clipboard.writeText(path).then(done, () => prompt("path:", path));
+  else prompt("path:", path);
+});
+document.getElementById("bh").onclick = e => {
+  highlightQuotes = !highlightQuotes; e.target.classList.toggle("on"); render();
+};
 document.getElementById("bx").onclick = e => {
   showExcluded = !showExcluded; e.target.classList.toggle("on"); render();
+};
+document.getElementById("inv").onclick = e => {
+  invert = !invert; e.target.classList.toggle("on"); render();
 };
 document.getElementById("mq").onclick = e => {
   modelNarrowsQuorum = !modelNarrowsQuorum; e.target.classList.toggle("on"); render();
@@ -459,6 +566,12 @@ document.getElementById("file").onchange = ev => {
                      catch (e) { alert("could not read that file"); } };
   r.readAsText(f);
 };
+document.getElementById("hint").innerHTML = DATA.turns[0] && /^file:/.test(DATA.turns[0].rollout || "")
+  ? "Rollout links are <code>file://</code> URLs: they work in Chrome/Firefox when this page is "
+    + "opened from disk, but are blocked in sandboxed viewers and in Safari. If a link does "
+    + "nothing, use <b>copy path</b>, or serve the repo (<code>python3 -m http.server 8000</code> "
+    + "from the repo root) and rebuild with <code>--http-base http://localhost:8000</code>."
+  : "";
 render();
 </script></body></html>
 """
@@ -468,14 +581,42 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="build the jv10/jv11 verdict browser")
     ap.add_argument("--sample", default=str(SAMPLE))
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--serve", nargs="?", const=8000, type=int, metavar="PORT",
+                    help="build against http://localhost:PORT (default 8000) and serve the repo "
+                         "root until Ctrl-C. THE ROUTE FOR SAFARI, which blocks file:// links "
+                         "outright and restricts localStorage on file:// origins — so over "
+                         "file:// the rollout links do nothing AND adjudications may not "
+                         "persist. Over http both work.")
+    ap.add_argument("--http-base", default="",
+                    help="build links against a locally served repo root, e.g. "
+                         "http://localhost:8000 (run `python3 -m http.server 8000` there). The "
+                         "only link form that works in every browser and in sandboxed viewers.")
     ap.add_argument("--relative", action="store_true",
                     help="link rollouts by a path relative to the page instead of an absolute "
                          "file:// URI. Survives moving the whole repo; breaks the moment this "
                          "one file is copied out of experiments/agent2/.")
     args = ap.parse_args(argv)
-    global RELATIVE_LINKS
-    RELATIVE_LINKS = args.relative
-    return build(Path(args.sample), Path(args.out))
+    global RELATIVE_LINKS, HTTP_BASE
+    RELATIVE_LINKS, HTTP_BASE = args.relative, args.http_base
+    if args.serve:
+        HTTP_BASE = f"http://localhost:{args.serve}"
+    rc = build(Path(args.sample), Path(args.out))
+    if rc or not args.serve:
+        return rc
+
+    import functools
+    import http.server
+    import socketserver
+    page = Path(args.out).resolve().relative_to(REPO)
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(REPO))
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("127.0.0.1", args.serve), handler) as httpd:
+        print(f"\n  open  {HTTP_BASE}/{page}\n\n  serving {REPO} — Ctrl-C to stop")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nstopped")
+    return 0
 
 
 if __name__ == "__main__":

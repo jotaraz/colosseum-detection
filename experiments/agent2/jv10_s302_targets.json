@@ -1,0 +1,44 @@
+[
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "deepseek",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "deepseek",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "deepseek",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "deepseek",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "deepseek",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_deepseek_s302.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "deepseek",
+  "ask": "askA"
+ }
+]

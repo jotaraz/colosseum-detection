@@ -1,0 +1,240 @@
+[
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s308.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s437.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askA_glm_s438.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "glm",
+  "ask": "askA"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s291.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askG_glm_s343.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "glm",
+  "ask": "askG"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 0,
+  "model": "glm",
+  "ask": "askK"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 4,
+  "model": "glm",
+  "ask": "askK"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 8,
+  "model": "glm",
+  "ask": "askK"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 12,
+  "model": "glm",
+  "ask": "askK"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 16,
+  "model": "glm",
+  "ask": "askK"
+ },
+ {
+  "run": "experiments/agent1/outputs/v15/inf_askK_glm_s353.json",
+  "agent": "Priya",
+  "turn_index": 20,
+  "model": "glm",
+  "ask": "askK"
+ }
+]

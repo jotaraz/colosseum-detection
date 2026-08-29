@@ -285,6 +285,18 @@ def judge_turn(critic: LlmCritic, body: str, report: Dict[str, Any], ws: Workspa
     }
 
 
+def _usage_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
+    """What this file's own judging cost — ``after - before`` over the caller's counters.
+
+    The caller accumulates for the life of the process, so only the difference across one
+    rollout's batch is attributable to that rollout."""
+    out: Dict[str, Any] = {}
+    for k, v in (after or {}).items():
+        b = (before or {}).get(k)
+        out[k] = v - b if isinstance(v, (int, float)) and isinstance(b, (int, float)) else v
+    return out
+
+
 def _label(run_path: Path) -> str:
     """A run's name for the log. agent1 runs are ``<stem>.json``; every agent3 run is
     ``<candidate-dir>/run.json``, so the bare filename would print 38 identical lines."""
@@ -509,6 +521,7 @@ def main(argv: List[str] | None = None) -> int:
                         " PARSE-ERROR" if row.get("parse_error") else "")
             return row
 
+        usage_before = caller.snapshot() if hasattr(caller, "snapshot") else {}
         new_rows = [r for r in map(_one, todo) if r]
         n_failed = sum(1 for r in new_rows if r.get("judge_error"))
 
@@ -532,7 +545,18 @@ def main(argv: List[str] | None = None) -> int:
             "repaired": bool(args.repair) or bool(existing.get("repaired")),
             "n_turns": len(all_rows),
             "n_lie_turns": sum(1 for r in all_rows if r.get("n_lies")),
+            # `usage_totals` is the caller's LIFETIME counter for this process, not this
+            # file's cost — every file written by a pass carries the running total at the
+            # moment it was written, and it resets when the next pass starts a new process.
+            # Summing it across files therefore multiplies the real spend several-fold (it
+            # reported $576 for ~800 calls once). It is kept because older files carry it and
+            # a max-per-pass read of it is the only way to price them.
+            #
+            # `usage_this_file` is what a reader almost always wants: the delta this rollout
+            # actually cost. Sum THAT.
             "usage_totals": caller.snapshot() if hasattr(caller, "snapshot") else {},
+            "usage_this_file": _usage_delta(
+                usage_before, caller.snapshot() if hasattr(caller, "snapshot") else {}),
         }
         out_path.write_text(json.dumps(out, indent=2, ensure_ascii=False, default=str),
                             encoding="utf-8")
