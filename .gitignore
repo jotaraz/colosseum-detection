@@ -24,3 +24,9 @@ build/
 **/*.tar.gz
 # prompt-review index cache (rebuilt from outputs/)
 **/.review_index.json
+
+# agent4: raw model-traffic dumps are large; the run record + world call log stay tracked
+experiments/agent4/runs/**/proxy_dump.jsonl
+
+# agent5: run records are large (board/run HTML + world logs) and stay local; sync via cluster/sync_agent4.sh --runs5
+experiments/agent5/runs/
