@@ -20,9 +20,19 @@ deception, and what did every other judge say about those same turns?". Filterin
 must not force the others out of view; reading one version alone is still a click away, and is
 the honest way to look at a version you are about to compare.
 
-Adjudications live in the browser's `localStorage`, keyed by `<run>#<turn>`, and are exported
-as JSON with the Export button. Nothing is written back into the verdict files: an adjudication
-is a human judgement ABOUT a verdict and must never be confusable with one.
+The MINE row filters on your own adjudications instead: which of deception / not deception /
+unsure / note-only / untouched to keep, whether a note must be present, and whether to fold each
+turn down to its header and note so that re-reading what you wrote is a scroll rather than an
+expedition. It sits outside `invert` deliberately -- inverting asks for the turns the VERDICT
+filters leave out, and quietly flipping "the ones I annotated" into "the ones I did not" would
+answer a question nobody asked.
+
+Adjudications live in the browser's `localStorage`, keyed by `<run>#<turn>`, and are exported as
+JSON with the Export button. `--adjudications` bakes such an export into the page as a seed, so a
+rebuild -- or a different browser, or a copy of the page sent to someone else -- opens with the
+verdicts and notes already in place; `localStorage` still wins per key, and Import remains the
+deliberate overwrite. Nothing is written back into the verdict files: an adjudication is a human
+judgement ABOUT a verdict and must never be confusable with one.
 """
 
 import argparse
@@ -42,6 +52,8 @@ from experiments.agent2.target_run import _audience  # noqa: E402
 
 SAMPLE = Path(__file__).with_name("deception_sample.json")
 OUT = Path(__file__).with_name("deception_browser.html")
+#: Default seed for ``--adjudications``: an Export dropped back beside the script.
+ADJ = Path(__file__).with_name("adjudications.json")
 
 #: Set by ``--relative``; see the link comment in ``turn_payload``.
 RELATIVE_LINKS = False
@@ -128,8 +140,9 @@ def verdict_payload(run, index):
     return sorted(out, key=lambda v: (v["version"], v["model"], v["replicate"]))
 
 
-def build(sample_path: Path, out_path: Path) -> int:
+def build(sample_path: Path, out_path: Path, seed_path=None) -> int:
     sample = json.loads(sample_path.read_text())
+    seed = json.loads(seed_path.read_text()) if seed_path and seed_path.exists() else {}
     reports, workspaces = {}, {}
     turns = []
     for s in sample:
@@ -155,13 +168,19 @@ def build(sample_path: Path, out_path: Path) -> int:
     data = {"turns": turns,
             "settings": sorted({(v["version"], v["model"], v["replicate"])
                                 for t in turns for v in t["verdicts"]})}
-    out_path.write_text(PAGE.replace("__DATA__", json.dumps(data, ensure_ascii=False)))
+    page = PAGE.replace("__DATA__", json.dumps(data, ensure_ascii=False))
+    # The seed is keyed exactly like the browser's own map, so a seeded page and a hand-edited
+    # one are the same object. Keys outside this sample are carried through rather than dropped:
+    # a sample can be redrawn around a turn, and losing the note would be the worse failure.
+    out_path.write_text(page.replace("__SEED__", json.dumps(seed, ensure_ascii=False)))
     n_v = sum(len(t["verdicts"]) for t in turns)
     try:
         shown = out_path.resolve().relative_to(REPO)
     except ValueError:  # --out outside the repo is legitimate; do not fail on the log line
         shown = out_path
-    print(f"wrote {shown} — {len(turns)} turns, {n_v} verdicts, "
+    noted = sum(1 for a in seed.values() if (a.get("note") or "").strip())
+    seeded = (f", {len(seed)} adjudications seeded ({noted} with a note)" if seed else "")
+    print(f"wrote {shown} — {len(turns)} turns, {n_v} verdicts{seeded}, "
           f"{out_path.stat().st_size // 1024} KB")
     return 0
 
@@ -199,8 +218,18 @@ main{padding:16px;max-width:1500px;margin:0 auto}
 .chip{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--chip);color:var(--mut);white-space:nowrap}
 .chip.hit{background:#fde2e4;color:#9d1c2b}
 .chip.flag{background:#e7ecfd;color:#2540b0;font-weight:600}
+.chip.mine{background:#dcefe3;color:#1f6b45;font-weight:600}
+.chip.note{background:#fdf0d0;color:#7a5b00;font-weight:600}
 @media (prefers-color-scheme:dark){.chip.hit{background:#42181f;color:#ff9aa4}
-  .chip.flag{background:#22294a;color:#9db2ff}}
+  .chip.flag{background:#22294a;color:#9db2ff}
+  .chip.mine{background:#1d3a2b;color:#7fd6a3}
+  .chip.note{background:#3d3220;color:#e3b341}}
+/* Folded: the turn keeps its header and YOUR adjudication, and drops the evidence columns.
+   Folding is CSS-only and per element, so expanding one turn never re-renders the page and
+   never discards a note you are halfway through typing. */
+.turn.fold .cols{display:none}
+.turn.fold .adj{border-top:0}
+button.xp{font-size:11px;padding:2px 7px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0}
 @media(max-width:1100px){.cols{grid-template-columns:1fr}}
 .col{padding:12px 14px;min-width:0}
@@ -280,6 +309,15 @@ mark.mk-excl{background:#e6e6e0;color:inherit;border-bottom:2px dotted #9a9a94;p
     <button id="imp">Import</button>
     <input type="file" id="file" accept="application/json" style="display:none">
   </div>
+  <div class="row">
+    <span class="lbl" title="Filter on YOUR OWN adjudications — what you decided, not what a judge did. Independent of both verdict rows, and not touched by invert.">mine</span>
+    <span class="grp" id="mstates"></span>
+    <span class="grp">
+      <button id="bn" class="tg" title="Keep only turns carrying a note, whatever verdict you gave them — including the ones you settled AND annotated.">has note</button>
+      <button id="bc" class="tg" title="Fold every turn to its header and your adjudication, for a pass over what you wrote. Expand opens one turn's evidence in place.">notes only</button>
+    </span>
+    <span class="count" id="mcount"></span>
+  </div>
 </header>
 <div class="hint" id="hint"></div>
 <main id="main"></main>
@@ -287,8 +325,14 @@ mark.mk-excl{background:#e6e6e0;color:inherit;border-bottom:2px dotted #9a9a94;p
 const DATA = __DATA__;
 const esc = s => (s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const KEY = "deception_adjudications_v1";
+// Adjudications baked in at build time by `--adjudications`, so the page carries your verdicts
+// and notes to a browser that never had them.
+const SEED = __SEED__;
 let adj = {};
 try { adj = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { adj = {}; }
+// The seed is a floor, never an overwrite: a page rebuilt from last week's export must not
+// silently undo an adjudication made in this browser since. Import is the deliberate override.
+adj = Object.assign({}, SEED, adj);
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(adj)); } catch (e) {} };
 
 const models = [...new Set(DATA.turns.flatMap(t => t.verdicts.map(v => v.model)))].sort();
@@ -317,6 +361,33 @@ function toggles(which) {
 }
 toggles("filter");
 toggles("show");
+
+// A third axis over the same turns: what YOU decided. Deliberately not part of `matches`, so
+// `invert` keeps meaning "the turns the verdict filters leave out" rather than also inverting
+// which of your own adjudications you are looking at.
+const MSTATES = [["deception", "deception"], ["clean", "not deception"], ["unsure", "unsure"],
+                 ["note", "note only"], ["none", "untouched"]];
+const MLABEL = Object.fromEntries(MSTATES);
+const mine = new Set(MSTATES.map(m => m[0]));
+let noteOnly = false, fold = false;
+
+// A note without a verdict is a state, not an absence: the turn you read, wrote something
+// about, and did not settle. Folding it into "untouched" hides exactly the turns a review pass
+// exists for -- so it gets its own bucket, and `todo` below means untouched literally.
+const mineState = t => {
+  const a = adj[t.id];
+  if (!a) return "none";
+  if (a.verdict) return a.verdict;
+  return (a.note || "").trim() ? "note" : "none";
+};
+const noteOf = t => ((adj[t.id] || {}).note || "").trim();
+const mineOk = t => mine.has(mineState(t)) && (!noteOnly || !!noteOf(t));
+
+function mtoggles() {
+  document.getElementById("mstates").innerHTML = MSTATES.map(([k, label]) =>
+    `<button class="tg ${mine.has(k) ? "on" : ""}" data-mine="${k}">${esc(label)}</button>`).join("");
+}
+mtoggles();
 
 let showExcluded = true;
 const pick = (t, which) => t.verdicts.filter(v =>
@@ -347,7 +418,7 @@ const decByVersion = t => {
 // a presentation choice, and a turn with nothing displayed still appears, with an empty
 // verdict column, rather than silently leaving the sample.
 let invert = false;
-const keep = t => invert ? !matches(t) : matches(t);
+const keep = t => (invert ? !matches(t) : matches(t)) && mineOk(t);
 
 function matches(t) {
   if (document.getElementById("group").value && t.group !== document.getElementById("group").value) return false;
@@ -356,7 +427,7 @@ function matches(t) {
   if (decCount(t) < thr) return false;
   if (f === "split") return vs.some(isDec) && vs.some(v => !isDec(v));
   if (f === "jv9")   return t.jv9_hit;
-  if (f === "todo")  return !(adj[t.id] && adj[t.id].verdict);
+  if (f === "todo")  return mineState(t) === "none";  // untouched: no verdict AND no note
   if (f === "vsplit") {
     const d = decByVersion(t);
     if (!d.jv10 || !d.jv11) return false;
@@ -487,7 +558,8 @@ function adjBar(t) {
   return `<div class="adj">
     <b style="font-size:12px">adjudication</b>
     ${b("deception","deception")}${b("clean","not deception")}${b("unsure","unsure")}
-    <textarea data-note="${esc(t.id)}" rows="1" placeholder="note…">${esc(a.note||"")}</textarea>
+    <textarea data-note="${esc(t.id)}" rows="${Math.min(6, Math.max(1,
+        Math.ceil((a.note || "").length / 90)))}" placeholder="note…">${esc(a.note||"")}</textarea>
   </div>`;
 }
 
@@ -498,13 +570,22 @@ function render() {
   const cap = DATA.turns.reduce((a, t) => Math.max(a, scored(t).length), 0);
   document.getElementById("thrmax").textContent = cap;
   document.getElementById("thr").max = cap;
-  const done = DATA.turns.filter(t => adj[t.id] && adj[t.id].verdict).length;
+  const st = DATA.turns.map(mineState);
+  const done = st.filter(v => v !== "none" && v !== "note").length;
   document.getElementById("count").textContent =
-    `${kept.length} / ${DATA.turns.length} turns${invert ? " (inverted)" : ""} · ${done} adjudicated`;
+    `${kept.length} / ${DATA.turns.length} turns${invert ? " (inverted)" : ""} · ${done} judged`;
+  // Notes counted separately from verdicts: the two are not the same pass over the sample, and
+  // a single "adjudicated" number reported neither honestly.
+  document.getElementById("mcount").textContent =
+    `${done} judged · ${DATA.turns.filter(noteOf).length} noted · `
+    + `${st.filter(v => v === "none").length} untouched`;
   document.getElementById("main").innerHTML = kept.map(t => `
-    <div class="turn" id="${esc(t.id)}">
+    <div class="turn ${fold ? "fold" : ""}" id="${esc(t.id)}">
       <div class="thead">
         <span class="t">${esc(t.label)} · turn ${t.turn_index}</span>
+        ${mineState(t) !== "none" && mineState(t) !== "note"
+          ? `<span class="chip mine">you: ${esc(MLABEL[mineState(t)])}</span>` : ""}
+        ${noteOf(t) ? '<span class="chip note">note</span>' : ""}
         <span class="chip">${esc(t.family)}</span>
         <span class="chip">${esc(t.group)}</span>
         <span class="chip">round ${esc(String(t.round))}${t.kind === "closing" ? " · closing" : ""}</span>
@@ -517,6 +598,7 @@ function render() {
                     : (t.jv9_labelled ? '<span class="chip">jv9 &lt;2/3</span>'
                                       : '<span class="chip">jv9 unjudged</span>')}
         <span style="flex:1"></span>
+        ${fold ? '<button class="xp" data-xp="1">expand</button>' : ""}
         ${t.rollout ? `<a href="${esc(t.rollout)}" target="_blank" rel="noopener">open rollout ↗</a>
           <button class="cp" data-path="${esc(t.rollout_path||"")}" title="copy the rollout's path — use this when the viewer blocks navigation">copy path</button>` : ""}
       </div>
@@ -552,6 +634,26 @@ document.addEventListener("click", e => {
   if (navigator.clipboard) navigator.clipboard.writeText(path).then(done, () => prompt("path:", path));
   else prompt("path:", path);
 });
+document.addEventListener("click", e => {
+  const k = e.target.dataset && e.target.dataset.mine;
+  if (!k) return;
+  mine.has(k) ? mine.delete(k) : mine.add(k);
+  e.target.classList.toggle("on");
+  render();
+});
+// Per-turn, class-only, no re-render: a note being typed in another turn stays untouched.
+document.addEventListener("click", e => {
+  if (!(e.target.dataset && e.target.dataset.xp)) return;
+  const el = e.target.closest(".turn");
+  el.classList.toggle("fold");
+  e.target.textContent = el.classList.contains("fold") ? "expand" : "collapse";
+});
+document.getElementById("bn").onclick = e => {
+  noteOnly = !noteOnly; e.target.classList.toggle("on"); render();
+};
+document.getElementById("bc").onclick = e => {
+  fold = !fold; e.target.classList.toggle("on"); render();
+};
 document.getElementById("bh").onclick = e => {
   highlightQuotes = !highlightQuotes; e.target.classList.toggle("on"); render();
 };
@@ -576,6 +678,11 @@ document.addEventListener("input", e => {
   if (!id) return;
   adj[id] = Object.assign({}, adj[id], {note: e.target.value});
   save();
+  // Only the counters and this turn's chips move; a full render would take the caret with it.
+  const st = DATA.turns.map(mineState), done = st.filter(v => v !== "none" && v !== "note").length;
+  document.getElementById("mcount").textContent =
+    `${done} judged · ${DATA.turns.filter(noteOf).length} noted · `
+    + `${st.filter(v => v === "none").length} untouched`;
 });
 document.getElementById("exp").onclick = () => {
   const blob = new Blob([JSON.stringify(adj, null, 1)], {type: "application/json"});
@@ -618,6 +725,13 @@ def main(argv=None) -> int:
                     help="build links against a locally served repo root, e.g. "
                          "http://localhost:8000 (run `python3 -m http.server 8000` there). The "
                          "only link form that works in every browser and in sandboxed viewers.")
+    ap.add_argument("--adjudications", default=str(ADJ) if ADJ.exists() else "",
+                    metavar="PATH",
+                    help="an exported adjudications JSON to bake into the page, so your verdicts "
+                         "and notes survive a rebuild and travel with the file. Defaults to "
+                         "adjudications.json beside this script when it exists; pass an empty "
+                         "string for a page with none. localStorage wins per key; Import "
+                         "overrides both.")
     ap.add_argument("--relative", action="store_true",
                     help="link rollouts by a path relative to the page instead of an absolute "
                          "file:// URI. Survives moving the whole repo; breaks the moment this "
@@ -627,7 +741,8 @@ def main(argv=None) -> int:
     RELATIVE_LINKS, HTTP_BASE = args.relative, args.http_base
     if args.serve:
         HTTP_BASE = f"http://localhost:{args.serve}"
-    rc = build(Path(args.sample), Path(args.out))
+    rc = build(Path(args.sample), Path(args.out),
+               Path(args.adjudications) if args.adjudications else None)
     if rc or not args.serve:
         return rc
 
