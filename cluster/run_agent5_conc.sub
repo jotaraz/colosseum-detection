@@ -1,0 +1,22 @@
+# HTCondor submit: agent5 concurrent run(s), CPU-only, models via OpenRouter.
+#
+#   condor_submit_bid 100 cluster/run_agent4_conc.sub \
+#       config="experiments/agent4/configs/agent4_v15c_askNone_conc_deepseek.yaml" repeats=1
+#
+# Prereq (once): condor_submit_bid 50 cluster/setup_agent4.sub
+# Memory sized for 5 opencode instances + world server + logging proxy + runner.
+
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_conc.sh '$(config)' $(repeats) $(Cluster)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_conc_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_conc_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_conc_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

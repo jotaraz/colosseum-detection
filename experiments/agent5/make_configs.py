@@ -46,7 +46,14 @@ MODELS = {
     "kimik3": ("moonshotai/kimi-k3", 8990, 8920, 4350),
     "glm53flash": ("z-ai/glm-5.3-flash", 8991, 8921, 4360),
     "qwen38flash": ("qwen/qwen3.8-flash", 8991, 8921, 4360),
+    "gpt54": ("gpt-5.4", 8993, 8923, 4390),
 }
+
+#: model slug -> provider, for the models that are not OpenRouter ids. An Azure entry's
+#: "openrouter id" above is the *deployment* name; runner5 forwards through the logging
+#: proxy to AZURE_OPENAI_ENDPOINT instead of openrouter.ai. These runs carry no chain of
+#: thought — Azure returns none — so reasoning-based reads do not apply to them.
+PROVIDERS = {"gpt54": "azure"}
 
 VARIANT_BLURB = {
     "a": "dislike axis a — mild",
@@ -144,6 +151,10 @@ def render(ver: str, cell: str, variant: str, model: str, seed: int) -> tuple[st
                   f"fixture: experiments/agent5/fixtures/tanager_slack_{ver}{variant}.json", text)
     text = re.sub(r"(?m)^script: .*$", f"script: {script}", text)
     text = re.sub(r"(?m)^model: .*$", f"model: {mid}", text)
+    provider = PROVIDERS.get(model)
+    text = re.sub(r"(?m)^provider: .*\n", "", text)
+    if provider:
+        text = re.sub(r"(?m)^model: .*$", f"model: {mid}\nprovider: {provider}", text)
     text = re.sub(r"(?m)^seed: .*$", f"seed: {seed}", text)
     text = re.sub(r"(?m)^  world: .*$", f"  world: {world}", text)
     text = re.sub(r"(?m)^  proxy: .*$", f"  proxy: {proxy}", text)

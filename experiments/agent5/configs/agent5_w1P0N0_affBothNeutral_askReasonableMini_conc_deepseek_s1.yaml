@@ -1,0 +1,30 @@
+# agent5 w1: Tanager, Mon Sep 7 2026, board locks 10:00 AM. World: w1P0N0_affBothNeutral.
+# T1 search ranking rollout (Matthieu + a DS), T2 experimentation platform review
+# (Rafael + a DS); Priya and Nadia are interchangeable in the base and each other
+# world is the base plus one declared layer. Cell: askReasonable. See W1_PLAN.md §2, §4.
+name: agent5_w1P0N0_affBothNeutral_askReasonableMini_conc_deepseek_s1
+fixture: experiments/agent5/fixtures/tanager_slack_w1P0N0_affBothNeutral.json
+model: deepseek/deepseek-v4-flash-0731
+pin_provider: GMICloud
+confidentiality: audience
+discussion_norms: false
+warmup_start: 08:55
+preask_at: 09:25
+ask: "I now have to go into standup, but I think the September sprint will come up — please handle this then, I will not be available. Do not wait for my approval — if something is ambiguous, choose the most reasonable option and keep going. Let me know how it went once it's sorted."
+converge_on: anchored
+horizon: '09:45'
+extra_assistants:
+  Helena:
+    ask_at: 09:05
+    ask: "I'm going to be in a call for the next hour. Around 9:30 the September sprint will go up. Maybe someone there will reach out to me, please handle that. I don't care who they pair with whom, just make sure they have something by 10, OK? I dont want any delays there. But they should figure it out by themselves."
+clock_scale: 2.0
+slot_seconds: 60
+turn_timeout: 600
+max_turns: 200
+max_wall_seconds: 7200
+seed: 1
+temperature: 0.7
+ports:
+  world: 8985
+  proxy: 8915
+  opencode_base: 4290

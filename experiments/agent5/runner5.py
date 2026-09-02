@@ -23,14 +23,15 @@ import secrets
 import sys
 import time
 
-# Match the world server: naive datetime <-> epoch conversions in Berlin time
-# everywhere, so cluster (UTC) and laptop (CEST) mint identical ts.
+# Match the world server: naive datetime <-> epoch conversions in the fixture's timezone
+# everywhere, so cluster (UTC) and laptop (CEST) mint identical ts. Berlin at import; the
+# runner re-pins to the fixture's own ``tz`` once it has read it (w1 is America/New_York).
 os.environ["TZ"] = "Europe/Berlin"
 time.tzset()
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -60,7 +61,37 @@ class Slack5Runner(ConcRunner):
 
     def __init__(self, config: Dict[str, Any], config_path: str):
         super().__init__(config, config_path)
+        #: Model provider: "openrouter" (default), "azure" (direct Azure OpenAI
+        #: deployment, ``model`` is the deployment name, e.g. gpt-5.4) or "bifrost" (the
+        #: institute AI Gateway, ``model`` is a gateway id, e.g. azure/gpt-5.5). Both
+        #: OpenAI legs return no chain of thought, so those runs have empty
+        #: ``steps_detail[].reasoning``.
+        self.provider = str(config.get("provider") or "openrouter")
+        #: Optional OpenRouter backend pin (e.g. "GMICloud"), fallbacks off. Unset means
+        #: the router chooses, which is how every cell before w1 ran. Pinning removes the
+        #: silent-stall failure mode documented in agent2/JUDGE_OPERATIONS.md, and also
+        #: removes quantization as an uncontrolled source of between-seed variance.
+        self.pin_provider = str(config.get("pin_provider") or "")
+        #: What ends a run early. ``valid`` (default, every rollout to date): the board is
+        #: complete *and* every ticket has its pair, plus the reporter's DM. ``settled``:
+        #: the board is complete and the reporter has reported, whether or not a ticket is
+        #: short — so a refusal (both data scientists declining one partner, W1_PLAN §8a)
+        #: ends the run instead of burning to horizon. Changing this changes run behaviour
+        #: and breaks comparability with earlier rollouts, so it is opt-in per config.
+        #: ``anchored``: the run ends once each assistant named in ``anchor_agents``
+        #: (default the two data scientists) has made its first public act — a
+        #: ``board_assign`` or a post in the sprint channel — which is exactly the prefix
+        #: ``preference_judge`` reads (W1_PLAN §7.4, "mini" runs). Nothing after that point
+        #: is observed, so these runs carry no board outcome; pair with ``horizon`` as the
+        #: backstop for an assistant that never acts.
+        self.converge_on = str(config.get("converge_on") or "valid")
+        if self.converge_on not in ("valid", "settled", "anchored"):
+            raise ValueError("converge_on must be 'valid', 'settled' or 'anchored', "
+                             f"not {self.converge_on!r}")
+        self.anchor_agents = [str(a) for a in (config.get("anchor_agents") or ("Priya", "Nadia"))]
         fx = json.loads(self.fixture_path.read_text())
+        os.environ["TZ"] = fx.get("tz") or "Europe/Berlin"
+        time.tzset()
         self.uid_by_name = {u["name"]: u["id"] for u in fx["users"]}
         self.name_by_uid = {u["id"]: u["name"] for u in fx["users"]}
         self.bot_uids = {u["id"] for u in fx["users"] if u.get("is_bot")}
@@ -92,6 +123,49 @@ class Slack5Runner(ConcRunner):
         self.trigger_log: List[Dict[str, Any]] = []
 
     # ------------------------------------------------------------------- hooks
+
+    def _first_public_act(self, agent: str) -> bool:
+        """Has this assistant claimed a ticket or posted in the sprint channel yet?"""
+        t0 = self.clock_start.timestamp()
+        if any(t["agent"] == agent and any(c.get("tool") == "board_assign"
+                                           for c in t.get("tool_calls") or [])
+               for t in self.turns):
+            return True
+        return any(m.get("conv_id") == self.sprint_cid and m["user"] == agent
+                   and float(m["ts"]) > t0 for m in self.all_new)
+
+    def _converged(self, state: Dict[str, Any]) -> bool:
+        if self.converge_on == "valid":
+            return super()._converged(state)
+        if self.converge_on == "anchored":
+            return all(self._first_public_act(a) for a in self.anchor_agents)
+        # settled: everyone has claimed something and the reporter has reported. An
+        # unstaffed ticket is a finding (board_shape == "unstaffed"), not an unfinished run.
+        if not state["board_complete"]:
+            return False
+        if not (self.reporter and self.report_to):
+            return True
+        return any(m["type"] == "dm" and m["user"] == self.reporter
+                   and set(m["members"]) == {self.reporter, self.report_to}
+                   and float(m["ts"]) > self.clock_start.timestamp()
+                   for m in self.all_new)
+
+    async def _scheduler(self) -> str:
+        outcome = await super()._scheduler()
+        if outcome == "converged" and self.converge_on == "anchored":
+            # The base runner ends a run by appending a sentinel to each inbox, so every
+            # wake already queued still runs first — under the thundering-herd wake rule
+            # that is a dozen-plus turns after the anchor (first mini batch: both anchors
+            # by turn 21, run ended at turn 37). Nothing after the anchor is observed in
+            # this mode, so drop the queue; in-flight turns still get their grace.
+            dropped = 0
+            for q in self.inbox.values():
+                while not q.empty():
+                    q.get_nowait()
+                    dropped += 1
+            print(f"anchored: both anchors reached, {dropped} queued wake(s) dropped")
+        return outcome
+
     def world_cmd(self) -> List[str]:
         return [
             PY, str(self.WORLD_SERVER), "--fixture", str(self.fixture_path),
@@ -106,7 +180,23 @@ class Slack5Runner(ConcRunner):
 
     def proxy_cmd(self) -> List[str]:
         # opencode stamps the real date into its <env> block; the proxy rewrites it.
-        return super().proxy_cmd() + ["--spoof-date", self.clock_start.date().isoformat()]
+        cmd = super().proxy_cmd() + ["--spoof-date", self.clock_start.date().isoformat()]
+        if self.provider != "openrouter":
+            cmd += ["--upstream", self.provider]
+        elif self.pin_provider:
+            cmd += ["--pin-provider", self.pin_provider]
+        if self.provider == "bifrost":
+            # The gateway's certificate chains to the institute root CA, which certifi
+            # does not carry; without this the proxy's upstream handshake fails.
+            cmd += ["--ca-bundle", str(REPO / "cluster" / "mpi_is_ca.pem")]
+        return cmd
+
+    def env_required(self) -> Tuple[str, ...]:
+        if self.provider == "azure":
+            return ("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY")
+        if self.provider == "bifrost":
+            return ("BIFROST_API_KEY",)
+        return super().env_required()
 
     def system_prompt(self, agent: str) -> str:
         return prompts5.system_prompt(
@@ -116,7 +206,8 @@ class Slack5Runner(ConcRunner):
     def build_home(self, agent: str, system_prompt: str) -> Path:
         return make_home5(self.homes_root, agent, model=self.model,
                           proxy_port=self.proxy_port, world_port=self.world_port,
-                          system_prompt=system_prompt, temperature=self.temperature)
+                          system_prompt=system_prompt, temperature=self.temperature,
+                          provider=self.provider)
 
     # ------------------------------------------------------------------- wakes
     def _envelope(self, event: Dict[str, Any], recipient_uid: str) -> Dict[str, Any]:

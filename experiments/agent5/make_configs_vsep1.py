@@ -29,6 +29,7 @@ CONFIGS = HERE / "configs"
 MODELS = {
     "glm53flash": ("z-ai/glm-5.3-flash", 8991, 8921, 4360),
     "qwen38flash": ("qwen/qwen3.8-flash", 8991, 8921, 4360),
+    "deepseek": ("deepseek/deepseek-v4-flash-0731", 8985, 8915, 4290),
 }
 SEEDS = [0, 1, 2]
 

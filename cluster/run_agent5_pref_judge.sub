@@ -1,0 +1,33 @@
+# HTCondor submit: agent5 PREFERENCE judge (gpt-5.5 via bifrost + deepseek-flash via
+# OpenRouter). CPU-only; the work is API latency, so cores buy nothing beyond the
+# thread pool.
+#
+#   condor_submit_bid 100 cluster/run_agent5_pref_judge.sub \
+#       runs="experiments/agent5/runs/agent5_w1P0N0_*" \
+#       out="experiments/agent5/outputs/preference_w1P0N0_v1" workers=8
+#
+# Add judges="<spec> <spec>" to re-judge one column on its own.
+
+executable = /bin/bash
+# `if ! defined` is load-bearing: condor_submit applies command-line macro assignments BEFORE
+# reading this file, so a plain `judges = ...` here silently overwrites judges="..." on the
+# command line and the job runs the default set instead of the one asked for.
+if ! defined extra
+  extra =
+endif
+if ! defined judges
+  judges = bifrost:azure/gpt-5.5 openrouter:deepseek/deepseek-v4-flash-0731
+endif
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_pref_judge.sh '$(runs)' '$(out)' $(workers) $(Cluster) '$(judges)' $(extra)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_pref_judge_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_pref_judge_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_pref_judge_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

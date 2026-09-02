@@ -22,6 +22,7 @@ from typing import Any, Dict, List
 MAX_DETAIL = 700          # chars of a tool call's args/result kept in the page
 GAP_SPACER_S = 240        # world-clock gap that earns a "+N min" spacer row
 ROW_MERGE_S = 1           # atoms within the same rounded second share a row
+POST_GROUP_S = 15         # same-turn-and-step posts further apart than this split rows
 
 
 def _naive_utc(iso: str) -> float:
@@ -109,9 +110,12 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
             src = f"added to {wake.get('label', '?')}"
         else:
             src = t["kind"] + " from principal"
+        end_iso = t.get("clock_end") or t["clock"]
         out.append({
             "i": t["i"], "agent": t["agent"], "kind": t["kind"],
-            "time": _hms(_naive_utc(t["clock"]) + off, off), "src": src,
+            "time": _hms(_naive_utc(t["clock"]) + off, off),
+            "end": _hms(_naive_utc(end_iso) + off, off),
+            "t1": int(_naive_utc(end_iso) + off), "src": src,
             "ask": (t.get("message_in") or "") if t["kind"] in ("ask", "debrief") else "",
             "steps": steps, "reads": reads, "read_ts": sorted(set(read_ts)),
             "posts": posts, "report": t.get("text_to_principal") or "",
@@ -161,20 +165,30 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
     conv_order = sorted(convs.values(), key=conv_key)
 
     # rows: one per rounded world-second. Turn cells sit at turn start; messages sit
-    # at their own post time, except posts from the same (turn, step) share the row
-    # of the step's earliest post — "sent together" stays same-height.
-    step_row: Dict[tuple, float] = {}
-    for mv in msgs:
+    # at their own post time, except posts from the same (turn, step) share the row of
+    # the group's earliest post — "sent together" stays same-height. A same-step group
+    # is split on gaps > POST_GROUP_S: the step mapper leaves some calls at step 0, and
+    # merging posts minutes apart would break channel chronology.
+    grouped: Dict[tuple, list] = defaultdict(list)
+    for i, mv in enumerate(msgs):
         if mv["src"]:
-            k = (mv["src"]["turn"], mv["src"]["step"])
-            step_row[k] = min(step_row.get(k, float("inf")), float(mv["ts"]))
+            grouped[(mv["src"]["turn"], mv["src"]["step"])].append(i)
+    row_ts = {i: float(mv["ts"]) for i, mv in enumerate(msgs)}
+    for members in grouped.values():
+        members.sort(key=lambda i: float(msgs[i]["ts"]))
+        anchor = float(msgs[members[0]]["ts"])
+        for i in members:
+            ts = float(msgs[i]["ts"])
+            if ts - anchor > POST_GROUP_S:
+                anchor = ts
+            row_ts[i] = anchor
     atoms: Dict[int, Dict[str, Any]] = {}
     for t, raw in zip(turns, r["turns"]):
         key = int((_naive_utc(raw["clock"]) + off) // ROW_MERGE_S)
+        t["t0"] = key
         atoms.setdefault(key, {"epoch": key, "turns": [], "msgs": []})["turns"].append(t["i"])
-    for i, mv in enumerate(msgs):
-        ts = step_row[(mv["src"]["turn"], mv["src"]["step"])] if mv["src"] else float(mv["ts"])
-        key = int(ts // ROW_MERGE_S)
+    for i in range(len(msgs)):
+        key = int(row_ts[i] // ROW_MERGE_S)
         atoms.setdefault(key, {"epoch": key, "turns": [], "msgs": []})["msgs"].append(i)
     rows = [atoms[k] | {"time": _hms(k, off)} for k in sorted(atoms)]
 
@@ -217,18 +231,22 @@ _TEMPLATE = r"""<!doctype html>
   --bg:#f6f7f9; --panel:#fff; --ink:#1c2330; --dim:#68738a; --line:#dfe3ea;
   --stripe:rgba(15,40,80,.025); --hl:#ffd54d33; --pin:#ffb30055;
   --accent:#2563eb; --marker:#c2410c; --spacer:#94a3b8;
-  --Nadia:#2563eb; --Marcus:#059669; --Tomas:#d97706; --Priya:#db2777; --Helena:#7c3aed;
+  --Nadia:#2563eb; --Marcus:#059669; --Matthieu:#059669; --Tomas:#d97706; --Priya:#db2777; --Helena:#7c3aed;
+  --Rafael:#d97706;
   --human:#8a93a6;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#12161d; --panel:#1a2029; --ink:#dfe5ee; --dim:#8b96aa; --line:#2a3342;
   --stripe:rgba(160,190,255,.04); --hl:#ffd54d22; --pin:#ffb30044;
-  --Nadia:#5c8dff; --Marcus:#2fbf8f; --Tomas:#e8a13c; --Priya:#ef6aa8; --Helena:#a07af0;
+  --Nadia:#5c8dff; --Marcus:#2fbf8f; --Matthieu:#2fbf8f; --Tomas:#e8a13c; --Priya:#ef6aa8; --Helena:#a07af0;
+  --Rafael:#e8a13c;
 }}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+  display:flex;flex-direction:column;
   font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-#top{position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);
+#top{flex:none;background:var(--bg);border-bottom:1px solid var(--line);
   padding:8px 12px}
 #top h1{font-size:14px;margin:0 0 2px;font-weight:650}
 #top .meta{color:var(--dim);font-size:12px;margin-bottom:6px}
@@ -240,9 +258,12 @@ body{margin:0;background:var(--bg);color:var(--ink);
   padding:2px 9px;font-size:11.5px;cursor:pointer;user-select:none;white-space:nowrap}
 .chip.on{color:var(--ink);border-color:currentColor}
 .chip .n{opacity:.55;font-size:10px;margin-left:3px}
-#wrap{overflow-x:auto}
+#wrap{flex:1;overflow:auto}
 #grid{display:grid;align-items:start;min-width:min-content;padding-bottom:40vh}
 .stripe{background:var(--stripe);align-self:stretch;height:100%}
+.tbar{width:3px;height:100%;align-self:stretch;justify-self:start;margin-left:1px;
+  border-radius:2px;opacity:.5;cursor:pointer}
+.tbar:hover{opacity:1;width:5px}
 .colhead{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
   padding:6px 8px;font-weight:650;font-size:12px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
@@ -426,8 +447,13 @@ function msgCard(m, mi){
   const t = m.src ? D.turns[m.src.turn] : null;
   const cls = "card msg"+(t?"":" scripted");
   const color = t ? agentColor(t.agent) : (AGENTS.has(m.user)?agentColor(m.user):"var(--human)");
+  const secs = s => s.split(":").reduce((a,x)=>a*60+ +x, 0);
   const wakes = m.wakes.length
-    ? `<div class="wline">woke ${m.wakes.map(i=>esc(D.turns[i].agent)).join(", ")}</div>` : "";
+    ? `<div class="wline">woke ${m.wakes.map(i=>{
+        const w = D.turns[i], lag = secs(w.time)-secs(m.time);
+        const lagTxt = lag>=90 ? ` +${Math.round(lag/60)}m` : lag>=5 ? ` +${lag}s` : "";
+        return `<span class="jump" data-jump="${i}">${esc(w.agent)}${lagTxt}</span>`;
+      }).join(", ")}</div>` : "";
   let cot = "";
   if (t){
     const step = t.steps.find(s=>s.calls.some(c=>c.post_ts===m.ts)) || t.steps[t.steps.length-1];
@@ -477,8 +503,8 @@ function renderGrid(){
   for (const c of cols){
     const lbl = c.kind==="conv" && c.label.startsWith("dm:")
       ? c.label.slice(3).replace("+"," ⇄ ") : c.label;
-    const col = c.kind==="agent" ? `style="color:${agentColor(c.label.split(" ")[0])}"` : "";
-    h += `<div class="colhead" ${col} style="grid-row:1;grid-column:${colIdx[c.id]}">${esc(lbl)}</div>`;
+    const col = c.kind==="agent" ? `color:${agentColor(c.label.split(" ")[0])};` : "";
+    h += `<div class="colhead" style="${col}grid-row:1;grid-column:${colIdx[c.id]}">${esc(lbl)}</div>`;
   }
   // backlog row
   h += `<div class="rule" style="grid-row:2;grid-column:1">history</div>`;
@@ -491,6 +517,8 @@ function renderGrid(){
       ${bl.map(m=>msgCard(m,"b"+m.ts)).join("")}</details></div>`;
   }
   // body rows
+  const rowIdx = [];                       // rendered data rows: {gr, epoch}
+  const grByTurn = {};                     // turn i -> grid row of its cell
   items.forEach((it, k)=>{
     const gr = k+3;
     if (it.gap){ h += `<div class="spacer" style="grid-row:${gr}">+${it.gap} min</div>`; return; }
@@ -499,6 +527,8 @@ function renderGrid(){
       return;
     }
     const r = it.row;
+    rowIdx.push({gr, epoch: r.epoch});
+    for (const ti of r.turns) grByTurn[ti] = gr;
     h += `<div class="rule" style="grid-row:${gr};grid-column:1">${r.time}</div>`;
     const byCol = {};
     for (const ti of r.turns){
@@ -512,6 +542,18 @@ function renderGrid(){
     for (const [id, cards] of Object.entries(byCol))
       h += `<div class="cell" style="grid-row:${gr};grid-column:${colIdx[id]}">${cards.join("")}</div>`;
   });
+  // active-period bars: one per turn, spanning its lane from start row to the last
+  // rendered row that falls inside [t0, t1]
+  for (const t of D.turns){
+    const col = colIdx["a:"+t.agent], gr0 = grByTurn[t.i];
+    if (!col || !gr0) continue;
+    let gr1 = gr0;
+    for (const {gr, epoch} of rowIdx)
+      if (epoch > t.t0 && epoch <= t.t1 && gr > gr1) gr1 = gr;
+    h += `<div class="tbar" data-jump="${t.i}" style="grid-column:${col};`+
+      `grid-row:${gr0}/${gr1+1};background:${agentColor(t.agent)}" `+
+      `title="${esc(t.agent)} · ${t.time} → ${t.end}"></div>`;
+  }
   grid.innerHTML = h;
 }
 

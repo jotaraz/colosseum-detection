@@ -1,0 +1,14 @@
+# The six optimized arms on their native models + jv10/glm-5.2 judging.
+#   condor_submit_bid 100 cluster/run_optimized_arms.sub
+# CPU-only: pure API wall-clock. Vary with: environment = "WANT=11 PAR=6"
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_optimized_arms.sh"
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/optimized_arms_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/optimized_arms_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/optimized_arms_$(Cluster).log
+request_gpus   = 0
+request_cpus   = 4
+request_memory = 16384
+request_disk   = 8G
++BypassLXCfs   = "true"
+queue 1

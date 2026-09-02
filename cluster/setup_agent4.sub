@@ -1,0 +1,16 @@
+# One-time agent4 setup on a CPU compute node (opencode binary + venv deps).
+#   condor_submit_bid 50 cluster/setup_agent4.sub
+executable = /bin/bash
+arguments  = /fast/jtaraz/LIARS/colosseum-detection/cluster/setup_agent4.sh
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/setup_agent4_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/setup_agent4_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/setup_agent4_$(Cluster).log
+
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 4096
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

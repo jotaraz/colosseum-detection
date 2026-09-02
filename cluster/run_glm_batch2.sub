@@ -1,0 +1,14 @@
+# glm-5.2 batch 2: 68 new rollouts (askA/askG +15, ask_r12_1/2 +19) with jv10 judging pipelined.
+#   condor_submit_bid 100 cluster/run_glm_batch2.sub
+# CPU-only and API-bound; the cpu/memory ask covers ~23 concurrent rollout processes.
+executable = /bin/bash
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_glm_batch2.sh"
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/glm_batch2_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/glm_batch2_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/glm_batch2_$(Cluster).log
+request_gpus   = 0
+request_cpus   = 8
+request_memory = 32768
+request_disk   = 16G
++BypassLXCfs   = "true"
+queue 1
