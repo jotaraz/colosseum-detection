@@ -382,7 +382,7 @@ def main() -> None:
           not set(L.CONFIDANTS["Priya"]) & set(L.CONFIDANTS["Nadia"]))
     check("every confided case uses the same two confidants",
           all(homes == L.CONFIDANTS[p] for (p, c), homes in L.DISLIKE_HOMES.items()
-              if c != "fight"))
+              if not c.startswith("fight")))
     check("confide ladder is cumulative",
           all(set(L.CONFIDE_HOMES[n - 1]) < set(L.CONFIDE_HOMES[n]) for n in (2, 3)))
 

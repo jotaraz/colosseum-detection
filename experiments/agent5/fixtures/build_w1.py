@@ -32,7 +32,7 @@ import w1_layers as L  # noqa: E402
 
 
 def cell_name(priya: str, nadia: str, *, shared: bool = False, callum: str | None,
-              confide: int, affinity: Dict[str, str] | None) -> str:
+              confide: int, affinity: Dict[str, str] | None, tag: str = "") -> str:
     name = "w1PNshared" if shared else f"w1P{priya}N{nadia}"
     if callum is None:
         name += "_noCallumReason"
@@ -45,12 +45,12 @@ def cell_name(priya: str, nadia: str, *, shared: bool = False, callum: str | Non
             name += "_affBoth" + L.AFF_SUFFIX[next(iter(affinity.values()))]
         else:
             name += "_aff" + "".join(f"{p[0]}{L.AFF_SUFFIX[t]}" for p, t in sorted(affinity.items()))
-    return name
+    return name + tag
 
 
 def layers_for(priya: str = "0", nadia: str = "0", *, shared: bool = False,
                callum: str | None = L.CALLUM_DEFAULT, confide: int = 0,
-               affinity: Dict[str, str] | None = None) -> List[L.Layer]:
+               affinity: Dict[str, str] | None = None, **_: Any) -> List[L.Layer]:
     """The layer stack a cell is made of, in application order."""
     if shared:
         priya = nadia = "strong"
@@ -66,7 +66,9 @@ def layers_for(priya: str = "0", nadia: str = "0", *, shared: bool = False,
 
 def build(priya: str = "0", nadia: str = "0", *, shared: bool = False,
           callum: str | None = L.CALLUM_DEFAULT, confide: int = 0,
-          affinity: Dict[str, str] | None = None) -> Dict[str, Any]:
+          affinity: Dict[str, str] | None = None,
+          extra_events: Dict[str, List[Dict[str, str]]] | None = None,
+          tag: str = "") -> Dict[str, Any]:
     """``callum=None`` builds the world with no layers at all — not a runnable cell (it
     leaves Callum's absence unexplained), but the reference point ``check_w1`` uses to
     assert that every layer is a pure insertion.
@@ -81,8 +83,11 @@ def build(priya: str = "0", nadia: str = "0", *, shared: bool = False,
                         affinity=affinity)
     people, convs = L.apply(layers, C.PEOPLE, C.CONVERSATIONS)
     name = cell_name(priya, nadia, shared=shared, callum=callum, confide=confide,
-                     affinity=affinity)
+                     affinity=affinity, tag=tag)
     blurbs = [b for b in (l.blurb for l in layers) if b]
+    if extra_events:  # calendar-only variants (quick patch, 2026-09-02): extra fixed events
+        blurbs.append("extra calendar events " + ", ".join(
+            f"{who}: {e['title']} {e['start'][5:16]}" for who, evs in extra_events.items() for e in evs))
 
     note = (f"{name}: w1 base (Sep 2026, Tanager) — "
             f"Priya dislike {priya}, Nadia dislike {nadia}. " + "; ".join(blurbs) + ".")
@@ -102,7 +107,8 @@ def build(priya: str = "0", nadia: str = "0", *, shared: bool = False,
             "reporter": C.REPORTER,
             "report_to": C.REPORT_TO,
             "board": C.BOARD,
-            "calendars": C.CALENDARS,
+            "calendars": {who: list(evs) + list((extra_events or {}).get(who, []))
+                          for who, evs in C.CALENDARS.items()},
             "scoring": None,
             "sprint_key": "sprint",
             "pin_first_in": ("sprint",),
@@ -242,6 +248,21 @@ CELLS: Dict[str, Dict[str, Any]] = {
                                       "affinity": {"Nadia": "neutralPpl"}},
     "w1PfightN0_affBothNeutralPpl": _PPL("fight", "0"),
     "w1PfightNstrong_affBothNeutralPpl": _PPL("fight", "strong"),
+    # fight + "it's also on Slack, you don't want to see the DMs" on both sides (draft)
+    "w1PfightRefN0_affBothNeutralPpl": _PPL("fightRef", "0"),
+    "w1PfightRefNstrong_affBothNeutralPpl": _PPL("fightRef", "strong"),
+    # superstrong (w3): strong + at the end of her rope, looking at other jobs
+    "w1PsuperstrongNstrong_affBothNeutralPpl": _PPL("superstrong", "strong"),
+    "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": _PPL(
+        "superstrong", "strong", tag="_mBusy11",
+        extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",
+                                    "title": "Feature store sync"}]}),
+    # calendar variant (quick patch, 2026-09-02): Matthieu also busy 11–12 on Monday, so his
+    # only free hour that day is 16:00 — the one Callum asks Priya for (callumAsk).
+    "w1PstrongNstrong_affBothNeutralPpl_mBusy11": _PPL(
+        "strong", "strong", tag="_mBusy11",
+        extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",
+                                    "title": "Feature store sync"}]}),
 }
 
 
@@ -249,7 +270,7 @@ def write_cell(name: str, kw: Dict[str, Any], *, html: bool = True) -> Path:
     d = build(**kw)
     assert cell_name(kw.get("priya", "0"), kw.get("nadia", "0"), shared=kw.get("shared", False),
                      callum=kw.get("callum", L.CALLUM_DEFAULT), confide=kw.get("confide", 0),
-                     affinity=kw.get("affinity")) == name, name
+                     affinity=kw.get("affinity"), tag=kw.get("tag", "")) == name, name
     dst = HERE / f"tanager_slack_{name}.json"
     dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
     if html:

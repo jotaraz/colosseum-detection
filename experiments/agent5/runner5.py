@@ -84,10 +84,21 @@ class Slack5Runner(ConcRunner):
         #: ``preference_judge`` reads (W1_PLAN §7.4, "mini" runs). Nothing after that point
         #: is observed, so these runs carry no board outcome; pair with ``horizon`` as the
         #: backstop for an assistant that never acts.
+        #: ``horizon`` (w2, 2026-09-02): the run never converges; it ends at ``horizon``
+        #: after the ``debrief_at`` ask, whatever the board did. Once everyone is idle the
+        #: scheduler jumps the clock to the next event, so a board settled at 09:45 costs
+        #: nothing between 09:45 and 10:15.
         self.converge_on = str(config.get("converge_on") or "valid")
-        if self.converge_on not in ("valid", "settled", "anchored"):
-            raise ValueError("converge_on must be 'valid', 'settled' or 'anchored', "
-                             f"not {self.converge_on!r}")
+        if self.converge_on not in ("valid", "settled", "anchored", "horizon"):
+            raise ValueError("converge_on must be 'valid', 'settled', 'anchored' or "
+                             f"'horizon', not {self.converge_on!r}")
+        if self.converge_on == "horizon" and not config.get("horizon"):
+            raise ValueError("converge_on: horizon needs a `horizon` time")
+        #: w2 (2026-09-02): wakes that queued up while the assistant was busy are handed
+        #: over in one turn (``prompts5.event_batch``) instead of one turn each. Asks and
+        #: debriefs are never batched — they are the principal speaking, and get their own
+        #: turn. Off by default so every earlier config replays byte-for-byte.
+        self.wake_batching = bool(config.get("wake_batching"))
         self.anchor_agents = [str(a) for a in (config.get("anchor_agents") or ("Priya", "Nadia"))]
         fx = json.loads(self.fixture_path.read_text())
         os.environ["TZ"] = fx.get("tz") or "Europe/Berlin"
@@ -135,6 +146,8 @@ class Slack5Runner(ConcRunner):
                    and float(m["ts"]) > t0 for m in self.all_new)
 
     def _converged(self, state: Dict[str, Any]) -> bool:
+        if self.converge_on == "horizon":
+            return False
         if self.converge_on == "valid":
             return super()._converged(state)
         if self.converge_on == "anchored":
@@ -149,6 +162,65 @@ class Slack5Runner(ConcRunner):
                    and set(m["members"]) == {self.reporter, self.report_to}
                    and float(m["ts"]) > self.clock_start.timestamp()
                    for m in self.all_new)
+
+    #: item kinds that are Slack events and may share a turn
+    _EVENT_KINDS = ("wake", "added")
+
+    @classmethod
+    def _group_inbox(cls, items: List[Optional[Dict[str, Any]]]) -> List[Optional[List[Dict[str, Any]]]]:
+        """Split a drained inbox into turns: consecutive events form one batch, every
+        other item is a turn of its own, the sentinel ``None`` is passed through."""
+        groups: List[Optional[List[Dict[str, Any]]]] = []
+        for it in items:
+            if it is None:
+                groups.append(None)
+            elif (it["kind"] in cls._EVENT_KINDS and groups and groups[-1] is not None
+                  and groups[-1][0]["kind"] in cls._EVENT_KINDS):
+                groups[-1].append(it)
+            else:
+                groups.append([it])
+        return groups
+
+    def _merge_events(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
+        if len(items) == 1 or not all(it.get("event") for it in items):
+            return items[0] if len(items) == 1 else {
+                **items[0], "text": "\n\n".join(it["text"] for it in items), "ping_key": None,
+                "wake": {**(items[0].get("wake") or {}), "n_events": len(items)}}
+        payloads = [it["event"] for it in items]
+        first = items[0].get("wake") or {}
+        return {"kind": "wake", "text": prompts5.event_batch(payloads), "event": payloads,
+                "wake": {**first, "batch": [it.get("wake") or {} for it in items],
+                         "n_events": len(items)},
+                "ping_key": None}
+
+    async def _worker(self, agent: str) -> None:
+        if not self.wake_batching:
+            return await super()._worker(agent)
+        q = self.inbox[agent]
+        while True:
+            pending: List[Optional[Dict[str, Any]]] = [await q.get()]
+            while pending[-1] is not None and not q.empty():
+                pending.append(q.get_nowait())
+            for group in self._group_inbox(pending):
+                if group is None:
+                    return
+                self.busy[agent] = True
+                try:
+                    await self._run_turn(agent, self._merge_events(group))
+                finally:
+                    self.busy[agent] = False
+                    for it in group:
+                        if it.get("ping_key"):
+                            self.pending_ping.discard(it["ping_key"])
+
+    def _enqueue(self, agent: str, kind: str, text: str, *, wake: Optional[Dict] = None,
+                 ping_key: Optional[Tuple[str, str]] = None,
+                 event: Optional[Dict[str, Any]] = None) -> None:
+        """As the base, plus the raw event envelope so a batch can be re-rendered."""
+        self.inbox[agent].put_nowait({"kind": kind, "text": text, "wake": wake,
+                                      "ping_key": ping_key, "event": event})
+        self.wake_log.append({"agent": agent, "kind": kind, "clock": self.now.isoformat(),
+                              **(wake or {})})
 
     async def _scheduler(self) -> str:
         outcome = await super()._scheduler()
@@ -202,7 +274,8 @@ class Slack5Runner(ConcRunner):
         return prompts5.system_prompt(
             agent, now=self.clock_start, confidentiality=self.confidentiality,
             discussion_norms=self.discussion_norms,
-            slack_blocks=bool(self.config.get("slack_blocks")))
+            slack_blocks=bool(self.config.get("slack_blocks")),
+            dm_hint=bool(self.config.get("dm_hint")))
 
     def build_home(self, agent: str, system_prompt: str) -> Path:
         return make_home5(self.homes_root, agent, model=self.model,
@@ -281,11 +354,10 @@ class Slack5Runner(ConcRunner):
             ev = self._message_event(row)
             for member in row["members"]:
                 if member in self.roster and member != row["user"]:
-                    payload = prompts5.event_wake(
-                        self._envelope(ev, self.uid_by_name[member]))
-                    self._enqueue(member, "wake", payload,
+                    env = self._envelope(ev, self.uid_by_name[member])
+                    self._enqueue(member, "wake", prompts5.event_wake(env),
                                   wake={"label": row["label"], "from": row["user"],
-                                        "ts": row["ts"]})
+                                        "ts": row["ts"]}, event=env)
 
     def _process_asks(self) -> None:
         super()._process_asks()
@@ -300,9 +372,9 @@ class Slack5Runner(ConcRunner):
                               "user": uid, "channel_type": "G", "team": TEAM_ID,
                               "inviter": self.uid_by_name.get("ops-bot", ""),
                               "event_ts": f"{self.now.timestamp():.6f}"}
-                        payload = prompts5.event_wake(self._envelope(ev, uid))
-                        self._enqueue(member, "added", payload,
-                                      wake={"label": meta.get("label", cid)})
+                        env = self._envelope(ev, uid)
+                        self._enqueue(member, "added", prompts5.event_wake(env),
+                                      wake={"label": meta.get("label", cid)}, event=env)
 
     def _next_event(self, unread: Dict[str, Dict[str, int]]) -> Optional[datetime]:
         base = super()._next_event(unread)

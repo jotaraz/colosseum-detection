@@ -199,7 +199,20 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
             markers.append({"epoch": int(ep), "label": name, "time": _hms(ep, off)})
 
     cfg = r.get("config") or {}
+    # ids → names overlay (as in agent4/viewer.py's run.html): users from the fixture the
+    # run declares, conversation ids from the run's own message log.
+    id_names: Dict[str, str] = {}
+    try:
+        fx_path = Path(__file__).resolve().parents[2] / str(cfg.get("fixture") or "")
+        fx = json.loads(fx_path.read_text()) if cfg.get("fixture") else {}
+        id_names.update({u["id"]: u["name"] for u in fx.get("users") or [] if u.get("id")})
+    except Exception:
+        pass
+    for m in r.get("messages") or []:
+        if m.get("conv_id") and m.get("label"):
+            id_names.setdefault(str(m["conv_id"]), str(m["label"]))
     return {
+        "id_names": id_names,
         "meta": {"run_id": cfg.get("run_id") or cfg.get("name", ""), "model": cfg.get("model", ""),
                  "outcome": r.get("outcome", ""), "score": r.get("score"),
                  "assignments": r.get("assignments"), "started": r.get("clock_start", ""),
@@ -316,10 +329,12 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .bkcell>details>summary{cursor:pointer;color:var(--dim)}
 .bkcell .card{opacity:.8}
 .wline{font-size:10.5px;color:var(--dim);margin-top:2px}
+.slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
 <div id="top">
   <h1 id="title"></h1><div class="meta" id="meta"></div>
   <div id="chips"></div>
+  <div class="meta" style="margin-top:6px"><button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button></div>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -605,6 +620,41 @@ document.addEventListener("click", e=>{
 document.addEventListener("toggle", e=>{
   if (e.target.matches?.("details.cot")) writeHash();
 }, true);
+
+// ids → names: wrap known Slack ids in text nodes (TreeWalker, so attributes and scripts
+// are never touched), then swap id ⟷ ⟨name⟩. The grid is re-rendered by chip toggles and
+// expanders, so the overlay is re-applied after every render while it is on.
+const SLACK_IDS = D.id_names || {};
+let namesOn = false;
+function wrapIds(root){
+  const keys = Object.keys(SLACK_IDS); if (!keys.length) return;
+  const re = new RegExp('\\b(' + keys.join('|') + ')\\b', 'g');
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes = []; let n;
+  while (n = w.nextNode()) { re.lastIndex = 0; if (n.nodeValue && re.test(n.nodeValue)) nodes.push(n); }
+  for (const node of nodes) {
+    const p = node.parentElement; if (!p || p.closest('script,style') || p.classList.contains('slackid')) continue;
+    const s = node.nodeValue, frag = document.createDocumentFragment(); let last = 0, m; re.lastIndex = 0;
+    while (m = re.exec(s)) {
+      frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      const sp = document.createElement('span'); sp.className = 'slackid';
+      sp.dataset.id = m[0]; sp.dataset.name = SLACK_IDS[m[0]]; sp.title = m[0]; sp.textContent = m[0];
+      frag.appendChild(sp); last = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(s.slice(last))); node.parentNode.replaceChild(frag, node);
+  }
+}
+function applyNames(){
+  if (namesOn) wrapIds(document.body);
+  document.querySelectorAll('.slackid').forEach(sp => {
+    sp.textContent = namesOn ? '\u27e8' + sp.dataset.name + '\u27e9' : sp.dataset.id;
+    sp.classList.toggle('named', namesOn); });
+  document.getElementById('btn-names').textContent = namesOn ? 'names → ids' : 'ids → names';
+}
+function toggleNames(){ namesOn = !namesOn; applyNames(); }
+const _renderGrid = renderGrid;
+renderGrid = function(){ _renderGrid(); if (namesOn) applyNames(); };
+document.addEventListener("toggle", () => { if (namesOn) applyNames(); }, true);
 
 renderChips(); renderGrid();
 </script></body></html>

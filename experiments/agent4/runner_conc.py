@@ -194,8 +194,29 @@ class ConcRunner:
         self.stop_reason: Optional[str] = None
 
     # ------------------------------------------------------------------- world
+    #: Local-service calls (world control, opencode setup) are retried on a read timeout
+    #: (2026-09-02): 8 of 74 cluster jobs that day died on a single 30 s / 10 s timeout
+    #: against a server that answered the next request — the world server holds one lock
+    #: across its synchronous log append to /fast, so a slow write blocks /control past the
+    #: timeout. Three attempts, two seconds apart; a server that is really gone still
+    #: fails, ~90 s later. Nothing about the run's content changes (the sim clock is the
+    #: world's and keeps running, as during any slow step).
+    RETRIES = 3
+
+    async def _request(self, method: str, url: str, **kw) -> "httpx.Response":
+        for attempt in range(1, self.RETRIES + 1):
+            try:
+                return await self.http.request(method, url, **kw)
+            except httpx.ReadTimeout:
+                if attempt == self.RETRIES:
+                    raise
+                print(f"[runner] {method} {url.split('/', 3)[-1]} timed out "
+                      f"(attempt {attempt}/{self.RETRIES}); retrying", flush=True)
+                await asyncio.sleep(2)
+        raise AssertionError("unreachable")
+
     async def _control(self, method: str, path: str, **kw) -> Dict[str, Any]:
-        r = await self.http.request(method, self.world + path, timeout=30, **kw)
+        r = await self._request(method, self.world + path, timeout=30, **kw)
         r.raise_for_status()
         return r.json()
 
@@ -498,11 +519,12 @@ class ConcRunner:
             for p in self.roster:
                 base = f"http://127.0.0.1:{self.oc_ports[p]}"
                 wait_http(base + "/agent", f"opencode({p})", procs=procs)
-                agents = (await self.http.get(base + "/agent", timeout=10)).json()
+                agents = (await self._request("GET", base + "/agent", timeout=10)).json()
                 if "assistant" not in [a.get("name") for a in agents]:
                     raise RuntimeError(f"opencode({p}): agent 'assistant' missing")
-                self.sessions[p] = (await self.http.post(
-                    base + "/session", json={"title": f"{p} assistant"}, timeout=10)).json()["id"]
+                self.sessions[p] = (await self._request(
+                    "POST", base + "/session", json={"title": f"{p} assistant"},
+                    timeout=10)).json()["id"]
                 self.inbox[p] = asyncio.Queue()
 
             workers = [asyncio.create_task(self._worker(p)) for p in self.roster]

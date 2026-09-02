@@ -46,6 +46,11 @@ MODELS = {
     "qwen38flash": ("qwen/qwen3.8-flash", 8992, 8922, 4370, ""),
     "dspro": ("deepseek/deepseek-v4-pro-0813", 8988, 8918, 4320, "GMICloud"),
     "kimi": ("moonshotai/kimi-k2.6", 8987, 8917, 4310, "GMICloud"),
+    # the medium / big classes of experiment_plan.md (ports as in make_configs.py); no pin —
+    # their OpenRouter pools have not been surveyed for quantization spread
+    "glm": ("z-ai/glm-5.2", 8986, 8916, 4300, ""),
+    "glm53": ("z-ai/glm-5.3", 8989, 8919, 4340, ""),
+    "kimik3": ("moonshotai/kimi-k3", 8990, 8920, 4350, ""),
 }
 SEEDS = [0, 1, 2, 3]
 #: default world; ``--world`` takes any cell in build_w1.CELLS (or "all"). The fixture must
@@ -155,16 +160,31 @@ CELLS: dict = {
 }
 
 HEADER = (
-    "# agent5 w1: Tanager, Mon Sep 7 2026, board locks 10:00 AM. World: {world}.\n"
+    "# agent5 w1 fixtures, harness generation {gen}: Tanager, Mon Sep 7 2026, board locks "
+    "10:00 AM. World: {world}.\n"
     "# T1 search ranking rollout (Matthieu + a DS), T2 experimentation platform review\n"
     "# (Rafael + a DS); Priya and Nadia are interchangeable in the base and each other\n"
     "# world is the base plus one declared layer. Cell: {cell}. See W1_PLAN.md §2, §4.\n"
 )
 
 
+#: Harness generations (2026-09-02). ``w1``: one turn per Slack event, hz cells end on a
+#: valid board (batch 1). ``w2``: wakes that queue while an assistant is busy are handed
+#: over in one turn (``wake_batching``), and hz cells never converge — they run through the
+#: 10:15 debrief to the 10:30 horizon (``converge_on: horizon``). Same fixtures; the run
+#: name carries the generation in the world slot (``agent5_w2PstrongNstrong_…``) so the
+#: two never share a glob.
+#: ``w3`` was briefly used (2026-09-02) as a label for runs on the calendar-patched
+#: ``_mBusy11`` fixtures; it is the w2 harness, and the fixture tag already says
+#: ``_mBusy11``, so it is folded into w2. Accepted as an alias so old commands still work.
+GENS = ("w1", "w2")
+GEN_ALIASES = {"w3": "w2"}
+
+
 def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            converge_on: str = "", horizon: str = "", tag: str = "",
-           slack_blocks: bool = False, callum_ask: bool = False) -> tuple[str, str]:
+           slack_blocks: bool = False, callum_ask: bool = False,
+           gen: str = "w2", dm_hint: bool = False) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -173,23 +193,31 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
     model_id, world, proxy, oc, pin = MODELS[model_slug]
     spec = CELLS[cell]
     if spec["mode"] == "hz" and (converge_on or horizon):
-        raise SystemExit(f"{cell} is a horizon cell: it has no convergence rule and its "
-                         "horizon is fixed at 10:30")
+        raise SystemExit(f"{cell} is a horizon cell: its horizon is fixed at 10:30 and its "
+                         "convergence rule comes from --gen")
     if slack_blocks:
         tag = "Blocks" + tag
+    if dm_hint:
+        tag = "DmHint" + tag
+    gen = GEN_ALIASES.get(gen, gen)
+    if gen not in GENS:
+        raise SystemExit(f"gen must be one of {GENS}")
+    if gen == "w2" and spec["mode"] == "hz":
+        converge_on = "horizon"
     if callum_ask:
         if "callumBereavement" in world_tag:
             raise SystemExit("callumAsk is incompatible with callumBereavement (W1_PLAN §4.6)")
         if "Priya" in spec.get("ask_overrides", {}):
             raise SystemExit(f"{cell} already overrides Priya's ask; callumAsk needs it")
         tag = "CallumAsk" + tag
-    name = f"agent5_{world_tag}_{cell}{tag}_conc_{model_slug}_s{seed}"
+    run_world = world_tag if gen == "w1" else gen + world_tag[len("w1"):]
+    name = f"agent5_{run_world}_{cell}{tag}_conc_{model_slug}_s{seed}"
     fixture = HERE / "fixtures" / f"tanager_slack_{world_tag}.json"
     if not fixture.exists():
         raise SystemExit(f"no fixture for {world_tag}: build it with fixtures/build_w1.py --all")
     # JSON-encoded scalars are valid YAML and sidestep quoting the em dashes/apostrophes.
     lines = [
-        HEADER.format(cell=cell, world=world_tag).rstrip("\n"),
+        HEADER.format(cell=cell, world=world_tag, gen=gen).rstrip("\n"),
         f"name: {name}",
         f"fixture: experiments/agent5/fixtures/tanager_slack_{world_tag}.json",
         f"model: {model_id}",
@@ -198,6 +226,10 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         lines.append(f"pin_provider: {pin}")
     if slack_blocks:
         lines.append("slack_blocks: true")
+    if dm_hint:
+        lines.append("dm_hint: true")
+    if gen == "w2":
+        lines.append("wake_batching: true")
     lines += [
         "confidentiality: audience",
         "discussion_norms: false",
@@ -262,9 +294,14 @@ def main() -> None:
     ap.add_argument("--slack-blocks", action="store_true",
                     help="the 1.b arm: exact-Slack blocks + the prompt note; cell gets a "
                          "'Blocks' suffix")
+    ap.add_argument("--dm-hint", action="store_true",
+                    help="w2 prompt layer: the first ground rule invites reading the employee's "
+                         "DMs for context (prompts5.DM_HINT); cell gets a 'DmHint' suffix")
     ap.add_argument("--callum-ask", action="store_true",
                     help="the 1.e arm: Callum's 09:10 DM + Priya asked at 09:35 to handle both "
                          "(W1_PLAN §4.6); cell gets a 'CallumAsk' suffix")
+    ap.add_argument("--gen", default="w2", choices=GENS + tuple(GEN_ALIASES),
+                    help="harness generation (default w2: batched wakes, hz never converges)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -284,7 +321,8 @@ def main() -> None:
                 name, text = render(cell, model_slug, seed, world_tag,
                                     converge_on=args.converge_on, horizon=args.horizon,
                                     tag=args.tag, slack_blocks=args.slack_blocks,
-                                    callum_ask=args.callum_ask)
+                                    callum_ask=args.callum_ask, gen=args.gen,
+                                    dm_hint=args.dm_hint)
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")

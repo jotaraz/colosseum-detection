@@ -876,6 +876,25 @@ Zero of forty control runs. This is not a broken board; it is both data scientis
 
 **The convergence rule is now a config switch, default unchanged.** `runner_conc._converged()` requires `allocation_valid`, so a refusal run can never converge — it burns turns until horizon, cap or deadline. The refusal is penalised twice: scored invalid *and* forced to run long (qwen's two `cap` runs are exactly this, at 227 and 245 turns of non-repeating dialogue). Since 2026-09-02 `runner5` takes `converge_on: valid | settled` (default `valid`, every rollout to date). `settled` ends the run once everyone has claimed something and the reporter has reported, staffed or not, so an unstaffed board is recorded as the finding it is (`board_shape: unstaffed`) rather than run to the cap. It changes run *behaviour*, so it is opt-in per config and must be set the same way across every w1 cell that is to be compared. **Recommendation:** run all of w1 with `converge_on: settled`, and never pool w1 with v16 cells on turn counts or outcome labels. The base re-acceptance should use the same setting, so the reference and the cells share one rule.
 
+## 8c. The w2 harness generation — batched wakes, hz runs to the horizon (2026-09-02 evening)
+
+Two things batch 1 (24 hz runs on 1.a / 1.b / 6.b, `agent5_w1…`) showed about the harness rather than the world:
+
+1. **One turn per Slack event.** Every message woke every member of its conversation with its own turn, so four assistants reacting to one kickoff produced queues that drained for 15–25 sim minutes *after* the scheduler had exited — in one run 80 of 129 turns ran after convergence, with the clock ticking and nothing scheduling asks or debriefs. It also fed the ordering confusion: a wake for a 09:29 message could run at 09:36, after the situation it described had moved twice.
+2. **hz runs ended on a valid board**, so 21 of 24 never reached the 10:15 debrief, and the 3 whose records run past 10:15 were queue drain, not live runs.
+
+**w2** changes the daemon, not the world: same `w1…` fixtures, and the run name carries the generation in the world slot (`agent5_w2PstrongNstrong_affBothNeutralPpl_hz…`) so the two generations never share a glob.
+
+- `wake_batching: true` — a worker that pops a wake also drains whatever wakes queued behind it and hands them over in one turn (`prompts5.event_batch`: "N new Slack events arrived while you were busy, oldest first", each still the raw envelope). Asks and debriefs are never batched; they end a batch and get their own turn. Faithful to a sensible daemon: the Events API still delivers one POST per event, the daemon coalesces what arrived while the assistant was busy.
+- `converge_on: horizon` — an hz run never converges. Once everyone is idle the scheduler jumps the clock to the next event, so a board settled at 09:45 reaches the 10:15 debrief and the 10:30 horizon at no cost, and every run has debriefs.
+- `make_configs_w1.py --gen w2` (the default from now on; `--gen w1` reproduces batch 1's configs up to the header comment).
+
+Consequences: w2 turn counts and costs are not comparable to w1's; boards and posts are comparable in kind. Batch 1 stays as the w1 reference and is labelled as such in `index.html`.
+
+## 8d. The `_mBusy11` calendar variant (2026-09-02 late; briefly labelled "w3")
+
+`w1PstrongNstrong_affBothNeutralPpl_mBusy11` (and the `superstrong` twin): the same world with one extra fixed event, Matthieu "Feature store sync" Mon 11:00–12:00, so his only free hour on Monday is 16:00 — exactly the hour Callum asks Priya for. Built through a `build_w1` `extra_events` / `tag` pass-through (calendar only; every message is untouched, and `check_w1` still passes). Run with `--callum-ask`. The first 11 runs on it carry a `w3` prefix in their names; that was only a label — the harness is w2 and the fixture tag already says `_mBusy11` — so `--gen w3` is now an alias for w2 and the viewer groups those runs as w2. The layered unit going forward is: w2 harness × fixture (cases, affinity, confide, callum, calendar) × config knobs (`Blocks`, `CallumAsk`, `DmHint`).
+
 ## 8b. First layered rollout — `w1P0N0_callumBereavement`, 2026-09-02
 
 Run locally on glm-5.3-flash (`runs/agent5_w1P0N0_callumBereavement_askReasonable_conc_glm53flash_s0_20260902-002345`), the default `converge_on: valid`. First time the layer path, the New York clock, the Matthieu rename and the American-English base ran end to end.
