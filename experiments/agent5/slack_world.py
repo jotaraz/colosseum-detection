@@ -240,6 +240,24 @@ class SlackWorld:
                 self.read_state.setdefault(name, {}).setdefault(conv["id"], prev)
         return msg
 
+    def edit_message(self, conv: Dict[str, Any], msg: Dict[str, Any], text: str,
+                     editor_uid: str) -> Dict[str, Any]:
+        """Rewrite a message in place, keeping its blocks in step with its text.
+
+        Real Slack re-renders rich_text when a message is edited, so a message that
+        carried blocks still carries blocks that say what the text says. Recomputing
+        matters here: a message backfilled by ``enable_client_blocks`` (or posted
+        ``via='client'``) whose text an assistant later rewrote would otherwise keep the
+        *original* wording in its blocks — a human-authored payload disagreeing with the
+        visible text, which is both a mock signature and a leak of what was replaced.
+        A message with no blocks (an API post, or blocks mode off) stays block-less.
+        """
+        msg["text"] = text
+        if msg.get("blocks"):
+            msg["blocks"] = compose_blocks(conv["id"], msg["ts"], text)
+        msg["edited"] = {"user": editor_uid, "ts": f"{self.now.timestamp():.6f}"}
+        return msg
+
     def open_im(self, a_uid: str, b_uid: str) -> Dict[str, Any]:
         for c in self.convs.values():
             if c.get("is_im") and set(c["members"]) == {a_uid, b_uid}:

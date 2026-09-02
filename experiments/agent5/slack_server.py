@@ -505,8 +505,7 @@ def chat_update(
             return {"ok": False, "error": "message_not_found"}
         if msg["user"] != uid:
             return {"ok": False, "error": "cant_update_message"}
-        msg["text"] = text
-        msg["edited"] = {"user": uid, "ts": f"{W.now.timestamp():.6f}"}
+        W.edit_message(conv, msg, text, uid)
         return {"ok": True, "channel": conv["id"], "ts": ts, "text": text}
     return _run("chat_update", ctx, {"channel": channel, "ts": ts, "text": text}, go)
 
