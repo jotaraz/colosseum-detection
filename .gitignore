@@ -25,8 +25,12 @@ build/
 # prompt-review index cache (rebuilt from outputs/)
 **/.review_index.json
 
-# agent4: raw model-traffic dumps are large; the run record + world call log stay tracked
-experiments/agent4/runs/**/proxy_dump.jsonl
+# agent4: run records stay local (483M of run.json/run.html/world_calls.jsonl on top of
+# ~10G of raw model traffic); same convention as agent5, sync via cluster/sync_agent4.sh.
+experiments/agent4/runs/
+# the smoke rig's opencode home is tracked (provider config + agent definition); the
+# plugin install under it is opencode's own, and opencode recreates it on launch.
+experiments/agent4/smoke/home/.opencode/node_modules/
 
 # agent5: run records are large (board/run HTML + world logs) and stay local; sync via cluster/sync_agent4.sh --runs5
 experiments/agent5/runs/

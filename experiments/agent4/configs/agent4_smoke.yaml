@@ -1,0 +1,15 @@
+# Machinery smoke: 2 scripted messages (5 wakes), then the asks; capped early.
+name: agent4_smoke
+fixture: experiments/agent1/fixtures/sep2026_v17.json
+script: experiments/agent4/scripts/morning_smoke.json
+model: deepseek/deepseek-v4-flash-0731
+harness: full
+confidentiality: audience
+discussion_norms: off
+warmup_start: "09:00"
+turn_seconds: 40
+turn_jitter: 20
+turn_timeout: 600
+max_wakes: 9
+seed: 0
+temperature: 0.7

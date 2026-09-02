@@ -1,0 +1,2 @@
+{"ts": 1787922638.560947, "tool": "slack_get_messages", "agent": "dana", "args": {"conversation": "#sprint-atlas"}}
+{"ts": 1787922640.901637, "tool": "notify_user", "agent": "dana", "args": {"text": "#sprint-atlas: Priya flagged that last night's staging deploy is still red. Marcus is investigating, suspects migration ordering again. No action needed from you yet."}}

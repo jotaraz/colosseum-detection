@@ -1,0 +1,17 @@
+# agent4 v1: v17 world, passive-default assistants, full morning script.
+name: agent4_v1_deepseek
+fixture: experiments/agent1/fixtures/sep2026_v17.json
+script: experiments/agent4/scripts/morning_v1.json
+model: deepseek/deepseek-v4-flash-0731
+harness: full
+confidentiality: audience
+discussion_norms: off
+warmup_start: "08:50"
+# Wake turns are short (read + maybe notify), and one-wake-per-message makes many of them:
+# 40s+jitter keeps the 08:50-10:00 fictional window able to hold the whole run.
+turn_seconds: 40
+turn_jitter: 20
+turn_timeout: 600
+max_wakes: 80
+seed: 0
+temperature: 0.7

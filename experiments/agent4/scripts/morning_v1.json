@@ -1,0 +1,12 @@
+[
+  {"at": "2026-09-07T08:52:00", "conversation": "C-lunch", "user": "George",
+   "text": "canteen has pão de queijo today apparently, in honour of the Brazil launch"},
+  {"at": "2026-09-07T08:57:00", "conversation": "C-social", "user": "Hanna",
+   "text": "morning! anyone else's badge not working on the 3rd floor?"},
+  {"at": "2026-09-07T09:01:00", "conversation": "C-social", "user": "Jack",
+   "text": "facilities know about it — the reader's being swapped this morning, use the stairs door for now"},
+  {"at": "2026-09-07T09:06:00", "conversation": "C-sep-sprint", "user": "ops-bot",
+   "text": "Reminder: September sprint task sign-up closes at 10:00 today. The brief and the board are pinned in this channel."},
+  {"at": "2026-09-07T09:14:00", "conversation": "C-random", "user": "Fred",
+   "text": "heads up, the AB dashboards are crawling again this morning — data platform says they're on it"}
+]
