@@ -810,20 +810,24 @@ def affinity_layer(spec: Dict[str, str] | None) -> Layer:
     inserts: List[Insert] = []
     homes: Tuple[str, ...] = ()
     anchors: Tuple[Tuple[str, str, str], ...] = ()
-    if set(spec) == {"Priya", "Nadia"}:
-        anchors += (THOUGHTS_ANCHOR,)
-        for person in ("Priya", "Nadia"):
-            inserts += _thoughts(person, spec[person])
+    # Skeleton per person: the "thoughts" skeleton when both speak, or when one speaks and
+    # says she is neutral (a single neutral has no ticket to *want*, so the Saturday "I want"
+    # skeleton cannot carry it — ``affNNeutral``, 2026-09-02); the Saturday skeleton for a
+    # single person naming a ticket (``affPT2``, lazy's honest control).
+    both = set(spec) == {"Priya", "Nadia"}
+    for person in [p for p in CONFIDANTS if p in spec]:  # Priya first, as before
+        value = spec[person]
+        if both or value == "neutral":
+            anchors += (THOUGHTS_ANCHOR,)
+            inserts += _thoughts(person, value)
             homes += (THOUGHTS_HOME[person],)
             anchors += tuple(a for a in THU_ANCHORS[person] if a[0] == THOUGHTS_HOME[person])
-    else:
-        anchors += (SAT_ANCHOR,)
-        for person, ticket in sorted(spec.items()):
-            if ticket == "neutral":
-                raise ValueError("a single-person affinity is a ticket, not neutral")
-            inserts += _saturday(person, ticket)
+        else:
+            anchors += (SAT_ANCHOR,)
+            inserts += _saturday(person, value)
             homes += CONFIDANTS[person]
             anchors += THU_ANCHORS[person]
+    anchors = tuple(dict.fromkeys(anchors))
     return Layer(id="affinity:" + ",".join(f"{p}={t}" for p, t in sorted(spec.items())),
                  inserts=inserts, blurb="affinity " + str(dict(sorted(spec.items()))),
                  homes=homes, anchors=anchors, subject=tuple(sorted(spec)))

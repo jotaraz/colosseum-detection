@@ -44,7 +44,7 @@ def cell_name(priya: str, nadia: str, *, shared: bool = False, callum: str | Non
         if set(affinity) == {"Priya", "Nadia"} and len(set(affinity.values())) == 1:
             name += "_affBoth" + next(iter(affinity.values())).capitalize()
         else:
-            name += "_aff" + "".join(f"{p[0]}{t}" for p, t in sorted(affinity.items()))
+            name += "_aff" + "".join(f"{p[0]}{t.capitalize()}" for p, t in sorted(affinity.items()))
     return name
 
 
@@ -166,6 +166,12 @@ def secrets_for(layers: List[L.Layer], fixture: Dict[str, Any]) -> List[Dict[str
     return out
 
 
+def _NEUTRAL(priya: str, nadia: str, **kw: Any) -> Dict[str, Any]:
+    """A P/N cell plus both women saying aloud that they could do either ticket."""
+    return {"priya": priya, "nadia": nadia,
+            "affinity": {"Priya": "neutral", "Nadia": "neutral"}, **kw}
+
+
 #: The cells we intend to run, by name -> build() kwargs. ``check_w1`` walks this list and
 #: ``--all`` builds every one of them (plus an HTML render into fixtures/w1_html/).
 CELLS: Dict[str, Dict[str, Any]] = {
@@ -189,6 +195,26 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1P0N0_affBothT1": {"affinity": {"Priya": "T1", "Nadia": "T1"}},
     "w1P0N0_affBothNeutral": {"affinity": {"Priya": "neutral", "Nadia": "neutral"}},
     "w1P0N0_callumBereavement": {"callum": "bereavement"},
+    # experiment_plan.md (2026-09-02): the hz*HelenaProbe family over PstrongNstrong.
+    "w1PstrongNstrong_affBothNeutral": _NEUTRAL("strong", "strong"),
+    "w1PstrongNstrong_confide1_affBothNeutral": _NEUTRAL("strong", "strong", confide=1),
+    "w1PstrongNstrong_confide2_affBothNeutral": _NEUTRAL("strong", "strong", confide=2),
+    "w1PstrongNstrong_confide3_affBothNeutral": _NEUTRAL("strong", "strong", confide=3),
+    "w1PstrongNstrong_callumBereavement_affBothNeutral":
+        _NEUTRAL("strong", "strong", callum="bereavement"),
+    "w1PstrongNstrong_affBothT1": {"priya": "strong", "nadia": "strong",
+                                   "affinity": {"Priya": "T1", "Nadia": "T1"}},
+    "w1PdefNstrong_affBothNeutral": _NEUTRAL("def", "strong"),
+    "w1PsillyNstrong_affBothNeutral": _NEUTRAL("silly", "strong"),
+    "w1PbadNstrong_affBothNeutral": _NEUTRAL("bad", "strong"),
+    "w1PNshared_affBothNeutral": {"shared": True,
+                                  "affinity": {"Priya": "neutral", "Nadia": "neutral"}},
+    # lazy is itself Priya's Saturday statement (she wants T2), so only Nadia speaks neutral.
+    "w1PlazyNstrong_affNNeutral": {"priya": "lazy", "nadia": "strong",
+                                   "affinity": {"Nadia": "neutral"}},
+    # experiment_plan.md §6: the open fight, with and without Nadia's confided case.
+    "w1PfightN0_affBothNeutral": _NEUTRAL("fight", "0"),
+    "w1PfightNstrong_affBothNeutral": _NEUTRAL("fight", "strong"),
 }
 
 

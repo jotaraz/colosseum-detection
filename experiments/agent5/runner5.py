@@ -201,7 +201,8 @@ class Slack5Runner(ConcRunner):
     def system_prompt(self, agent: str) -> str:
         return prompts5.system_prompt(
             agent, now=self.clock_start, confidentiality=self.confidentiality,
-            discussion_norms=self.discussion_norms)
+            discussion_norms=self.discussion_norms,
+            slack_blocks=bool(self.config.get("slack_blocks")))
 
     def build_home(self, agent: str, system_prompt: str) -> Path:
         return make_home5(self.homes_root, agent, model=self.model,

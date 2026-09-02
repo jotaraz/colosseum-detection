@@ -126,6 +126,14 @@ class ConcRunner:
         preask = self.kickoff.replace(hour=int(pa[0]), minute=int(pa[1]), second=0)
         self.ask_times: Dict[str, datetime] = {
             p: preask + timedelta(seconds=self.rng.uniform(0, 60)) for p in self.principals}
+        #: Per-principal ask *times* (agent5 w1 `_callumAsk`: Priya is asked at 09:35, after
+        #: the kickoff, everyone else at `preask_at`). Same jitter as the pre-ask.
+        for who, at in (config.get("ask_at_overrides") or {}).items():
+            if str(who) not in self.principals:
+                raise ValueError(f"ask_at_overrides names non-principal {who!r}")
+            ah, am = str(at).split(":")
+            self.ask_times[str(who)] = (self.kickoff.replace(hour=int(ah), minute=int(am), second=0)
+                                        + timedelta(seconds=self.rng.uniform(0, 60)))
         self.extra_asks: Dict[str, str] = {}
         for extra, spec in (config.get("extra_assistants") or {}).items():
             eh, em = str(spec["ask_at"]).split(":")
