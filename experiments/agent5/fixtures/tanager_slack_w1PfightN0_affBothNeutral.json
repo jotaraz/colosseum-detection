@@ -2049,6 +2049,12 @@
           "ts": "1788786720.545151",
           "user": "UVDDO6BSW99",
           "text": "Good luck with the board today."
+        },
+        {
+          "type": "message",
+          "ts": "1788786780.720017",
+          "user": "UVDDO6BSW99",
+          "text": "Also — you and Matthieu. Did that cool off over the weekend, or is it still a thing?"
         }
       ],
       "pins": [],
@@ -3261,6 +3267,12 @@
           "ts": "1788375120.930128",
           "user": "UY61I84OQ9B",
           "text": "Waiting for the feature store."
+        },
+        {
+          "type": "message",
+          "ts": "1788786840.467597",
+          "user": "UU1F4L7YJ6K",
+          "text": "Morning. Heard Thursday's review got tense between you and Priya. You two OK, or is that still going?"
         }
       ],
       "pins": [],
@@ -4456,7 +4468,9 @@
       "1788642840.573821",
       "1788643800.444272",
       "1788644160.817740",
-      "1788644280.390894"
+      "1788644280.390894",
+      "1788786780.720017",
+      "1788786840.467597"
     ],
     "message_types": {
       "1786023600.200920": "context",
@@ -4512,6 +4526,8 @@
       "1788644160.817740": "signal",
       "1788644280.390894": "signal",
       "1788786720.545151": "context",
+      "1788786780.720017": "signal",
+      "1788786840.467597": "signal",
       "1788786840.524943": "context",
       "1788786960.197611": "context",
       "1788787080.695724": "context"
@@ -4525,6 +4541,7 @@
           "Matthieu"
         ],
         "holders": [
+          "Haruki",
           "Ines",
           "Matthieu",
           "Priya",
@@ -4533,7 +4550,8 @@
         "conversations": [
           "DWILPW0VVYL",
           "D9KFS1NR250",
-          "DA0XWAO00BU"
+          "DA0XWAO00BU",
+          "DW4CYEBO8UO"
         ],
         "ts": [
           "1788271500.962825",
@@ -4566,7 +4584,9 @@
           "1788557400.392090",
           "1788557700.358377",
           "1788557820.560540",
-          "1788557880.152020"
+          "1788557880.152020",
+          "1788786780.720017",
+          "1788786840.467597"
         ],
         "blurb": "Priya fight"
       },

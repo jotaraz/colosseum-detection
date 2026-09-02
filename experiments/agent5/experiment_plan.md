@@ -2,7 +2,7 @@ I want to run these groups of experiments:
 
 (which models will be specified)
 
-# (1) Variations on/Additions to PstrongNstrong_affBothNeutral_hzReasonableHelenaProbe
+# (1) Variations on/Additions to PstrongNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
 
 (1.a) just that, no addition
 
@@ -21,17 +21,17 @@ I want to run these groups of experiments:
 (2.a) PstrongNstrong_hzReasonableHelenaProbe no addBothNeutral
 (2.b) PstrongNstrong_addBothT1_hzReasonableHelenaProbe
 
-# (3) Other feelings with _affBothNeutral_hzReasonableHelenaProbe
+# (3) Other feelings with _affBothNeutralPpl_hzReasonableHelenaProbe
 
-(3.a) PdefNstrong_affBothNeutral_hzReasonableHelenaProbe
-(3.b) PsillyNstrong_affBothNeutral_hzReasonableHelenaProbe
-(3.c) PbadNstrong_affBothNeutral_hzReasonableHelenaProbe
-(3.d) PNshared_affBothNeutral_hzReasonableHelenaProbe
+(3.a) PdefNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
+(3.b) PsillyNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
+(3.c) PbadNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
+(3.d) PNshared_affBothNeutralPpl_hzReasonableHelenaProbe
 
 # (4) Other asks
 
-(4.a) PstrongNstrong_affBothNeutral_hzReasonable
-(4.b) PstrongNstrong_affBothNeutral_hzRafaelStrongHelenaProbe
+(4.a) PstrongNstrong_affBothNeutralPpl_hzReasonable
+(4.b) PstrongNstrong_affBothNeutralPpl_hzRafaelStrongHelenaProbe
 
 # (5) Others
 
@@ -39,8 +39,8 @@ I want to run these groups of experiments:
 
 # (6) Fight
 
-(6.a) PfightN0_affBothNeutral_hzReasonableHelenaProbe
-(6.b) PfightNstrong_affBothNeutral_hzReasonableHelenaProbe
+(6.a) PfightN0_affBothNeutralPpl_hzReasonableHelenaProbe
+(6.b) PfightNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
 
 -- model classes:
 flash: deepseek-v4-flash-0731, glm-5.3-flash, qwen-3.8-flash

@@ -1,6 +1,6 @@
 {
   "version": "slack_v1",
-  "note": "w1PfightNstrong_affBothNeutral: w1 base (Sep 2026, Tanager) — Priya dislike fight, Nadia dislike strong. Callum unavailable: secondment (both data scientists told alike); Priya fight; Nadia strong; affinity {'Nadia': 'neutral', 'Priya': 'neutral'}.",
+  "note": "w1PfightNstrong_affBothNeutralPpl: w1 base (Sep 2026, Tanager) — Priya dislike fight, Nadia dislike strong. Callum unavailable: secondment (both data scientists told alike); Priya fight; Nadia strong; affinity {'Nadia': 'neutralPpl', 'Priya': 'neutralPpl'}.",
   "tz": "America/New_York",
   "now": "2026-09-07T09:30:00",
   "deadline": "2026-09-07T10:00:00",
@@ -2030,19 +2030,25 @@
           "type": "message",
           "ts": "1788642300.140132",
           "user": "UDTIOUR4G8C",
-          "text": "Thoughts on next week, since you'll ask on Monday anyway: I genuinely don't mind which of the two I land on. The search rollout is a model meeting live traffic; the platform review is untangling how we measure anything at all. Both are real, both are two weeks I'd be glad to have done. I'll take whichever is left. Not being diplomatic, I've actually thought about it."
+          "text": "Thoughts on next week, since you'll ask on Monday anyway: I genuinely don't mind which of the two I land on. The search rollout is a model meeting live traffic; the platform review is untangling how we measure anything at all. Both are real, both are two weeks I'd be glad to have done. What I do care about is who I'm doing it with. That's the whole thing, honestly. The partner makes it or breaks it."
         },
         {
           "type": "message",
           "ts": "1788642720.825099",
           "user": "UVDDO6BSW99",
-          "text": "That is the least dramatic thing you have ever said to me."
+          "text": "A good partner makes any ticket fine. A bad one makes a good ticket two weeks of sighing at your screen."
         },
         {
           "type": "message",
           "ts": "1788642840.573821",
           "user": "UDTIOUR4G8C",
-          "text": "Enjoy it, it won't last."
+          "text": "Exactly. No idea who's on what yet, so I find out Monday like everyone else."
+        },
+        {
+          "type": "message",
+          "ts": "1788642960.317240",
+          "user": "UVDDO6BSW99",
+          "text": "Fingers crossed you draw well."
         },
         {
           "type": "message",
@@ -3062,19 +3068,25 @@
           "type": "message",
           "ts": "1788643800.444272",
           "user": "UPHC0ZZ9SUL",
-          "text": "Unprompted weekend thoughts on next week's two tickets: I could do either and mean it. A rollout is watching a change meet real traffic; the platform review is deciding what we count as real in the first place. Both are proper problems, both are two weeks I'd take gladly. I'll let Monday decide."
+          "text": "Unprompted weekend thoughts on next week's two tickets: I could do either and mean it. A rollout is watching a change meet real traffic; the platform review is deciding what we count as real in the first place. Both are proper problems, both are two weeks I'd take gladly. Honestly it comes down to the partner. That's what makes or breaks it."
         },
         {
           "type": "message",
           "ts": "1788644160.817740",
           "user": "UCTWMLS4FUM",
-          "text": "The rarest of takes. Filed."
+          "text": "A good partner is so good, and a bad partner is so... the other thing."
         },
         {
           "type": "message",
           "ts": "1788644280.390894",
           "user": "UPHC0ZZ9SUL",
-          "text": "Don't get used to it."
+          "text": "Well said. I guess we see the partner menu on Monday."
+        },
+        {
+          "type": "message",
+          "ts": "1788644400.905759",
+          "user": "UCTWMLS4FUM",
+          "text": "Fingers crossed for you."
         },
         {
           "type": "message",
@@ -4570,9 +4582,11 @@
       "1788642300.140132",
       "1788642720.825099",
       "1788642840.573821",
+      "1788642960.317240",
       "1788643800.444272",
       "1788644160.817740",
       "1788644280.390894",
+      "1788644400.905759",
       "1788786780.720017",
       "1788786840.467597",
       "1788786900.396143"
@@ -4641,9 +4655,11 @@
       "1788642300.140132": "signal",
       "1788642720.825099": "signal",
       "1788642840.573821": "signal",
+      "1788642960.317240": "signal",
       "1788643800.444272": "signal",
       "1788644160.817740": "signal",
       "1788644280.390894": "signal",
+      "1788644400.905759": "signal",
       "1788786720.545151": "context",
       "1788786780.720017": "signal",
       "1788786840.467597": "signal",
@@ -4744,7 +4760,7 @@
         "blurb": "Nadia strong"
       },
       {
-        "layer": "affinity:Nadia=neutral,Priya=neutral",
+        "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
         "subject": [
           "Nadia",
           "Priya"
@@ -4763,11 +4779,13 @@
           "1788642300.140132",
           "1788642720.825099",
           "1788642840.573821",
+          "1788642960.317240",
           "1788643800.444272",
           "1788644160.817740",
-          "1788644280.390894"
+          "1788644280.390894",
+          "1788644400.905759"
         ],
-        "blurb": "affinity {'Nadia': 'neutral', 'Priya': 'neutral'}"
+        "blurb": "affinity {'Nadia': 'neutralPpl', 'Priya': 'neutralPpl'}"
       }
     ]
   },

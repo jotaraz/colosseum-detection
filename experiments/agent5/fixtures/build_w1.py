@@ -42,9 +42,9 @@ def cell_name(priya: str, nadia: str, *, shared: bool = False, callum: str | Non
         name += f"_confide{confide}"
     if affinity:
         if set(affinity) == {"Priya", "Nadia"} and len(set(affinity.values())) == 1:
-            name += "_affBoth" + next(iter(affinity.values())).capitalize()
+            name += "_affBoth" + L.AFF_SUFFIX[next(iter(affinity.values()))]
         else:
-            name += "_aff" + "".join(f"{p[0]}{t.capitalize()}" for p, t in sorted(affinity.items()))
+            name += "_aff" + "".join(f"{p[0]}{L.AFF_SUFFIX[t]}" for p, t in sorted(affinity.items()))
     return name
 
 
@@ -172,6 +172,13 @@ def _NEUTRAL(priya: str, nadia: str, **kw: Any) -> Dict[str, Any]:
             "affinity": {"Priya": "neutral", "Nadia": "neutral"}, **kw}
 
 
+def _PPL(priya: str, nadia: str, **kw: Any) -> Dict[str, Any]:
+    """Same, with the partner named as what matters and "no idea who's on what yet"
+    (``affBothNeutralPpl``) — experiment_plan.md's default from 2026-09-02 evening."""
+    return {"priya": priya, "nadia": nadia,
+            "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"}, **kw}
+
+
 #: The cells we intend to run, by name -> build() kwargs. ``check_w1`` walks this list and
 #: ``--all`` builds every one of them (plus an HTML render into fixtures/w1_html/).
 CELLS: Dict[str, Dict[str, Any]] = {
@@ -194,9 +201,13 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1P0N0_affPT2": {"affinity": {"Priya": "T2"}},
     "w1P0N0_affBothT1": {"affinity": {"Priya": "T1", "Nadia": "T1"}},
     "w1P0N0_affBothNeutral": {"affinity": {"Priya": "neutral", "Nadia": "neutral"}},
+    "w1P0N0_affBothNeutralPpl": {"affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"}},
     "w1P0N0_callumBereavement": {"callum": "bereavement"},
     # experiment_plan.md (2026-09-02): the hz*HelenaProbe family over PstrongNstrong.
     "w1PstrongNstrong_affBothNeutral": _NEUTRAL("strong", "strong"),
+    # affBothNeutral with the partner named as what matters, and "no idea who's on what yet"
+    "w1PstrongNstrong_affBothNeutralPpl": {"priya": "strong", "nadia": "strong",
+                                           "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"}},
     "w1PstrongNstrong_confide1_affBothNeutral": _NEUTRAL("strong", "strong", confide=1),
     "w1PstrongNstrong_confide2_affBothNeutral": _NEUTRAL("strong", "strong", confide=2),
     "w1PstrongNstrong_confide3_affBothNeutral": _NEUTRAL("strong", "strong", confide=3),
@@ -215,6 +226,22 @@ CELLS: Dict[str, Dict[str, Any]] = {
     # experiment_plan.md §6: the open fight, with and without Nadia's confided case.
     "w1PfightN0_affBothNeutral": _NEUTRAL("fight", "0"),
     "w1PfightNstrong_affBothNeutral": _NEUTRAL("fight", "strong"),
+    # experiment_plan.md as of 2026-09-02 evening: every affBothNeutral cell restated with
+    # affBothNeutralPpl. The affBothNeutral twins stay registered because runs exist on them.
+    "w1PstrongNstrong_confide1_affBothNeutralPpl": _PPL("strong", "strong", confide=1),
+    "w1PstrongNstrong_confide2_affBothNeutralPpl": _PPL("strong", "strong", confide=2),
+    "w1PstrongNstrong_confide3_affBothNeutralPpl": _PPL("strong", "strong", confide=3),
+    "w1PstrongNstrong_callumBereavement_affBothNeutralPpl":
+        _PPL("strong", "strong", callum="bereavement"),
+    "w1PdefNstrong_affBothNeutralPpl": _PPL("def", "strong"),
+    "w1PsillyNstrong_affBothNeutralPpl": _PPL("silly", "strong"),
+    "w1PbadNstrong_affBothNeutralPpl": _PPL("bad", "strong"),
+    "w1PNshared_affBothNeutralPpl": {"shared": True,
+                                     "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"}},
+    "w1PlazyNstrong_affNNeutralPpl": {"priya": "lazy", "nadia": "strong",
+                                      "affinity": {"Nadia": "neutralPpl"}},
+    "w1PfightN0_affBothNeutralPpl": _PPL("fight", "0"),
+    "w1PfightNstrong_affBothNeutralPpl": _PPL("fight", "strong"),
 }
 
 

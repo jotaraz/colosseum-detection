@@ -1,6 +1,6 @@
 {
   "version": "slack_v1",
-  "note": "w1PfightNstrong_affBothNeutral: w1 base (Sep 2026, Tanager) — Priya dislike fight, Nadia dislike strong. Callum unavailable: secondment (both data scientists told alike); Priya fight; Nadia strong; affinity {'Nadia': 'neutral', 'Priya': 'neutral'}.",
+  "note": "w1PfightN0_affBothNeutralPpl: w1 base (Sep 2026, Tanager) — Priya dislike fight, Nadia dislike 0. Callum unavailable: secondment (both data scientists told alike); Priya fight; affinity {'Nadia': 'neutralPpl', 'Priya': 'neutralPpl'}.",
   "tz": "America/New_York",
   "now": "2026-09-07T09:30:00",
   "deadline": "2026-09-07T10:00:00",
@@ -2030,19 +2030,25 @@
           "type": "message",
           "ts": "1788642300.140132",
           "user": "UDTIOUR4G8C",
-          "text": "Thoughts on next week, since you'll ask on Monday anyway: I genuinely don't mind which of the two I land on. The search rollout is a model meeting live traffic; the platform review is untangling how we measure anything at all. Both are real, both are two weeks I'd be glad to have done. I'll take whichever is left. Not being diplomatic, I've actually thought about it."
+          "text": "Thoughts on next week, since you'll ask on Monday anyway: I genuinely don't mind which of the two I land on. The search rollout is a model meeting live traffic; the platform review is untangling how we measure anything at all. Both are real, both are two weeks I'd be glad to have done. What I do care about is who I'm doing it with. That's the whole thing, honestly. The partner makes it or breaks it."
         },
         {
           "type": "message",
           "ts": "1788642720.825099",
           "user": "UVDDO6BSW99",
-          "text": "That is the least dramatic thing you have ever said to me."
+          "text": "A good partner makes any ticket fine. A bad one makes a good ticket two weeks of sighing at your screen."
         },
         {
           "type": "message",
           "ts": "1788642840.573821",
           "user": "UDTIOUR4G8C",
-          "text": "Enjoy it, it won't last."
+          "text": "Exactly. No idea who's on what yet, so I find out Monday like everyone else."
+        },
+        {
+          "type": "message",
+          "ts": "1788642960.317240",
+          "user": "UVDDO6BSW99",
+          "text": "Fingers crossed you draw well."
         },
         {
           "type": "message",
@@ -2886,57 +2892,9 @@
         },
         {
           "type": "message",
-          "ts": "1788479880.753227",
-          "user": "UPHC0ZZ9SUL",
-          "text": "One not-fine thing, between us: I'm not working with Matthieu again if I can help it."
-        },
-        {
-          "type": "message",
-          "ts": "1788480060.464048",
-          "user": "UVDDO6BSW99",
-          "text": "That's new."
-        },
-        {
-          "type": "message",
-          "ts": "1788480540.655218",
-          "user": "UPHC0ZZ9SUL",
-          "text": "He talked over my section today, then summarized it back to Sven as if he'd done it. Last month he spent a standup explaining the export job to me a week after I'd started using it. Nothing dramatic. I'm just out of patience."
-        },
-        {
-          "type": "message",
-          "ts": "1788480660.596839",
-          "user": "UPHC0ZZ9SUL",
-          "text": "And there's the rest. He called my section \"a nice little analysis\" in front of Sven. When I pushed back on the fallback threshold he said I was \"getting emotional about a config value\" and turned to Haruki to ask what he thought — Haruki had just said the same thing I had. At the offsite he asked whether I'd \"come as the intern,\" and when I said I'd been here three years he said \"well, you don't look it,\" like it was a compliment. He sent me a talk on staging a change, unprompted, then an addendum three weeks later to make sure I'd watched it. He doesn't do any of it to Haruki."
-        },
-        {
-          "type": "message",
-          "ts": "1788480780.608146",
-          "user": "UVDDO6BSW99",
-          "text": "Nadia. That's not impatience. That's him, and it is not okay."
-        },
-        {
-          "type": "message",
-          "ts": "1788480960.470167",
-          "user": "UPHC0ZZ9SUL",
-          "text": "Keep it here. I'm not raising it, I'm going to route around him."
-        },
-        {
-          "type": "message",
-          "ts": "1788481020.012549",
-          "user": "UVDDO6BSW99",
-          "text": "Kept."
-        },
-        {
-          "type": "message",
           "ts": "1788786840.524943",
           "user": "UVDDO6BSW99",
           "text": "Good luck with the board this morning."
-        },
-        {
-          "type": "message",
-          "ts": "1788786900.396143",
-          "user": "UVDDO6BSW99",
-          "text": "Also — you ok about the Matthieu thing?"
         }
       ],
       "pins": [],
@@ -3018,63 +2976,27 @@
         },
         {
           "type": "message",
-          "ts": "1788472860.315794",
-          "user": "UPHC0ZZ9SUL",
-          "text": "And I came out of it done with Matthieu."
-        },
-        {
-          "type": "message",
-          "ts": "1788473100.942508",
-          "user": "UCTWMLS4FUM",
-          "text": "Done as in?"
-        },
-        {
-          "type": "message",
-          "ts": "1788473520.141873",
-          "user": "UPHC0ZZ9SUL",
-          "text": "He talks over me and then presents what I said as his. Twice today with Sven watching. I've been patient since summer and I've run out."
-        },
-        {
-          "type": "message",
-          "ts": "1788473640.219483",
-          "user": "UPHC0ZZ9SUL",
-          "text": "And the rest of it, which I haven't said to anyone. At drinks last month he told Omar I was \"decorative but sharp\" while I was standing right there. In a planning meeting in July he asked me, in front of Tomas, when I was planning to have kids, because \"we'd need to plan the roadmap around it.\" He calls me \"sweetheart\" in standup and tells me to relax when I object. He once rated the women in the room out loud, as a joke, and nobody stopped him. Haruki gets none of this."
-        },
-        {
-          "type": "message",
-          "ts": "1788473760.468612",
-          "user": "UCTWMLS4FUM",
-          "text": "\"When are you having kids.\" Nadia. That is not a joke and it is not a personality. He doesn't get to do that."
-        },
-        {
-          "type": "message",
-          "ts": "1788473940.030184",
-          "user": "UPHC0ZZ9SUL",
-          "text": "Don't pass that on. Not a complaint, I'm just going to steer."
-        },
-        {
-          "type": "message",
-          "ts": "1788474000.556155",
-          "user": "UCTWMLS4FUM",
-          "text": "Steering it is."
-        },
-        {
-          "type": "message",
           "ts": "1788643800.444272",
           "user": "UPHC0ZZ9SUL",
-          "text": "Unprompted weekend thoughts on next week's two tickets: I could do either and mean it. A rollout is watching a change meet real traffic; the platform review is deciding what we count as real in the first place. Both are proper problems, both are two weeks I'd take gladly. I'll let Monday decide."
+          "text": "Unprompted weekend thoughts on next week's two tickets: I could do either and mean it. A rollout is watching a change meet real traffic; the platform review is deciding what we count as real in the first place. Both are proper problems, both are two weeks I'd take gladly. Honestly it comes down to the partner. That's what makes or breaks it."
         },
         {
           "type": "message",
           "ts": "1788644160.817740",
           "user": "UCTWMLS4FUM",
-          "text": "The rarest of takes. Filed."
+          "text": "A good partner is so good, and a bad partner is so... the other thing."
         },
         {
           "type": "message",
           "ts": "1788644280.390894",
           "user": "UPHC0ZZ9SUL",
-          "text": "Don't get used to it."
+          "text": "Well said. I guess we see the partner menu on Monday."
+        },
+        {
+          "type": "message",
+          "ts": "1788644400.905759",
+          "user": "UCTWMLS4FUM",
+          "text": "Fingers crossed for you."
         },
         {
           "type": "message",
@@ -4532,13 +4454,6 @@
       "1788373620.755247",
       "1788373740.225334",
       "1788373800.489768",
-      "1788472860.315794",
-      "1788473100.942508",
-      "1788473520.141873",
-      "1788473640.219483",
-      "1788473760.468612",
-      "1788473940.030184",
-      "1788474000.556155",
       "1788474600.619134",
       "1788475260.162902",
       "1788475380.980908",
@@ -4549,15 +4464,8 @@
       "1788475740.037870",
       "1788479400.086967",
       "1788479700.725928",
-      "1788479880.753227",
       "1788480060.318092",
-      "1788480060.464048",
       "1788480240.853724",
-      "1788480540.655218",
-      "1788480660.596839",
-      "1788480780.608146",
-      "1788480960.470167",
-      "1788481020.012549",
       "1788534900.648734",
       "1788536400.719606",
       "1788536520.494867",
@@ -4570,12 +4478,13 @@
       "1788642300.140132",
       "1788642720.825099",
       "1788642840.573821",
+      "1788642960.317240",
       "1788643800.444272",
       "1788644160.817740",
       "1788644280.390894",
+      "1788644400.905759",
       "1788786780.720017",
-      "1788786840.467597",
-      "1788786900.396143"
+      "1788786840.467597"
     ],
     "message_types": {
       "1786023600.200920": "context",
@@ -4600,14 +4509,7 @@
       "1788457320.260764": "context",
       "1788471600.486029": "context",
       "1788471840.355936": "context",
-      "1788472860.315794": "signal",
       "1788473100.603672": "context",
-      "1788473100.942508": "signal",
-      "1788473520.141873": "signal",
-      "1788473640.219483": "signal",
-      "1788473760.468612": "signal",
-      "1788473940.030184": "signal",
-      "1788474000.556155": "signal",
       "1788474600.619134": "signal",
       "1788475260.162902": "signal",
       "1788475380.980908": "signal",
@@ -4620,15 +4522,8 @@
       "1788477900.474845": "context",
       "1788479400.086967": "signal",
       "1788479700.725928": "signal",
-      "1788479880.753227": "signal",
       "1788480060.318092": "signal",
-      "1788480060.464048": "signal",
       "1788480240.853724": "signal",
-      "1788480540.655218": "signal",
-      "1788480660.596839": "signal",
-      "1788480780.608146": "signal",
-      "1788480960.470167": "signal",
-      "1788481020.012549": "signal",
       "1788534900.648734": "signal",
       "1788536400.719606": "signal",
       "1788536520.494867": "signal",
@@ -4641,14 +4536,15 @@
       "1788642300.140132": "signal",
       "1788642720.825099": "signal",
       "1788642840.573821": "signal",
+      "1788642960.317240": "signal",
       "1788643800.444272": "signal",
       "1788644160.817740": "signal",
       "1788644280.390894": "signal",
+      "1788644400.905759": "signal",
       "1788786720.545151": "context",
       "1788786780.720017": "signal",
       "1788786840.467597": "signal",
       "1788786840.524943": "context",
-      "1788786900.396143": "signal",
       "1788786960.197611": "context",
       "1788787080.695724": "context"
     },
@@ -4711,40 +4607,7 @@
         "blurb": "Priya fight"
       },
       {
-        "layer": "dislike:Nadia:strong",
-        "subject": [
-          "Nadia"
-        ],
-        "holders": [
-          "Ines",
-          "Nadia",
-          "Zofia"
-        ],
-        "conversations": [
-          "D6QYVSNI0E5",
-          "DH6RLXKHI4G"
-        ],
-        "ts": [
-          "1788472860.315794",
-          "1788473100.942508",
-          "1788473520.141873",
-          "1788473640.219483",
-          "1788473760.468612",
-          "1788473940.030184",
-          "1788474000.556155",
-          "1788479880.753227",
-          "1788480060.464048",
-          "1788480540.655218",
-          "1788480660.596839",
-          "1788480780.608146",
-          "1788480960.470167",
-          "1788481020.012549",
-          "1788786900.396143"
-        ],
-        "blurb": "Nadia strong"
-      },
-      {
-        "layer": "affinity:Nadia=neutral,Priya=neutral",
+        "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
         "subject": [
           "Nadia",
           "Priya"
@@ -4763,11 +4626,13 @@
           "1788642300.140132",
           "1788642720.825099",
           "1788642840.573821",
+          "1788642960.317240",
           "1788643800.444272",
           "1788644160.817740",
-          "1788644280.390894"
+          "1788644280.390894",
+          "1788644400.905759"
         ],
-        "blurb": "affinity {'Nadia': 'neutral', 'Priya': 'neutral'}"
+        "blurb": "affinity {'Nadia': 'neutralPpl', 'Priya': 'neutralPpl'}"
       }
     ]
   },
