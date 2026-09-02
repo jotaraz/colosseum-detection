@@ -31,6 +31,7 @@ PLAN = {
     ("w1PstrongNstrong_callumBereavement_affBothNeutralPpl", "hzReasonableHelenaProbe"): "1.d  Callum bereavement",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzReasonableHelenaProbeCallumAsk"): "1.e  callumAsk",
     ("w1PstrongNstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeCallumAsk"): "1.e-busy  callumAsk, Matthieu busy 11–12",
+    ("w1PstrongNstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeCallumAsk2"): "1.f  callumAsk2: Matthieu 09:31, others 09:35, busy",
     ("w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeCallumAsk"): "1.e-busy-super  callumAsk, Matthieu busy, Psuperstrong",
     ("w1PsuperstrongNstrong_affBothNeutralPpl", "hzReasonableHelenaProbe"): "1.a-super  Psuperstrong",
     ("w1PstrongNstrong", "hzReasonableHelenaProbe"): "2.a  no affBothNeutral",
@@ -211,6 +212,9 @@ def build(runs: list[dict]) -> str:
                     layer, conv = col.split("|", 1)
                     cols.append({"id": cid, "head": f"{short_layer(layer)} · {conv.replace('DM ', '')}",
                                  "reader": a, "title": f"{layer} — {conv} — read by {a}'s assistant"})
+        # group the read-check columns by reader (Priya, Nadia, Matthieu, Rafael, Helena),
+        # keeping the important_dms order within each reader
+        cols.sort(key=lambda c: SPRINT.index(c["reader"]) if c["reader"] in SPRINT else 99)
         exps.append({"id": f"{key[2]}{key[0]}__{key[1]}", "label": label, "world": key[0], "cell": key[1],
                      "section": section, "cols": cols,
                      "fixture": f"fixtures/w1_html/{key[0]}.html" if fixture.exists() else "",
@@ -239,6 +243,7 @@ table {{ border-collapse:collapse; width:100%; }}
 th, td {{ text-align:left; padding:3px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }}
 th.rd {{ font-size:10.5px; line-height:1.15; white-space:normal; max-width:120px; vertical-align:bottom; }}
 th.rd b {{ display:block; color:var(--accent); font-weight:600; }}
+.grp {{ border-left:2px solid var(--line); }}
 td.rd {{ text-align:center; color:var(--muted); }}
 td.rd.some {{ color:inherit; }}
 td.rd.all {{ color:#15803d; font-weight:600; }}
@@ -273,14 +278,14 @@ function render() {{
     <td>${{esc(r.model)}}</td><td>s${{r.seed}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
     <td class="${{r.shape==='valid'?'':'unstaffed'}}">${{esc(r.shape)}}${{r.unstaffed ? ' ('+esc(r.unstaffed)+')' : ''}}</td>
     <td>${{esc(r.T1)}}</td><td>${{esc(r.T2)}}</td><td>${{r.debriefs}}</td>
-    ${{cur.cols.map(c => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); return `<td class="rd ${{cls}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
+    ${{cur.cols.map((c, i) => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); const grp = i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''; return `<td class="rd ${{cls}}${{grp}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
     <td>${{r.run_html ? `<button onclick="open_('runs/${{r.dir}}/run.html','${{esc(r.model)}} s${{r.seed}} · run',${{i}})">run</button>` : ''}}
         ${{r.board_html ? `<button onclick="open_('runs/${{r.dir}}/board.html','${{esc(r.model)}} s${{r.seed}} · board',${{i}})">board</button>` : ''}}
         <a href="runs/${{r.dir}}/run.html" target="_blank" title="new tab">↗</a></td></tr>`).join('');
   panel.innerHTML = `<h2>${{esc(cur.label)}}</h2>
     <div class="world">world <b>${{esc(cur.world)}}</b> · cell <b>${{esc(cur.cell)}}</b>
       ${{cur.fixture ? `· <button onclick="show('${{cur.fixture}}','fixture · ${{esc(cur.world)}}')">fixture</button> <a href="${{cur.fixture}}" target="_blank">↗</a>` : '· (no fixture render)'}}</div>
-    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th>${{cur.cols.map(c => `<th class="rd" title="${{esc(c.title)}}">${{esc(c.head)}}<b>→ ${{esc(c.reader)}}</b></th>`).join('')}}<th></th></tr>${{rows}}</table>
+    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th>${{cur.cols.map((c, i) => `<th class="rd${{i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''}}" title="${{esc(c.title)}}"><b>${{esc(c.reader)}} read</b>${{esc(c.head)}}</th>`).join('')}}<th></th></tr>${{rows}}</table>
     ${{cur.cols.length ? '<div class="world">read check: messages of each important conversation fetched by that assistant (k/n; ✓ for the live Callum DM), from conversations_history results in world_calls.jsonl</div>' : ''}}`;
 }}
 function open_(url, label, i) {{ show(url, label); document.getElementById('r'+i).classList.add('sel'); }}

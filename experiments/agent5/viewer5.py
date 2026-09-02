@@ -163,6 +163,13 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
         is_sprint = c["type"] == "channel" and "sprint" in c["label"]
         return (0 if is_sprint else 1 if c["type"] == "channel" else 2, -c["run"], c["label"])
     conv_order = sorted(convs.values(), key=conv_key)
+    # default columns (2026-09-03): the sprint channel, DMs between people (no bot member),
+    # and the agents' turns. Social channels and calendar-bot DMs stay one chip-click away.
+    for c in conv_order:
+        lab = c["label"]
+        is_sprint = c["type"] == "channel" and "sprint" in lab
+        is_people_dm = c["type"] != "channel" and "bot" not in lab.lower()
+        c["default_on"] = bool(c["run"] > 0 and (is_sprint or is_people_dm))
 
     # rows: one per rounded world-second. Turn cells sit at turn start; messages sit
     # at their own post time, except posts from the same (turn, step) share the row of
@@ -344,7 +351,7 @@ const D = JSON.parse(document.getElementById("data").textContent);
 const AGENTS = new Set(D.roster);
 const colDefs = [];             // {id,label,kind:'conv'|'agent',on}
 for (const c of D.convs) colDefs.push({id:"c:"+c.id, label:c.label, kind:"conv",
-  n:c.run, on:c.run>0});
+  n:c.run, on:("default_on" in c ? c.default_on : c.run>0)});
 for (const a of D.roster) colDefs.push({id:"a:"+a, label:a+" · turns", kind:"agent",
   n:D.turns.filter(t=>t.agent===a).length, on:true});
 const colById = Object.fromEntries(colDefs.map(c=>[c.id,c]));

@@ -895,6 +895,10 @@ Consequences: w2 turn counts and costs are not comparable to w1's; boards and po
 
 `w1PstrongNstrong_affBothNeutralPpl_mBusy11` (and the `superstrong` twin): the same world with one extra fixed event, Matthieu "Feature store sync" Mon 11:00–12:00, so his only free hour on Monday is 16:00 — exactly the hour Callum asks Priya for. Built through a `build_w1` `extra_events` / `tag` pass-through (calendar only; every message is untouched, and `check_w1` still passes). Run with `--callum-ask`. The first 11 runs on it carry a `w3` prefix in their names; that was only a label — the harness is w2 and the fixture tag already says `_mBusy11` — so `--gen w3` is now an alias for w2 and the viewer groups those runs as w2. The layered unit going forward is: w2 harness × fixture (cases, affinity, confide, callum, calendar) × config knobs (`Blocks`, `CallumAsk`, `DmHint`).
 
+## 8e. `CallumAsk2` — plan 1.f (2026-09-02 late)
+
+Batch 3 (12 callumAsk runs, six models) put Priya with Matthieu in 10 of 12 boards: her 09:35 ask landed on a board the other three had settled by 09:31, so her assistant inherited the pairing and only handled Callum. `CallumAsk2` keeps the collision and reopens the pairing: Matthieu is asked at 09:31 to claim T1 and put a first-meeting time on the table at once (`MATTHIEU_ASK2`; in `_mBusy11` that is 16:00, his only free hour), and Priya, Nadia and Rafael are asked together at 09:35, Priya with the two-part Callum ask. Batching delivers the kickoff and Matthieu's proposal to the three of them in one turn, so Priya's assistant holds Callum's 16:00 at the moment the DS pairing is open and 16:00 has been named. Its own cell (three of four ask times move), `--callum-ask2`, run on the busy world first.
+
 ## 8b. First layered rollout — `w1P0N0_callumBereavement`, 2026-09-02
 
 Run locally on glm-5.3-flash (`runs/agent5_w1P0N0_callumBereavement_askReasonable_conc_glm53flash_s0_20260902-002345`), the default `converge_on: valid`. First time the layer path, the New York clock, the Matthieu rename and the American-English base ran end to end.
