@@ -13,6 +13,7 @@ Run: python -m experiments.agent5.viewer5 <run_dir_or_run.json> [...]
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -67,6 +68,8 @@ def _call_view(c: Dict[str, Any], labels: Dict[str, str]) -> Dict[str, Any]:
         msgs = res.get("messages") or []
         v["line"] = f"read {label} ({len(msgs)} msgs)"
         v["read_ts"] = [str(m.get("ts")) for m in msgs if m.get("ts")][:300]
+        v["read_conv"] = str(args.get("channel") or "")
+        v["read_n"] = len(msgs)
     elif tool == "chat_postMessage":
         v["line"] = f"posted → {label}"
         if res.get("ts"):
@@ -90,12 +93,16 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
     for t in r["turns"]:
         calls_by_step: Dict[int, list] = defaultdict(list)
         reads, read_ts, posts = [], [], []
+        readmarks: Dict[str, int] = {}  # conv id -> most messages fetched in one call
         for c in t.get("tool_calls") or []:
             cv = _call_view(c, labels)
             calls_by_step[cv["step"]].append(cv)
             if "read_ts" in cv:
                 reads.append(cv["line"])
                 read_ts += cv.pop("read_ts")
+                conv = cv.pop("read_conv", ""); n = cv.pop("read_n", 0)
+                if conv:
+                    readmarks[conv] = max(readmarks.get(conv, 0), n)
             if "post_ts" in cv:
                 posts.append(cv["post_ts"])
         steps = [{"step": sd.get("step"), "reasoning": sd.get("reasoning") or "",
@@ -118,6 +125,7 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
             "t1": int(_naive_utc(end_iso) + off), "src": src,
             "ask": (t.get("message_in") or "") if t["kind"] in ("ask", "debrief") else "",
             "steps": steps, "reads": reads, "read_ts": sorted(set(read_ts)),
+            "readmarks": [{"conv": k, "n": n} for k, n in readmarks.items()],
             "posts": posts, "report": t.get("text_to_principal") or "",
             "wake_ts": str(wake.get("ts")) if wake.get("ts") else "",
             "cost": (t.get("usage") or {}).get("cost"),
@@ -197,7 +205,32 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
     for i in range(len(msgs)):
         key = int(row_ts[i] // ROW_MERGE_S)
         atoms.setdefault(key, {"epoch": key, "turns": [], "msgs": []})["msgs"].append(i)
-    rows = [atoms[k] | {"time": _hms(k, off)} for k in sorted(atoms)]
+    # "read" markers: one per (turn, conversation fetched), placed in that conversation's
+    # column at the turn's row; flagged when the conversation carries layered material
+    # (important_dms.json for this fixture) — 2026-09-03.
+    cfg0 = r.get("config") or {}
+    important_convs: set = set()
+    try:
+        tag = re.sub(r"^tanager_slack_", "", Path(str(cfg0.get("fixture") or "")).stem)
+        run_name = str(cfg0.get("name") or "")
+        for row in json.loads((Path(__file__).resolve().parent / "important_dms.json").read_text()):
+            if row["cell"] != tag:
+                continue
+            if row.get("only_cells_containing") and row["only_cells_containing"] not in run_name:
+                continue
+            conv = row["conversation"]
+            important_convs.add(conv if conv.startswith("#") else "dm:" + "+".join(sorted(conv[3:].split(" ↔ "))))
+    except Exception:
+        pass
+    label_of = _conv_label_map(r)
+    for t in turns:
+        key = t["t0"]
+        marks = atoms[key].setdefault("marks", [])
+        for m in t.get("readmarks") or []:
+            lab = label_of.get(m["conv"], m["conv"])
+            marks.append({"conv": m["conv"], "agent": t["agent"], "turn": t["i"], "n": m["n"],
+                          "important": lab in important_convs})
+    rows = [atoms[k] | {"time": _hms(k, off), "marks": atoms[k].get("marks", [])} for k in sorted(atoms)]
 
     markers = []
     for name, iso in (("kickoff", r.get("kickoff")), ("deadline", r.get("deadline"))):
@@ -336,6 +369,8 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .bkcell>details>summary{cursor:pointer;color:var(--dim)}
 .bkcell .card{opacity:.8}
 .wline{font-size:10.5px;color:var(--dim);margin-top:2px}
+.card.readmark{font-size:11px;color:var(--dim);padding:2px 6px;margin-bottom:3px;background:transparent;border-style:dashed;cursor:pointer}
+.card.readmark.imp{color:var(--ink);background:var(--hl)}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
 <div id="top">
@@ -506,7 +541,8 @@ function renderGrid(){
   let prev = null;
   for (const r of D.rows){
     const visible = r.turns.some(ti=>colIdx["a:"+D.turns[ti].agent]) ||
-                    r.msgs.some(mi=>colIdx["c:"+D.msgs[mi].conv]);
+                    r.msgs.some(mi=>colIdx["c:"+D.msgs[mi].conv]) ||
+                    (r.marks||[]).some(m=>colIdx["c:"+m.conv]);
     if (!visible) continue;   // row lives entirely in toggled-off columns
     while (markers.length && markers[0].epoch <= r.epoch)
       items.push({marker: markers.shift()});
@@ -556,6 +592,11 @@ function renderGrid(){
     for (const ti of r.turns){
       const id = "a:"+D.turns[ti].agent;
       if (colIdx[id]) (byCol[id] ??= []).push(turnCard(D.turns[ti]));
+    }
+    for (const m of (r.marks||[])){
+      const id = "c:"+m.conv;
+      if (colIdx[id]) (byCol[id] ??= []).push(
+        `<div class="card readmark${m.important?" imp":""}" data-tid="${m.turn}" title="turn ${m.turn}: ${esc(m.agent)}'s assistant fetched ${m.n} messages here${m.important?" — layered material lives in this conversation":""}" onclick="document.getElementById('turn-${m.turn}')?.scrollIntoView({block:'center'})" style="border-left-color:${agentColor(m.agent)}">👁 <b style="color:${agentColor(m.agent)}">${esc(m.agent)}</b> read ${m.n}${m.important?" ★":""}</div>`);
     }
     for (const mi of r.msgs){
       const id = "c:"+D.msgs[mi].conv;
