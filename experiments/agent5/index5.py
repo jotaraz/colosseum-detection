@@ -171,6 +171,29 @@ def write_debriefs(run_dir: Path, run: dict) -> bool:
     return True
 
 
+def pn_dms(run_dir: Path, run: dict) -> dict[str, int]:
+    """Live messages the two data scientists' assistants sent each other in the Priya↔Nadia
+    DM during the run (chat_postMessage into that conversation), by sender."""
+    labels = {m["conv_id"]: m["label"] for m in run.get("messages") or [] if m.get("conv_id")}
+    pn = {cid for cid, lab in labels.items() if lab == "dm:Nadia+Priya"}
+    out = {"Priya": 0, "Nadia": 0}
+    wc = run_dir / "world_calls.jsonl"
+    if not wc.exists() or not pn:
+        return out
+    with wc.open() as fh:
+        for line in fh:
+            if '"chat_postMessage"' not in line:
+                continue
+            try:
+                c = json.loads(line)
+            except Exception:
+                continue
+            if (c.get("args") or {}).get("channel") in pn and c.get("agent") in out \
+                    and (c.get("result") or {}).get("ok", True):
+                out[c["agent"]] += 1
+    return out
+
+
 def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str, str]]:
     """For each important row (keyed by its column id), what each readable-by assistant
     fetched: 'k/n' of the row's messages seen in any conversations_history/replies result,
@@ -260,6 +283,7 @@ def scan() -> list[dict]:
         pairs = {k: " + ".join(sorted(v)) for k, v in (sc.get("pairs") or {}).items()}
         reads = reads_for(d, imp.get(world, []), m["cell"]) if world in imp else {}
         team = team_dms_read(d, r) if world.startswith("w1") else {}
+        pn = pn_dms(d, r) if world.startswith("w1") else {}
         try:
             has_debriefs = write_debriefs(d, r)
         except Exception:
@@ -268,7 +292,7 @@ def scan() -> list[dict]:
         note = (d / "INVALID.txt").read_text().strip() if invalid and (d / "INVALID.txt").exists() else ""
         runs.append({
             "dir": d.name, **{k: v for k, v in m.groupdict().items() if k != "invalid"},
-            "world": world, "gen": gen, "reads": reads, "team": team,
+            "world": world, "gen": gen, "reads": reads, "team": team, "pn": pn,
             "invalid": invalid, "invalid_note": note,
             "outcome": r.get("outcome"), "turns": len(turns),
             "last": (turns[-1]["clock"][11:16] if turns else ""),
@@ -341,6 +365,7 @@ th, td {{ text-align:left; padding:3px 8px; border-bottom:1px solid var(--line);
 th.rd {{ font-size:10.5px; line-height:1.15; white-space:normal; max-width:120px; vertical-align:bottom; }}
 th.rd b {{ display:block; color:var(--accent); font-weight:600; }}
 .grp {{ border-left:2px solid var(--line); }}
+td.pn small {{ color:var(--muted); }}
 td.team {{ font-size:11px; letter-spacing:.02em; }}
 td.team .none {{ color:var(--muted); }}
 td.team .some {{ color:inherit; font-weight:600; }}
@@ -381,6 +406,7 @@ function render() {{
     <td>${{esc(r.model)}}${{r.invalid ? ' <b class="badge">INVALID</b>' : ''}}</td><td>s${{r.seed}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
     <td class="${{r.shape==='valid'?'':'unstaffed'}}">${{esc(r.shape)}}${{r.unstaffed ? ' ('+esc(r.unstaffed)+')' : ''}}</td>
     <td>${{esc(r.T1)}}</td><td>${{esc(r.T2)}}</td><td>${{r.debriefs}}</td>
+    <td class="pn" title="live messages the assistants sent in the Priya ↔ Nadia DM during the run (Priya's / Nadia's)">${{r.pn && ('Priya' in r.pn) ? `${{r.pn.Priya + r.pn.Nadia}} <small>(P${{r.pn.Priya}} N${{r.pn.Nadia}})</small>` : ''}}</td>
     ${{cur.cols.map((c, i) => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); const grp = i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''; return `<td class="rd ${{cls}}${{grp}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
     <td>${{r.run_html ? `<button onclick="open_('runs/${{r.dir}}/run.html','${{esc(r.model)}} s${{r.seed}} · run',${{i}})">run</button>` : ''}}
         ${{r.board_html ? `<button onclick="open_('runs/${{r.dir}}/board.html','${{esc(r.model)}} s${{r.seed}} · board',${{i}})">board</button>` : ''}}
@@ -389,7 +415,7 @@ function render() {{
   panel.innerHTML = `<h2>${{esc(cur.label)}}</h2>
     <div class="world">world <b>${{esc(cur.world)}}</b> · cell <b>${{esc(cur.cell)}}</b>
       ${{cur.fixture ? `· <button onclick="show('${{cur.fixture}}','fixture · ${{esc(cur.world)}}')">fixture</button> <a href="${{cur.fixture}}" target="_blank">↗</a>` : '· (no fixture render)'}}</div>
-    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th>${{cur.cols.map((c, i) => `<th class="rd${{i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''}}" title="${{esc(c.title)}}"><b>${{esc(c.reader)}} read</b>${{esc(c.head)}}</th>`).join('')}}<th></th></tr>${{rows}}</table>
+    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th><th title="live messages in the Priya ↔ Nadia DM during the run">P↔N DMs</th>${{cur.cols.map((c, i) => `<th class="rd${{i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''}}" title="${{esc(c.title)}}"><b>${{esc(c.reader)}} read</b>${{esc(c.head)}}</th>`).join('')}}<th></th></tr>${{rows}}</table>
     ${{cur.cols.length ? '<div class="world">read check: messages of each important conversation fetched by that assistant (k/n; ✓ for the live Callum DM), from conversations_history results in world_calls.jsonl</div>' : ''}}`;
 }}
 function open_(url, label, i) {{ show(url, label); document.getElementById('r'+i).classList.add('sel'); }}
