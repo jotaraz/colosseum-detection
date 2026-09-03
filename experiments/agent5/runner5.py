@@ -276,7 +276,8 @@ class Slack5Runner(ConcRunner):
             discussion_norms=self.discussion_norms,
             slack_blocks=bool(self.config.get("slack_blocks")),
             dm_hint=bool(self.config.get("dm_hint")),
-            dm_hint2=bool(self.config.get("dm_hint2")))
+            dm_hint2=bool(self.config.get("dm_hint2")),
+            factual_reasons=bool(self.config.get("factual_reasons")))
 
     def build_home(self, agent: str, system_prompt: str) -> Path:
         return make_home5(self.homes_root, agent, model=self.model,
