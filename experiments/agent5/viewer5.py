@@ -91,7 +91,12 @@ def _call_view(c: Dict[str, Any], labels: Dict[str, str]) -> Dict[str, Any]:
 def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
     labels = _conv_label_map(r)
     out = []
+    seen: Dict[str, set] = defaultdict(set)  # agent -> message ts it has already seen
     for t in r["turns"]:
+        wake_batch = [str(b.get("ts")) for b in ((t.get("wake") or {}).get("batch") or []) if b.get("ts")]
+        if not wake_batch and (t.get("wake") or {}).get("ts"):
+            wake_batch = [str(t["wake"]["ts"])]
+        seen[t["agent"]].update(wake_batch)
         calls_by_step: Dict[int, list] = defaultdict(list)
         reads, read_ts, posts = [], [], []
         read_events: List[Dict[str, Any]] = []  # {ts, time}: when each message was fetched
@@ -103,6 +108,15 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
                 reads.append(cv["line"])
                 cv_ts = cv.pop("read_ts")
                 read_ts += cv_ts
+                # the perspective view: messages this fetch showed the assistant for the
+                # first time (its own posts and anything delivered as a wake count as seen)
+                res_msgs = (c.get("result") or {}).get("messages") or []
+                new = [{"ts": str(m.get("ts")), "user": str(m.get("user", "")), "text": str(m.get("text", ""))[:600],
+                        "conv": str((c.get("args") or {}).get("channel") or "")}
+                       for m in res_msgs if str(m.get("ts")) not in seen[t["agent"]]]
+                cv["fetched"] = new
+                cv["seen_n"] = len(res_msgs) - len(new)
+                seen[t["agent"]].update(str(m.get("ts")) for m in res_msgs)
                 conv = cv.pop("read_conv", ""); n = cv.pop("read_n", 0)
                 clk = cv.pop("read_clock", "")
                 when = _hms(_naive_utc(clk) + off, off) if clk else ""
@@ -112,6 +126,7 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
                     readmarks[conv] = max(readmarks.get(conv, 0), n)
             if "post_ts" in cv:
                 posts.append(cv["post_ts"])
+                seen[t["agent"]].add(cv["post_ts"])
         steps = [{"step": sd.get("step"), "reasoning": sd.get("reasoning") or "",
                   "text": sd.get("text") or "", "calls": calls_by_step.pop(sd.get("step"), [])}
                  for sd in (t.get("steps_detail") or [])]
@@ -133,6 +148,7 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
             "ask": (t.get("message_in") or "") if t["kind"] in ("ask", "debrief") else "",
             "steps": steps, "reads": reads, "read_ts": sorted(set(read_ts)),
             "readmarks": [{"conv": k, "n": n} for k, n in readmarks.items()],
+            "wake_batch": wake_batch,
             "read_events": read_events,
             "posts": posts, "report": t.get("text_to_principal") or "",
             "wake_ts": str(wake.get("ts")) if wake.get("ts") else "",
@@ -271,8 +287,9 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
     for m in r.get("messages") or []:
         if m.get("conv_id") and m.get("label"):
             id_names.setdefault(str(m["conv_id"]), str(m["label"]))
+    important_ids = [cid for cid, lab in label_of.items() if lab in important_convs]
     return {
-        "id_names": id_names,
+        "id_names": id_names, "important_convs": important_ids,
         "meta": {"run_id": cfg.get("run_id") or cfg.get("name", ""), "model": cfg.get("model", ""),
                  "outcome": r.get("outcome", ""), "score": r.get("score"),
                  "assignments": r.get("assignments"), "started": r.get("clock_start", ""),
@@ -391,6 +408,12 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .wline{font-size:10.5px;color:var(--dim);margin-top:2px}
 .card.readmark{font-size:11px;color:var(--dim);padding:2px 6px;margin-bottom:3px;background:transparent;border-style:dashed;cursor:pointer}
 .card.readmark.imp{color:var(--ink);background:var(--hl)}
+.card.persp{max-width:none}
+.psec{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:8px 0 3px}
+.pcall{font-size:11px;color:var(--dim);margin:3px 0}
+.pmsg{border-left:2px solid var(--line);padding:2px 6px;margin:3px 0;font-size:12px;white-space:pre-wrap}
+.pmsg.imp{background:var(--hl)}
+.pmsg .pm{display:block;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wline.nobody{color:var(--marker)}
 #legend{font-size:11px;color:var(--dim);margin-top:4px}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
@@ -427,6 +450,7 @@ function readHash(){
     const on = new Set(p.get("cols").split("|").filter(Boolean));
     for (const c of colDefs) c.on = on.has(c.id);
   }
+  if (typeof persp !== "undefined") for (const a of (p.get("persp")||"").split("|").filter(Boolean)) persp[a] = true;
   return new Set((p.get("open")||"").split("|").filter(Boolean));
 }
 function writeHash(){
@@ -435,8 +459,10 @@ function writeHash(){
     .map(d=>d.dataset.oid).filter(Boolean).join("|");
   const p = new URLSearchParams();
   p.set("cols", cols); if (open) p.set("open", open);
+  const pv = Object.keys(persp).filter(a=>persp[a]).join("|"); if (pv) p.set("persp", pv);
   history.replaceState(null,"","#"+p.toString());
 }
+const persp = {};   // agent -> perspective mode on (full "what it saw / read / thought / did" cards)
 const openSet = readHash();
 
 /* ---------- header ---------- */
@@ -457,6 +483,14 @@ function renderChips(){
   const groups = [["Channels", c=>c.kind==="conv" && !c.label.startsWith("dm:")],
                   ["DMs",      c=>c.kind==="conv" && c.label.startsWith("dm:")],
                   ["Agent turns", c=>c.kind==="agent"]];
+  const pg = document.createElement("span"); pg.className="grp"; pg.textContent="Perspective"; el.appendChild(pg);
+  for (const a of D.roster){
+    const b = document.createElement("span"); b.className = "chip"+(persp[a]?" on":"");
+    b.textContent = a; b.title = `show ${a}'s turns as what the assistant saw, read, thought and did, in order`;
+    if (persp[a]) b.style.color = agentColor(a);
+    b.onclick = ()=>{ persp[a]=!persp[a]; renderChips(); renderGrid(); writeHash(); };
+    el.appendChild(b);
+  }
   const mkChip = c => {
     const b = document.createElement("span");
     b.className = "chip"+(c.on?" on":""); b.dataset.col=c.id;
@@ -507,7 +541,55 @@ function cotHtml(t, oid, flagStep){
   h += "</div></details>";
   return h;
 }
+const msgByTs = Object.fromEntries(D.msgs.map(m=>[m.ts, m]));
+const convLabel = Object.fromEntries(D.convs.map(c=>[c.id, c.label]));
+const IMPORTANT = new Set(D.important_convs || []);
+function pmsg(m, tag){
+  const who = m.user in (D.id_names||{}) ? D.id_names[m.user] : m.user;
+  const conv = convLabel[m.conv] || m.conv;
+  const star = IMPORTANT.has(m.conv) ? " ★" : "";
+  return `<div class="pmsg${IMPORTANT.has(m.conv)?" imp":""}"><span class="pm">${esc(tag)} ${esc(conv)}${star} · <b>${esc(who)}</b>${m.time?" · "+esc(m.time):""}</span><div>${esc(m.text)}</div></div>`;
+}
+function perspectiveBody(t){
+  let h = "";
+  // 1. what woke it
+  if (["wake","added"].includes(t.kind)){
+    const ms = (t.wake_batch||[]).map(ts=>msgByTs[ts]).filter(Boolean);
+    h += `<div class="psec">saw · ${ms.length} event${ms.length!==1?"s":""}</div>` + ms.map(m=>pmsg(m,"⚡")).join("");
+  } else {
+    h += `<div class="psec">${esc(t.kind)} from principal</div><div class="askfull">${esc(t.ask)}</div>`;
+  }
+  // 2. steps: reasoning, then what each call showed it / did
+  for (const s of t.steps){
+    h += `<div class="psec">step ${s.step}</div>`;
+    if (s.reasoning) h += `<div class="reason">${esc(s.reasoning)}</div>`;
+    for (const c of s.calls){
+      if (c.fetched !== undefined){
+        const byConv = {};
+        for (const m of c.fetched) (byConv[m.conv] ??= []).push(m);
+        const convs = Object.keys(byConv);
+        h += `<div class="pcall">${esc(c.line)}${c.seen_n?` · ${c.seen_n} already seen`:""}${convs.length?"":" · nothing new"}</div>`;
+        for (const cv of convs) h += byConv[cv].map(m=>pmsg({...m, time:""},"👁")).join("");
+      } else if (c.post_ts && msgByTs[c.post_ts]){
+        h += pmsg(msgByTs[c.post_ts], "✎ posted");
+      } else {
+        h += `<div class="pcall">${esc(c.line)}</div>`;
+      }
+    }
+    if (s.text) h += `<div class="stext">${esc(s.text)}</div>`;
+  }
+  if (t.report) h += `<div class="psec">→ principal</div><div class="report">${esc(t.report)}</div>`;
+  return h;
+}
 function turnCard(t){
+  if (persp[t.agent]){
+    return `<div class="card turnc persp" id="turn-${t.i}" data-tid="${t.i}"
+      data-msgs="${[t.wake_ts, ...t.posts].filter(Boolean).join(" ")}" data-reads="${t.read_ts.join(" ")}"
+      style="border-left-color:${agentColor(t.agent)}">
+      <div class="hd"><b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b>
+        <span>${esc(t.src)}</span><span class="t">${t.time}–${t.end}</span></div>
+      ${perspectiveBody(t)}</div>`;
+  }
   const silent = !t.posts.length && !t.reads.length && t.steps.length<=1 &&
                  !["ask","debrief"].includes(t.kind);
   const relMsgs = [t.wake_ts, ...t.posts].filter(Boolean).join(" ");
