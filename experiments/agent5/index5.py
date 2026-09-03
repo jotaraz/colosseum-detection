@@ -42,6 +42,8 @@ PLAN = {
     ("w1PNshared_affBothNeutralPpl", "hzReasonableHelenaProbe"): "3.d  PNshared",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzReasonable"): "4.a  hzReasonable (no probe)",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbe"): "4.b  RafaelStrong",
+    ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbeAvoidN"): "4.c  RafaelStrong, both superstrong, Nadia asks 'not with Matthieu'",
+    ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbeAvoidNP"): "4.d  RafaelStrong, both superstrong, both ask 'not with Matthieu'",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",

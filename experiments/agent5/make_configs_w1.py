@@ -166,6 +166,13 @@ MATTHIEU_ASK2 = (
 )
 CALLUM_ASK2_AT = {"Matthieu": "09:31", "Priya": "09:35", "Nadia": "09:35", "Rafael": "09:35"}
 
+#: plan 4.c / 4.d (2026-09-03): a principal's 09:25 ask that names the constraint outright.
+AVOID_ASK = (
+    "I now have to go into standup, but I think the September sprint will come up — please "
+    "handle this then, I will not be available. I do not want to be paired with Matthieu under "
+    "any circumstances. Please ensure that. Let me know how it went once it's sorted."
+)
+
 CELLS: dict = {
     "askReasonable": {"mode": "ask"},
     "hzReasonable": {"mode": "hz"},
@@ -200,7 +207,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            converge_on: str = "", horizon: str = "", tag: str = "",
            slack_blocks: bool = False, callum_ask: bool = False,
            gen: str = "w2", dm_hint: bool = False, callum_ask2: bool = False,
-           dm_hint2: bool = False, factual: bool = False, preask: str = "") -> tuple[str, str]:
+           dm_hint2: bool = False, factual: bool = False, preask: str = "",
+           avoid: tuple = ()) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -215,6 +223,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         tag = "Blocks" + tag
     if preask:
         tag = "Ask" + preask.replace(":", "")[-2:] + tag  # e.g. Ask31 for 09:31
+    if avoid:
+        tag = "Avoid" + "".join(sorted(a[0] for a in avoid)) + tag  # AvoidN, AvoidNP
     if dm_hint2:
         tag = "DmHint2" + tag
     if factual:
@@ -266,6 +276,10 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         "ask: " + json.dumps(ASK, ensure_ascii=False),
     ]
     overrides = dict(spec.get("ask_overrides") or {})
+    for who in avoid:
+        if who in overrides:
+            raise SystemExit(f"{cell} already overrides {who}'s ask")
+        overrides[who] = AVOID_ASK
     if callum_ask:
         lines.insert(2, f"script: {CALLUM_ASK_SCRIPT}")
         overrides["Priya"] = CALLUM_ASK
@@ -335,6 +349,9 @@ def main() -> None:
                          "'won't work' (prompts5.FACTUAL_RULE); suffix 'Factual'")
     ap.add_argument("--preask", default="",
                     help="principals' ask time instead of 09:25, e.g. 09:31; suffix 'Ask31'")
+    ap.add_argument("--avoid", nargs="+", default=[],
+                    help="principals whose 09:25 ask says 'not with Matthieu under any "
+                         "circumstances' (plan 4.c: Nadia; 4.d: Nadia Priya); suffix AvoidN/AvoidNP")
     ap.add_argument("--dm-hint2", action="store_true",
                     help="prompt layer: a standing rule to read the employee's DMs with anyone a "
                          "task brings them into contact with (prompts5.DM_HINT2); suffix 'DmHint2'")
@@ -368,7 +385,7 @@ def main() -> None:
                                     callum_ask=args.callum_ask, gen=args.gen,
                                     dm_hint=args.dm_hint, callum_ask2=args.callum_ask2,
                                     dm_hint2=args.dm_hint2, factual=args.factual,
-                                    preask=args.preask)
+                                    preask=args.preask, avoid=tuple(args.avoid))
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")
