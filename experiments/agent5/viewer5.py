@@ -70,6 +70,7 @@ def _call_view(c: Dict[str, Any], labels: Dict[str, str]) -> Dict[str, Any]:
         v["read_ts"] = [str(m.get("ts")) for m in msgs if m.get("ts")][:300]
         v["read_conv"] = str(args.get("channel") or "")
         v["read_n"] = len(msgs)
+        v["read_clock"] = str(c.get("clock") or "")
     elif tool == "chat_postMessage":
         v["line"] = f"posted → {label}"
         if res.get("ts"):
@@ -93,14 +94,20 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
     for t in r["turns"]:
         calls_by_step: Dict[int, list] = defaultdict(list)
         reads, read_ts, posts = [], [], []
+        read_events: List[Dict[str, Any]] = []  # {ts, time}: when each message was fetched
         readmarks: Dict[str, int] = {}  # conv id -> most messages fetched in one call
         for c in t.get("tool_calls") or []:
             cv = _call_view(c, labels)
             calls_by_step[cv["step"]].append(cv)
             if "read_ts" in cv:
                 reads.append(cv["line"])
-                read_ts += cv.pop("read_ts")
+                cv_ts = cv.pop("read_ts")
+                read_ts += cv_ts
                 conv = cv.pop("read_conv", ""); n = cv.pop("read_n", 0)
+                clk = cv.pop("read_clock", "")
+                when = _hms(_naive_utc(clk) + off, off) if clk else ""
+                for ts_ in cv_ts:
+                    read_events.append({"ts": ts_, "time": when})
                 if conv:
                     readmarks[conv] = max(readmarks.get(conv, 0), n)
             if "post_ts" in cv:
@@ -126,6 +133,7 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
             "ask": (t.get("message_in") or "") if t["kind"] in ("ask", "debrief") else "",
             "steps": steps, "reads": reads, "read_ts": sorted(set(read_ts)),
             "readmarks": [{"conv": k, "n": n} for k, n in readmarks.items()],
+            "read_events": read_events,
             "posts": posts, "report": t.get("text_to_principal") or "",
             "wake_ts": str(wake.get("ts")) if wake.get("ts") else "",
             "cost": (t.get("usage") or {}).get("cost"),
@@ -146,10 +154,21 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
             if c.get("tool") == "chat_postMessage" and res.get("ts"):
                 post_map[str(res["ts"])] = {"turn": t["i"], "step": c.get("step") or 0}
     woken: Dict[str, List[int]] = defaultdict(list)  # msg ts -> turns it woke
-    for t in turns:
-        if t["wake_ts"]:
-            woken[t["wake_ts"]].append(t["i"])
+    for t, raw in zip(turns, r["turns"]):
+        batch = (raw.get("wake") or {}).get("batch") or []
+        tss = [str(b.get("ts")) for b in batch if b.get("ts")] or ([t["wake_ts"]] if t["wake_ts"] else [])
+        for ts_ in dict.fromkeys(tss):
+            woken[ts_].append(t["i"])
 
+    # who fetched each message via history (turn indices), for the per-message read line
+    read_by: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for t in turns:
+        seen_ts = set()
+        for ev in t.get("read_events") or []:
+            if ev["ts"] in seen_ts:
+                continue
+            seen_ts.add(ev["ts"])
+            read_by[ev["ts"]].append({"turn": t["i"], "time": ev["time"]})
     convs: Dict[str, Dict[str, Any]] = {}
     msgs = []
     backlog: Dict[str, list] = defaultdict(list)
@@ -160,7 +179,8 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
         c["total"] += 1
         src = post_map.get(m["ts"])
         mv = {"ts": m["ts"], "conv": cid, "user": m["user"], "text": m["text"],
-              "time": _hms(ts, off), "src": src, "wakes": woken.get(m["ts"], [])}
+              "time": _hms(ts, off), "src": src, "wakes": woken.get(m["ts"], []),
+              "reads": read_by.get(m["ts"], [])}
         if ts < start - 30 and not src:
             backlog[cid].append(mv)
         else:
@@ -371,12 +391,15 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .wline{font-size:10.5px;color:var(--dim);margin-top:2px}
 .card.readmark{font-size:11px;color:var(--dim);padding:2px 6px;margin-bottom:3px;background:transparent;border-style:dashed;cursor:pointer}
 .card.readmark.imp{color:var(--ink);background:var(--hl)}
+.wline.nobody{color:var(--marker)}
+#legend{font-size:11px;color:var(--dim);margin-top:4px}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
 <div id="top">
   <h1 id="title"></h1><div class="meta" id="meta"></div>
   <div id="chips"></div>
   <div class="meta" style="margin-top:6px"><button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button></div>
+  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material</div>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -511,6 +534,12 @@ function msgCard(m, mi){
         const lagTxt = lag>=90 ? ` +${Math.round(lag/60)}m` : lag>=5 ? ` +${lag}s` : "";
         return `<span class="jump" data-jump="${i}">${esc(w.agent)}${lagTxt}</span>`;
       }).join(", ")}</div>` : "";
+  // who fetched this message via history (other than the author's own assistant re-reading)
+  const rd = (m.reads||[]).map(x=>({i:x.turn, time:x.time, agent:D.turns[x.turn].agent})).filter(w=>w.agent!==m.user);
+  const seen = new Set(); const rdU = rd.filter(w=>!seen.has(w.agent) && seen.add(w.agent));
+  const reads = rdU.length
+    ? `<div class="wline">👁 read by ${rdU.map(w=>`<span class="jump" data-jump="${w.i}">${esc(w.agent)} ${w.time.slice(0,5)}</span>`).join(", ")}</div>`
+    : (m.wakes.length ? "" : `<div class="wline nobody">👁 read by nobody</div>`);
   let cot = "";
   if (t){
     const step = t.steps.find(s=>s.calls.some(c=>c.post_ts===m.ts)) || t.steps[t.steps.length-1];
@@ -526,7 +555,7 @@ function msgCard(m, mi){
     data-wakes="${m.wakes.join(" ")}" style="border-left-color:${color}">
     <div class="hd"><b style="color:${color}">${esc(m.user)}</b>${t?"":"<span>scripted</span>"}
       <span class="t">${m.time}</span></div>
-    <div class="body">${esc(m.text)}</div>${wakes}${cot}</div>`;
+    <div class="body">${esc(m.text)}</div>${wakes}${reads}${cot}</div>`;
 }
 
 /* ---------- grid ---------- */
