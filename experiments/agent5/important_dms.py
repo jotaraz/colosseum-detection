@@ -37,6 +37,8 @@ PLAN = {
     "w1PstrongNstrong_callumBereavement_affBothNeutralPpl": "1.d",
     "w1PstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy",
     "w1PsuperstrongNstrong_affBothNeutralPpl": "1.a-super",
+    "w1PsuperstrongNsuperstrong_affBothNeutralPpl": "1.a.i-plain",
+    "w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11": "1.a.i",
     "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy-super",
     "w1PstrongNstrong": "2.a",
     "w1PstrongNstrong_affBothT1": "2.b",

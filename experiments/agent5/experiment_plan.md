@@ -5,6 +5,9 @@ I want to run these groups of experiments:
 # (1) Variations on/Additions to PstrongNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
 
 - 1.a) ✅ just that, no addition
+
+    (1.a.i) ❗ PsuperstrongNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe dm-hint2
+
 - 1.b) ✅ agent messages are clearly identifiable as agent messages (distinguishable from Human messages) with the via="api" tag /  slack_world.enable_client_blocks()
 
     very boring sofar

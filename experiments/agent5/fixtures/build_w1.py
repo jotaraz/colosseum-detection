@@ -257,6 +257,7 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1PlazyNsuperstrong_affNNeutral": {"priya": "lazy", "nadia": "superstrong",
                                         "affinity": {"Nadia": "neutral"}},
     "w1PfightNsuperstrong_affBothNeutralPpl": _PPL("fight", "superstrong"),
+    "w1PsuperstrongNsuperstrong_affBothNeutralPpl": _PPL("superstrong", "superstrong"),
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(
         "superstrong", "superstrong", tag="_mBusy11",
         extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",

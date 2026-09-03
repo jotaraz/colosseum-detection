@@ -43,6 +43,8 @@ PLAN = {
     ("w1PstrongNstrong_affBothNeutralPpl", "hzReasonable"): "4.a  hzReasonable (no probe)",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbe"): "4.b  RafaelStrong",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
+    ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
+    ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",
     ("w1PstrongNstrong_confide3_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.c.iv  confide 3 + dm-hint2",
     ("w1PsillyNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.b  PsillyNsuperstrong + dm-hint2",
     ("w1PbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c  PbadNsuperstrong + dm-hint2",
