@@ -118,6 +118,7 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
                 cv["seen_n"] = len(res_msgs) - len(new)
                 seen[t["agent"]].update(str(m.get("ts")) for m in res_msgs)
                 conv = cv.pop("read_conv", ""); n = cv.pop("read_n", 0)
+                cv["conv"] = conv
                 clk = cv.pop("read_clock", "")
                 when = _hms(_naive_utc(clk) + off, off) if clk else ""
                 for ts_ in cv_ts:
@@ -415,6 +416,12 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .pmsg.imp{background:var(--hl)}
 .pmsg .pm{display:block;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wline.nobody{color:var(--marker)}
+.wline.seen{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:flex-start}
+.wline.seen details.xcot{margin-top:0}
+.wline.seen details.xcot>summary{border-left-width:3px}
+.wline.seen details.xcot[open]{flex-basis:100%}
+.wline.seen details.xcot>.cotbody{margin-top:4px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--bg)}
+.step.hit{border-left-color:var(--accent);background:color-mix(in srgb, var(--accent) 6%, transparent)}
 #legend{font-size:11px;color:var(--dim);margin-top:4px}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
@@ -610,18 +617,25 @@ function msgCard(m, mi){
   const cls = "card msg"+(t?"":" scripted");
   const color = t ? agentColor(t.agent) : (AGENTS.has(m.user)?agentColor(m.user):"var(--human)");
   const secs = s => s.split(":").reduce((a,x)=>a*60+ +x, 0);
-  const wakes = m.wakes.length
-    ? `<div class="wline">woke ${m.wakes.map(i=>{
-        const w = D.turns[i], lag = secs(w.time)-secs(m.time);
-        const lagTxt = lag>=90 ? ` +${Math.round(lag/60)}m` : lag>=5 ? ` +${lag}s` : "";
-        return `<span class="jump" data-jump="${i}">${esc(w.agent)}${lagTxt}</span>`;
-      }).join(", ")}</div>` : "";
-  // who fetched this message via history (other than the author's own assistant re-reading)
-  const rd = (m.reads||[]).map(x=>({i:x.turn, time:x.time, agent:D.turns[x.turn].agent})).filter(w=>w.agent!==m.user);
-  const seen = new Set(); const rdU = rd.filter(w=>!seen.has(w.agent) && seen.add(w.agent));
-  const reads = rdU.length
-    ? `<div class="wline">👁 read by ${rdU.map(w=>`<span class="jump" data-jump="${w.i}">${esc(w.agent)} ${w.time.slice(0,5)}</span>`).join(", ")}</div>`
-    : (m.wakes.length ? "" : `<div class="wline nobody">👁 read by nobody</div>`);
+  // every other assistant that saw this message: woken by it, or fetched it via history.
+  // Each gets an expandable CoT of that turn (filled lazily on first open), so you can read
+  // what Nadia thought when Priya's post reached her.
+  const seenBy = [
+    ...m.wakes.map(i=>({i, kind:"⚡", time:D.turns[i].time, wake:true})),
+    ...(m.reads||[]).map(x=>({i:x.turn, kind:"👁", time:x.time, wake:false})),
+  ].filter(w=>D.turns[w.i].agent!==m.user);
+  const seenKeys = new Set();
+  const seenU = seenBy.filter(w=>{ const k=D.turns[w.i].agent+"#"+w.i; return !seenKeys.has(k) && seenKeys.add(k); });
+  const others = seenU.length
+    ? `<div class="wline seen">${seenU.map(w=>{
+        const t2 = D.turns[w.i], oid = `x${mi}-${w.i}`;
+        const lag = secs(w.time)-secs(m.time);
+        const lagTxt = lag>=90 ? `+${Math.round(lag/60)}m` : lag>=5 ? `+${lag}s` : w.wake ? "" : w.time.slice(0,5);
+        return `<details class="cot xcot" data-oid="${oid}" data-turn="${w.i}" data-conv="${esc(m.conv||"")}" ${openSet.has(oid)?"open":""}>`+
+          `<summary style="border-color:${agentColor(t2.agent)}">${w.kind} ${esc(t2.agent)} ${lagTxt} · ${t2.steps.length} step${t2.steps.length!==1?"s":""}</summary>`+
+          `<div class="cotbody"></div></details>`;
+      }).join(" ")}</div>`
+    : `<div class="wline nobody">👁 read by nobody</div>`;
   let cot = "";
   if (t){
     const step = t.steps.find(s=>s.calls.some(c=>c.post_ts===m.ts)) || t.steps[t.steps.length-1];
@@ -637,7 +651,7 @@ function msgCard(m, mi){
     data-wakes="${m.wakes.join(" ")}" style="border-left-color:${color}">
     <div class="hd"><b style="color:${color}">${esc(m.user)}</b>${t?"":"<span>scripted</span>"}
       <span class="t">${m.time}</span></div>
-    <div class="body">${esc(m.text)}</div>${wakes}${reads}${cot}</div>`;
+    <div class="body">${esc(m.text)}</div>${others}${cot}</div>`;
 }
 
 /* ---------- grid ---------- */
@@ -776,7 +790,24 @@ document.addEventListener("click", e=>{
   document.querySelectorAll(".pin").forEach(x=>x.classList.remove("pin"));
   if (on) for (const x of related(el)) x.classList.add("pin");
 });
+function fillX(det){
+  const body = det.querySelector(".cotbody");
+  if (!body || body.dataset.filled) return;
+  body.dataset.filled = "1";
+  const t = D.turns[+det.dataset.turn], conv = det.dataset.conv;
+  const hit = t.steps.find(s=>s.calls.some(c=>c.conv && c.conv===conv)) || t.steps[0];
+  let h = `<div class="sh" style="font-size:10.5px;color:var(--dim)">${esc(t.agent)}'s turn ` +
+          `<span class="jump" data-jump="${t.i}">#${t.i} ↗</span> · ${esc(t.time)}` +
+          (t.wake_batch?.length ? ` · woken by ${t.wake_batch.length} event${t.wake_batch.length!==1?"s":""}` : "") + `</div>`;
+  if (t.ask) h += `<div class="askfull"><b>principal:</b> ${esc(t.ask)}</div>`;
+  for (const s of t.steps) h += stepHtml(t, s, -1).replace('<div class="step', `<div class="step${s===hit?" hit":""}`);
+  if (t.report) h += `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`;
+  body.innerHTML = h;
+  if (namesOn) applyNames();
+  const el = body.querySelector(".step.hit"); if (el && hit!==t.steps[0]) el.scrollIntoView({block:"start"});
+}
 document.addEventListener("toggle", e=>{
+  if (e.target.matches?.("details.xcot") && e.target.open) fillX(e.target);
   if (e.target.matches?.("details.cot")) writeHash();
 }, true);
 
