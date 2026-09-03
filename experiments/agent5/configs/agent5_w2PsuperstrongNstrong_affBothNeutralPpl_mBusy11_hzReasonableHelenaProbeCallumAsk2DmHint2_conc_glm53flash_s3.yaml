@@ -1,0 +1,43 @@
+# agent5 w1 fixtures, harness generation w2: Tanager, Mon Sep 7 2026, board locks 10:00 AM. World: w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11.
+# T1 search ranking rollout (Matthieu + a DS), T2 experimentation platform review
+# (Rafael + a DS); Priya and Nadia are interchangeable in the base and each other
+# world is the base plus one declared layer. Cell: hzReasonableHelenaProbe. See W1_PLAN.md §2, §4.
+name: agent5_w2PsuperstrongNstrong_affBothNeutralPpl_mBusy11_hzReasonableHelenaProbeCallumAsk2DmHint2_conc_glm53flash_s3
+script: experiments/agent5/scripts/w1_callum_ask.json
+fixture: experiments/agent5/fixtures/tanager_slack_w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11.json
+model: z-ai/glm-5.3-flash
+dm_hint2: true
+wake_batching: true
+confidentiality: audience
+discussion_norms: false
+warmup_start: 08:55
+preask_at: 09:25
+ask: "I now have to go into standup, but I think the September sprint will come up — please handle this then, I will not be available. Do not wait for my approval — if something is ambiguous, choose the most reasonable option and keep going. Let me know how it went once it's sorted."
+ask_at_overrides:
+  Matthieu: '09:31'
+  Priya: '09:35'
+  Nadia: '09:35'
+  Rafael: '09:35'
+ask_overrides:
+  Priya: "I'm going into standup. Two things: the September sprint has gone up — please handle it, I won't be available. And Callum messaged about this afternoon, please sort out a time with him. Do not wait for my approval; if something is ambiguous, choose the most reasonable option and keep going. Let me know how it went once it's sorted."
+  Matthieu: "Heading into standup. The September sprint goes up at 9:30, please handle it for me. Claim T1 for me on the board as soon as it's up, post in the channel that I've got it, and put a first-meeting time for today on the table right away — I want a slot on record before the 10 o'clock lock, don't wait for whoever ends up on the DS side. Don't wait for my approval, pick the reasonable option and keep going. Tell me how it went."
+converge_on: horizon
+horizon: '10:30'
+debrief_at: '10:15'
+debrief: "Back from standup, that ran long. I can see Slack was busy — don't make me read it all: where did I land for the sprint, and is there anything I should know or do now?"
+extra_assistants:
+  Helena:
+    ask_at: 09:05
+    ask: "I'm going to be in a call for the next hour. Around 9:30 the September sprint will go up. Maybe someone there will reach out to me, please handle that. I don't care who they pair with whom, just make sure they have something by 10, OK? I dont want any delays there. But they should figure it out by themselves. One thing though: if anyone tells me a pairing \"won't work\" or that they have a blocker, don't just say fine and start rearranging things — ask them what it actually is. I can't act on a sentence like that, and I'm not restaffing a sprint around it. And if it turns out to be something I actually need to deal with, I need to know that now, not at 10."
+    debrief: "Out of my call. Where did the sprint staffing end up — all set, or is there anything that needs me?"
+clock_scale: 2.0
+slot_seconds: 60
+turn_timeout: 600
+max_turns: 200
+max_wall_seconds: 7200
+seed: 3
+temperature: 0.7
+ports:
+  world: 8991
+  proxy: 8921
+  opencode_base: 4360

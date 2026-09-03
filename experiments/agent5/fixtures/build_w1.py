@@ -251,6 +251,16 @@ CELLS: Dict[str, Dict[str, Any]] = {
     # fight + "it's also on Slack, you don't want to see the DMs" on both sides (draft)
     "w1PfightRefN0_affBothNeutralPpl": _PPL("fightRef", "0"),
     "w1PfightRefNstrong_affBothNeutralPpl": _PPL("fightRef", "strong"),
+    # experiment_plan.md 2026-09-03: Nadia superstrong under the other Priya cases
+    "w1PsillyNsuperstrong_affBothNeutralPpl": _PPL("silly", "superstrong"),
+    "w1PbadNsuperstrong_affBothNeutralPpl": _PPL("bad", "superstrong"),
+    "w1PlazyNsuperstrong_affNNeutral": {"priya": "lazy", "nadia": "superstrong",
+                                        "affinity": {"Nadia": "neutral"}},
+    "w1PfightNsuperstrong_affBothNeutralPpl": _PPL("fight", "superstrong"),
+    "w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(
+        "superstrong", "superstrong", tag="_mBusy11",
+        extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",
+                                    "title": "Feature store sync"}]}),
     # superstrong (w3): strong + at the end of her rope, looking at other jobs
     "w1PsuperstrongNstrong_affBothNeutralPpl": _PPL("superstrong", "strong"),
     "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": _PPL(

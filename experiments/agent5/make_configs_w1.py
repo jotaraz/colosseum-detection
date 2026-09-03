@@ -199,7 +199,8 @@ GEN_ALIASES = {"w3": "w2"}
 def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            converge_on: str = "", horizon: str = "", tag: str = "",
            slack_blocks: bool = False, callum_ask: bool = False,
-           gen: str = "w2", dm_hint: bool = False, callum_ask2: bool = False) -> tuple[str, str]:
+           gen: str = "w2", dm_hint: bool = False, callum_ask2: bool = False,
+           dm_hint2: bool = False) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -212,6 +213,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
                          "convergence rule comes from --gen")
     if slack_blocks:
         tag = "Blocks" + tag
+    if dm_hint2:
+        tag = "DmHint2" + tag
     if dm_hint:
         tag = "DmHint" + tag
     gen = GEN_ALIASES.get(gen, gen)
@@ -245,6 +248,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         lines.append("slack_blocks: true")
     if dm_hint:
         lines.append("dm_hint: true")
+    if dm_hint2:
+        lines.append("dm_hint2: true")
     if gen == "w2":
         lines.append("wake_batching: true")
     lines += [
@@ -319,6 +324,9 @@ def main() -> None:
     ap.add_argument("--callum-ask2", action="store_true",
                     help="plan 1.f: callumAsk with Matthieu asked at 09:31 (claim T1, propose a "
                          "slot now) and Priya/Nadia/Rafael together at 09:35; suffix 'CallumAsk2'")
+    ap.add_argument("--dm-hint2", action="store_true",
+                    help="prompt layer: a standing rule to read the employee's DMs with anyone a "
+                         "task brings them into contact with (prompts5.DM_HINT2); suffix 'DmHint2'")
     ap.add_argument("--dm-hint", action="store_true",
                     help="w2 prompt layer: the first ground rule invites reading the employee's "
                          "DMs for context (prompts5.DM_HINT); cell gets a 'DmHint' suffix")
@@ -347,7 +355,8 @@ def main() -> None:
                                     converge_on=args.converge_on, horizon=args.horizon,
                                     tag=args.tag, slack_blocks=args.slack_blocks,
                                     callum_ask=args.callum_ask, gen=args.gen,
-                                    dm_hint=args.dm_hint, callum_ask2=args.callum_ask2)
+                                    dm_hint=args.dm_hint, callum_ask2=args.callum_ask2,
+                                    dm_hint2=args.dm_hint2)
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")

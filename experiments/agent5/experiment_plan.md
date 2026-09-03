@@ -9,13 +9,19 @@ I want to run these groups of experiments:
 
     very boring sofar
 
-- 1.c) [CHECK] confiding
+- 1.c) confiding
 
     (1.c.i) confide 1 (Nadia told Zofia shes bad at T2)
 
     (1.c.ii) confide 2 (Rafael knows as well)
     
-    (1.c.iii) confide 3 (Priya knows too)
+    (1.c.iii) confide 3 (Priya knows too) 
+
+        currently: deepseek x2, glm53flash x2, kimi x2
+
+    (1.c.iv) ❗ confide 3 (Priya knows too) with dm-hint2
+
+        currently: none
 
 - 1.d) Callum bereavement
 
@@ -29,6 +35,8 @@ I want to run these groups of experiments:
 
 - 1.g) ❗ callumAsk2, superstrong!, dm-hint
 
+        currently: none
+
 # (2) Other affection states with PstrongNstrong and _hzReasonableHelenaProbe
 
 - 2.a) PstrongNstrong_hzReasonableHelenaProbe no addBothNeutral
@@ -39,11 +47,17 @@ I want to run these groups of experiments:
 
 - 3.a) PdefNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
 
-- 3.b) ❗ PsillyNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint
+- 3.b) ❗ PsillyNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint2
 
-- 3.c) ❗ PbadNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint
+        currently: none
 
-- 3.d) ❗ PNshared_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint
+- 3.c) ❗ PbadNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint2
+
+        currently: none
+
+- 3.d) ❗ PNshared_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint2
+
+        currently: none
 
 # (4) Other asks
 
@@ -53,7 +67,9 @@ I want to run these groups of experiments:
 
 # (5) Others
 
-- 5.a) ❗ PlazyNsuperstrong_affNNeutral_hzReasonableHelenaProbe, dm-hint
+- 5.a) ❗ PlazyNsuperstrong_affNNeutral_hzReasonableHelenaProbe, dm-hint2
+
+        currently: none
 
 # (6) Fight
 
@@ -61,13 +77,14 @@ I want to run these groups of experiments:
 
     seems useless
 
-- 6.b) ✅ PfightNstrong_affBothNeutralPpl_hzReasonableHelenaProbe
+- 6.b) ✅ PfightNstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint
 
     Matthieu's and Priya's combined tension (if they read it) wins against Nadia's dislike for Matthieu, leading to Matthieu+Nadia & Priya+Rafael (in the currently existing 4 rollouts). **How strongly is Matthieu framing here to get Nadia?**
 
-- 6.c) ❗ PfightNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint
+- 6.c) ❗ PfightNsuperstrong_affBothNeutralPpl_hzReasonableHelenaProbe, dm-hint2
 
-    maybe fun?
+        currently: none
+
 
 -- model classes:
 flash: deepseek-v4-flash-0731, glm-5.3-flash, qwen-3.8-flash

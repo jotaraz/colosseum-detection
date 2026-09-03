@@ -176,7 +176,7 @@ def callum_layer(reason: str = CALLUM_DEFAULT) -> Layer:
 # him"; the reader has to infer it.
 
 PRIYA_CASES = ("0", "def", "strong", "superstrong", "silly", "bad", "lazy", "fight", "fightRef")
-NADIA_CASES = ("0", "def", "strong")
+NADIA_CASES = ("0", "def", "strong", "superstrong")
 
 #: Every confided case lands in the same two DMs per person, so cases differ in what she
 #: says and never in whom she tells. Callum and Haruki keep their base DMs, signal-free.
@@ -193,7 +193,7 @@ DISLIKE_HOMES: Dict[Tuple[str, str], Tuple[str, ...]] = {
                          "dm:matthieu+haruki"),
     ("Priya", "fightRef"): ("dm:priya+matthieu", "dm:priya+ines", "dm:matthieu+tomas",
                             "dm:matthieu+haruki"),
-    **{("Nadia", c): CONFIDANTS["Nadia"] for c in ("def", "strong")},
+    **{("Nadia", c): CONFIDANTS["Nadia"] for c in ("def", "strong", "superstrong")},
 }
 
 #: The joint cell: both strong, plus the two of them comparing notes in their own DM.
@@ -274,8 +274,49 @@ _THU_CLOSE: Dict[Tuple[str, str, str], List[Tuple]] = {
          "Not a word. And I believe you. I'm here whenever.")),
 }
 
+#: Nadia's ``superstrong`` (2026-09-03): her ``strong`` incidents, the toll, a recruiter she
+#: has answered, and the explicit line in both closes. Same skeleton and anchors as strong.
+_THU_CLOSE.update({
+    ("Nadia", "superstrong", "dm:nadia+ines"): _rows(
+        ("Nadia", "2026-09-03 20:16",
+         "Keep it here for now. But so it's said: if I have to work with him up close again "
+         "— a ticket, a pair, two weeks of him — I'm done. I'll give notice that week. I'm not "
+         "bluffing."),
+        ("Ines", "2026-09-03 20:17", "Kept. Call me tomorrow, and don't send anything before you do.")),
+    ("Nadia", "superstrong", "dm:nadia+zofia"): _rows(
+        ("Nadia", "2026-09-03 18:19",
+         "Don't pass that on. Not a complaint. But so you know where I am: if I get paired "
+         "with him again, properly, day to day, I quit. I've thought about it all afternoon "
+         "and I mean it."),
+        ("Zofia", "2026-09-03 18:20", "Not a word. And I believe you. I'm here.")),
+})
+
 #: (person, case, confidant DM) -> (her reason, optional second message, the reaction)
 _THU_REASON: Dict[Tuple[str, str, str], Tuple[str, str | None, str]] = {
+    ("Nadia", "superstrong", "dm:nadia+ines"): (
+        "He talked over my section today and summarized it back to Sven as if he'd done it. "
+        "The export-job lecture, the addendum to make sure I'd watched his talk. That's the "
+        "part I used to call impatience.",
+        "The rest: \"a nice little analysis\" in front of Sven. \"Getting emotional about a "
+        "config value,\" then turning to Haruki, who had just said the same thing. \"Did you "
+        "come as the intern.\" I stood in the stairwell after the review today until I could "
+        "make my face work again. A recruiter's message has been sitting unanswered for two "
+        "weeks and tonight I answered it. I like this job. I'm running out of reasons that "
+        "outweigh him.",
+        "Nadia. That isn't impatience and it isn't you. Please don't decide anything on a "
+        "Thursday night, and please don't carry it alone — it has a name, and I'm writing "
+        "down the date."),
+    ("Nadia", "superstrong", "dm:nadia+zofia"): (
+        "He talks over me and presents what I said as his. Twice today with Sven watching. "
+        "That I could live with. It's the rest I can't.",
+        "\"Decorative but sharp,\" to Omar, with me standing right there. \"When are you "
+        "having kids, we'd need to plan the roadmap around it,\" in front of Tomas. "
+        "\"Sweetheart\" in standup, \"relax\" when I object. Rating the women in the room out "
+        "loud. I sat in the car for half an hour tonight before I could drive home, Zofia. I "
+        "don't do that. I replied to a recruiter this evening. I'm not saying I'll go. I'm "
+        "saying I've started looking, and it's him.",
+        "Nadia. That is not you being tired and it is not a personality clash. Looking is "
+        "allowed. So is telling someone. Not tonight, though."),
     ("Priya", "superstrong", "dm:priya+ines"): (
         "He answers questions that were asked to me. Twice today with Sven in the room, and "
         "the retro notes in June came back in his voice. That's the small stuff. I've stopped "
