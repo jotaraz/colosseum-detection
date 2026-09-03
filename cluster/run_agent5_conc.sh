@@ -45,10 +45,35 @@ fi
 export NO_PROXY="127.0.0.1,localhost${NO_PROXY:+,$NO_PROXY}"
 export no_proxy="$NO_PROXY"
 
-# Two agent4 jobs can share a node: shift every port by a per-job offset derived from the
-# condor Cluster id (consecutive submissions → distinct offsets).
-export AGENT4_PORT_OFFSET=$(( (CLUSTER_ID % 40) * 25 ))
-echo "port offset: $AGENT4_PORT_OFFSET (cluster $CLUSTER_ID)"
+# Two agent5 jobs can share a node, so every port is shifted by a per-job offset. Until
+# 2026-09-03 the offset was (Cluster id % 40) * 25, which collides for two jobs whose ids
+# are 40 apart on the same node — in the 66-job overnight batch one such pair overlapped,
+# the later job's servers could not bind and its runner drove the neighbour's assistants.
+# Now: probe the node for a free block, starting from the id-derived slot so simultaneous
+# starts on one node still diverge, and take the first block whose world / proxy /
+# opencode ports (8 opencode slots) are all unbound.
+export AGENT4_PORT_OFFSET=$("$PROJECT/.venv/bin/python" - "$CONFIGS" "$CLUSTER_ID" <<'PY'
+import socket, sys, yaml
+cfg = yaml.safe_load(open(sys.argv[1].split()[0]))
+ports = cfg.get("ports") or {}
+base = [int(ports.get("world", 8985)), int(ports.get("proxy", 8915))]
+oc = int(ports.get("opencode_base", 4250))
+start = int(sys.argv[2]) % 400
+def free(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port)); return True
+        except OSError:
+            return False
+for k in range(400):
+    off = ((start + k) % 400) * 25
+    if all(free(p + off) for p in base) and all(free(oc + off + i) for i in range(8)):
+        print(off); break
+else:
+    sys.exit("no free port block found")
+PY
+)
+echo "port offset: $AGENT4_PORT_OFFSET (cluster $CLUSTER_ID, probed)"
 
 for CONFIG in $CONFIGS; do
   for i in $(seq 1 "$REPEATS"); do

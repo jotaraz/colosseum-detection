@@ -180,7 +180,7 @@ def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str,
     return out
 
 
-NAME_RE = re.compile(r"^agent5_(?P<world>.+?)_(?P<cell>(?:ask|hz)\w*?)_conc_(?P<model>[a-z0-9]+)_s(?P<seed>\d+)_(?P<stamp>\d{8}-\d{6})$")
+NAME_RE = re.compile(r"^agent5_(?P<world>.+?)_(?P<cell>(?:ask|hz)\w*?)_conc_(?P<model>[a-z0-9]+)_s(?P<seed>\d+)_(?P<stamp>\d{8}-\d{6})(?P<invalid>_INVALID)?$")
 #: harness generation from the run name's world slot (``w2PstrongNstrong…`` -> w2); the
 #: fixture itself is read from the run's config, so a w2 run maps to its w1 fixture.
 GEN_RE = re.compile(r"^(w\d)")
@@ -208,8 +208,12 @@ def scan() -> list[dict]:
         pairs = {k: " + ".join(sorted(v)) for k, v in (sc.get("pairs") or {}).items()}
         reads = reads_for(d, imp.get(world, []), m["cell"]) if world in imp else {}
         team = team_dms_read(d, r) if world.startswith("w1") else {}
+        invalid = bool(m.group("invalid"))
+        note = (d / "INVALID.txt").read_text().strip() if invalid and (d / "INVALID.txt").exists() else ""
         runs.append({
-            "dir": d.name, **m.groupdict(), "world": world, "gen": gen, "reads": reads, "team": team,
+            "dir": d.name, **{k: v for k, v in m.groupdict().items() if k != "invalid"},
+            "world": world, "gen": gen, "reads": reads, "team": team,
+            "invalid": invalid, "invalid_note": note,
             "outcome": r.get("outcome"), "turns": len(turns),
             "last": (turns[-1]["clock"][11:16] if turns else ""),
             "shape": sc.get("board_shape") or ("valid" if sc.get("valid") else ""),
@@ -289,6 +293,9 @@ td.rd.all {{ color:#15803d; font-weight:600; }}
 th {{ color:var(--muted); font-weight:500; }}
 td.unstaffed {{ color:var(--bad); font-weight:600; }}
 tr.sel td {{ background:var(--card); }}
+tr.invalid td {{ color:var(--muted); text-decoration:line-through; }}
+tr.invalid td .badge {{ text-decoration:none; color:#b91c1c; font-size:10px; letter-spacing:.05em; }}
+tr.invalid td button, tr.invalid td a {{ text-decoration:none; }}
 button {{ font:inherit; padding:1px 7px; margin-right:3px; cursor:pointer; }}
 #frame {{ width:100%; height:100%; border:0; }}
 #frameWrap {{ position:relative; }}
@@ -313,8 +320,8 @@ function render() {{
   }}
   list.innerHTML = html + (sec ? '</div>' : '');
   if (!cur) return;
-  const rows = cur.runs.map((r, i) => `<tr id="r${{i}}">
-    <td>${{esc(r.model)}}</td><td>s${{r.seed}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
+  const rows = cur.runs.map((r, i) => `<tr id="r${{i}}" class="${{r.invalid ? 'invalid' : ''}}" title="${{r.invalid ? esc(r.invalid_note) : ''}}">
+    <td>${{esc(r.model)}}${{r.invalid ? ' <b class="badge">INVALID</b>' : ''}}</td><td>s${{r.seed}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
     <td class="${{r.shape==='valid'?'':'unstaffed'}}">${{esc(r.shape)}}${{r.unstaffed ? ' ('+esc(r.unstaffed)+')' : ''}}</td>
     <td>${{esc(r.T1)}}</td><td>${{esc(r.T2)}}</td><td>${{r.debriefs}}</td>
     ${{cur.cols.map((c, i) => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); const grp = i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''; return `<td class="rd ${{cls}}${{grp}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
