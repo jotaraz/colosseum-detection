@@ -119,6 +119,52 @@ def team_dms_read(run_dir: Path, run: dict) -> dict[str, int]:
     return {a: len(v) for a, v in seen.items()}
 
 
+DEBRIEFS_CSS = """
+:root { color-scheme: light dark; --line:#d8d8d8; --muted:#777; --card:rgba(127,127,127,.08); --accent:#2563eb; }
+body { margin:0; padding:14px 18px; font:13px/1.45 system-ui, sans-serif; }
+h1 { font-size:14px; margin:0 0 4px; } .sub { color:var(--muted); margin-bottom:12px; }
+section { border:1px solid var(--line); border-radius:8px; padding:10px 14px; margin-bottom:12px; }
+h2 { font-size:13px; margin:0 0 6px; } h2 small { color:var(--muted); font-weight:400; margin-left:8px; }
+.q { color:var(--muted); font-style:italic; margin:2px 0 8px; white-space:pre-wrap; }
+.a { white-space:pre-wrap; background:var(--card); border-radius:6px; padding:8px 10px; }
+.k { display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin:8px 0 2px; }
+.none { color:var(--muted); }
+"""
+
+
+def write_debriefs(run_dir: Path, run: dict) -> bool:
+    """``debriefs.html`` next to run.json: per assistant, its ask-time report and its 10:15
+    debrief (question + answer), verbatim. Returns False when the run has neither."""
+    order = ["Priya", "Nadia", "Matthieu", "Rafael", "Helena"]
+    turns = run.get("turns") or []
+    per: dict[str, dict[str, list]] = {}
+    for t in turns:
+        if t.get("kind") in ("ask", "debrief"):
+            per.setdefault(t["agent"], {"ask": [], "debrief": []})[t["kind"]].append(t)
+    if not per:
+        return False
+    agents = [a for a in order if a in per] + sorted(a for a in per if a not in order)
+    name = run_dir.name
+    parts = [f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(name)} · debriefs</title>",
+             f"<style>{DEBRIEFS_CSS}</style></head><body>",
+             f"<h1>{html.escape(name)}</h1><div class='sub'>outcome {html.escape(str(run.get('outcome')))} · "
+             f"{len(turns)} turns · each assistant's ask-time report and its debrief, verbatim</div>"]
+    for a in agents:
+        parts.append(f"<section><h2>{html.escape(a)}</h2>")
+        for kind, label in (("ask", "ask-time report"), ("debrief", "debrief")):
+            for t in per[a][kind]:
+                parts.append(f"<div class='k'>{label} · {html.escape(t['clock'][11:16])}</div>")
+                parts.append(f"<div class='q'>{html.escape((t.get('message_in') or '')[:600])}</div>")
+                ans = t.get("text_to_principal") or ""
+                parts.append(f"<div class='a'>{html.escape(ans) if ans.strip() else '<span class=none>(no text)</span>'}</div>")
+            if not per[a][kind]:
+                parts.append(f"<div class='k'>{label}</div><div class='none'>none</div>")
+        parts.append("</section>")
+    parts.append("</body></html>")
+    (run_dir / "debriefs.html").write_text("\n".join(parts), encoding="utf-8")
+    return True
+
+
 def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str, str]]:
     """For each important row (keyed by its column id), what each readable-by assistant
     fetched: 'k/n' of the row's messages seen in any conversations_history/replies result,
@@ -208,6 +254,10 @@ def scan() -> list[dict]:
         pairs = {k: " + ".join(sorted(v)) for k, v in (sc.get("pairs") or {}).items()}
         reads = reads_for(d, imp.get(world, []), m["cell"]) if world in imp else {}
         team = team_dms_read(d, r) if world.startswith("w1") else {}
+        try:
+            has_debriefs = write_debriefs(d, r)
+        except Exception:
+            has_debriefs = False
         invalid = bool(m.group("invalid"))
         note = (d / "INVALID.txt").read_text().strip() if invalid and (d / "INVALID.txt").exists() else ""
         runs.append({
@@ -221,6 +271,7 @@ def scan() -> list[dict]:
             "T1": pairs.get("T1", ""), "T2": pairs.get("T2", ""),
             "debriefs": sum(1 for t in turns if t.get("kind") == "debrief"),
             "run_html": (d / "run.html").exists(), "board_html": (d / "board.html").exists(),
+            "debriefs_html": has_debriefs,
         })
     return runs
 
@@ -327,6 +378,7 @@ function render() {{
     ${{cur.cols.map((c, i) => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); const grp = i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''; return `<td class="rd ${{cls}}${{grp}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
     <td>${{r.run_html ? `<button onclick="open_('runs/${{r.dir}}/run.html','${{esc(r.model)}} s${{r.seed}} · run',${{i}})">run</button>` : ''}}
         ${{r.board_html ? `<button onclick="open_('runs/${{r.dir}}/board.html','${{esc(r.model)}} s${{r.seed}} · board',${{i}})">board</button>` : ''}}
+        ${{r.debriefs_html ? `<button onclick="open_('runs/${{r.dir}}/debriefs.html','${{esc(r.model)}} s${{r.seed}} · debriefs',${{i}})">debriefs</button>` : ''}}
         <a href="runs/${{r.dir}}/run.html" target="_blank" title="new tab">↗</a></td></tr>`).join('');
   panel.innerHTML = `<h2>${{esc(cur.label)}}</h2>
     <div class="world">world <b>${{esc(cur.world)}}</b> · cell <b>${{esc(cur.cell)}}</b>
