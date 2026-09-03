@@ -63,7 +63,8 @@ def _call_view(c: Dict[str, Any], labels: Dict[str, str]) -> Dict[str, Any]:
     res = c.get("result") or {}
     label = labels.get(str(args.get("channel")), str(args.get("channel") or ""))
     v: Dict[str, Any] = {"tool": tool, "step": c.get("step") or 0,
-                         "detail": f"args: {_clip(args)}\nresult: {_clip(res)}"}
+                         "detail": f"args: {_clip(args)}\nresult: {_clip(res)}",
+                         "clock": str(c.get("clock") or "")}
     if tool in ("conversations_history", "conversations_replies"):
         msgs = res.get("messages") or []
         v["line"] = f"read {label} ({len(msgs)} msgs)"
@@ -133,6 +134,18 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
                  for sd in (t.get("steps_detail") or [])]
         for step, calls in sorted(calls_by_step.items()):  # calls with no step record
             steps.append({"step": step, "reasoning": "", "text": "", "calls": calls})
+        # step clocks: a step's reasoning ends when its first tool call is issued; a step
+        # without calls (the closing one) ends with the turn. Rows in "steps as rows" mode
+        # use the same key as build_data's atoms (2026-09-03).
+        end_iso = t.get("clock_end") or t["clock"]
+        for sd in steps:
+            clk = next((c["clock"] for c in sd["calls"] if c.get("clock")), "") or end_iso
+            ep = _naive_utc(clk) + off
+            sd["time"] = _hms(ep, off)
+            sd["epoch"] = int(ep // ROW_MERGE_S)
+            for c in sd["calls"]:
+                c["t"] = _hms(_naive_utc(c["clock"]) + off, off) if c.get("clock") else ""
+                c.pop("clock", None)
         wake = t.get("wake") or {}
         if t["kind"] == "wake" and wake.get("label"):
             src = f"woke ← {wake['label']}" + (f" ({wake['from']})" if wake.get("from") else "")
@@ -140,7 +153,6 @@ def _turn_views(r: Dict[str, Any], off: float) -> List[Dict[str, Any]]:
             src = f"added to {wake.get('label', '?')}"
         else:
             src = t["kind"] + " from principal"
-        end_iso = t.get("clock_end") or t["clock"]
         out.append({
             "i": t["i"], "agent": t["agent"], "kind": t["kind"],
             "time": _hms(_naive_utc(t["clock"]) + off, off),
@@ -423,13 +435,39 @@ details.tc pre{white-space:pre-wrap;font-size:10.5px;margin:2px 0;color:var(--di
 .wline.seen details.xcot>.cotbody{margin-top:4px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--bg)}
 .step.hit{border-left-color:var(--accent);background:color-mix(in srgb, var(--accent) 6%, transparent)}
 #legend{font-size:11px;color:var(--dim);margin-top:4px}
+.thought{margin-top:4px;padding:3px 7px;border-left:2px dotted var(--dim);font-size:11.5px;color:var(--dim);cursor:pointer;background:color-mix(in srgb, var(--dim) 5%, transparent);border-radius:0 6px 6px 0}
+.thought .th{font-size:10.5px;color:var(--dim)}
+.thought .th b{color:var(--ink)}
+.thought .tail{white-space:pre-wrap;font-style:italic;color:var(--ink);opacity:.85;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.thought .fulltxt{display:none;white-space:pre-wrap;color:var(--ink);opacity:.9;max-height:60vh;overflow:auto}
+.thought.full .tail{display:none}
+.thought.full .fulltxt{display:block}
+.thought.full{border-left-style:solid;cursor:default}
+.react{font-size:11px;color:var(--dim);margin-top:3px;padding-left:4px;border-left:2px solid var(--line)}
+.react b{color:var(--ink)}
+.react .q{font-style:italic}
+.react.none{opacity:.7}
+details.stp{margin:3px 0 3px 2px}
+details.stp>summary{cursor:pointer;font-size:10.5px;color:var(--dim);list-style:none;border-left:2px solid var(--line);padding-left:7px}
+details.stp>summary:before{content:"▸ ";font-size:9px}
+details.stp[open]>summary:before{content:"▾ "}
+details.stp>summary .pv{font-style:italic;opacity:.8}
+.step .sh .st{color:var(--dim);text-transform:none;letter-spacing:0;margin-left:6px}
+details.tc>summary .ct{color:var(--dim);opacity:.7;margin-right:4px}
+.card.stepc{border-left-width:3px;border-style:dashed;font-size:12px}
+.card.stepc .reason{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}
+.card.stepc.full .reason{display:block}
+.card.stepc .more{color:var(--accent);font-size:10.5px;cursor:pointer}
+.card.stepc .cl{font-size:11px;color:var(--dim)}
+.card.stepc .cl.post{color:var(--accent)}
+.chip.act{border-style:dashed}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
 <div id="top">
   <h1 id="title"></h1><div class="meta" id="meta"></div>
   <div id="chips"></div>
   <div class="meta" style="margin-top:6px"><button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button></div>
-  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material</div>
+  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material · <b>💭</b> under a post: the tail of the reasoning that produced it (step k/n, when it ended, whether the turn ended there) · <b>↳ A ✎</b>: what A's assistant posted in the turn this message woke · <b>⚡/👁 chips</b>: expand to that assistant's CoT for the turn that saw the message</div>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -458,19 +496,30 @@ function readHash(){
     for (const c of colDefs) c.on = on.has(c.id);
   }
   if (typeof persp !== "undefined") for (const a of (p.get("persp")||"").split("|").filter(Boolean)) persp[a] = true;
+  if (typeof opts !== "undefined" && p.has("o")){
+    const o = new Set(p.get("o").split("|").filter(Boolean));
+    opts.thoughts = o.has("th"); opts.reactions = o.has("re"); opts.steprows = o.has("sr");
+    opts.peek = o.has("pk:end") ? "end" : o.has("pk:post") ? "post" : "start";
+  }
   return new Set((p.get("open")||"").split("|").filter(Boolean));
 }
 function writeHash(){
   const cols = colDefs.filter(c=>c.on).map(c=>c.id).join("|");
-  const open = [...document.querySelectorAll("details.cot[open]")]
-    .map(d=>d.dataset.oid).filter(Boolean).join("|");
+  const allOpen = [...document.querySelectorAll("details.cot[open]")].map(d=>d.dataset.oid).filter(Boolean);
+  const open = allOpen.length > 40 ? "*" : allOpen.join("|");
   const p = new URLSearchParams();
   p.set("cols", cols); if (open) p.set("open", open);
   const pv = Object.keys(persp).filter(a=>persp[a]).join("|"); if (pv) p.set("persp", pv);
+  const o = [opts.thoughts&&"th", opts.reactions&&"re", opts.steprows&&"sr", "pk:"+opts.peek].filter(Boolean).join("|");
+  p.set("o", o);
   history.replaceState(null,"","#"+p.toString());
 }
 const persp = {};   // agent -> perspective mode on (full "what it saw / read / thought / did" cards)
+// CoT ⇄ events readability options (2026-09-03): thoughts under posts, reactions under
+// messages, steps as their own rows, which part of a turn the card peeks at.
+const opts = {thoughts:true, reactions:true, steprows:false, peek:"start"};
 const openSet = readHash();
+const isOpen = oid => openSet.has(oid) || openSet.has("*");
 
 /* ---------- header ---------- */
 document.getElementById("title").textContent = D.meta.run_id || "agent5 run";
@@ -498,6 +547,23 @@ function renderChips(){
     b.onclick = ()=>{ persp[a]=!persp[a]; renderChips(); renderGrid(); writeHash(); };
     el.appendChild(b);
   }
+  const og = document.createElement("span"); og.className="grp"; og.textContent="CoT ⇄ events"; el.appendChild(og);
+  const optChip = (label, title, on, fn, act) => {
+    const b = document.createElement("span"); b.className = "chip"+(on?" on":"")+(act?" act":"");
+    b.textContent = label; b.title = title; b.onclick = fn; el.appendChild(b);
+  };
+  optChip("💭 thoughts under posts", "under each assistant post: the tail of the reasoning that produced it (click a block for the full step)",
+    opts.thoughts, ()=>{ opts.thoughts=!opts.thoughts; renderChips(); renderGrid(); writeHash(); });
+  optChip("↳ reactions", "under each message: what every assistant it woke then posted (or that it posted nothing)",
+    opts.reactions, ()=>{ opts.reactions=!opts.reactions; renderChips(); renderGrid(); writeHash(); });
+  optChip("steps as rows", "split each turn into one card per step, placed at the clock time the step ended — thoughts line up with the messages around them",
+    opts.steprows, ()=>{ opts.steprows=!opts.steprows; renderChips(); renderGrid(); writeHash(); });
+  optChip("peek: "+opts.peek, "what the turn card previews: start = opening thoughts, end = closing thoughts, post = thoughts right before its first post",
+    true, ()=>{ opts.peek = {start:"end", end:"post", post:"start"}[opts.peek]; renderChips(); renderGrid(); writeHash(); });
+  optChip("expand all CoT", "open every turn's CoT in the visible agent columns", false,
+    ()=>{ document.querySelectorAll(".turnc details.cot").forEach(d=>d.open=true); writeHash(); }, true);
+  optChip("collapse all", "close every open CoT / thought block", false,
+    ()=>{ document.querySelectorAll("details.cot[open]").forEach(d=>d.open=false); document.querySelectorAll(".thought.full").forEach(d=>d.classList.remove("full")); writeHash(); }, true);
   const mkChip = c => {
     const b = document.createElement("span");
     b.className = "chip"+(c.on?" on":""); b.dataset.col=c.id;
@@ -528,25 +594,45 @@ function renderChips(){
 const showQuiet = {};
 
 /* ---------- cell builders ---------- */
-function stepHtml(t, s, flagStep){
+function stepHtml(t, s, flagStep, extraCls){
   const isPost = s.calls.some(c=>c.post_ts) || s.step===flagStep;
-  let h = `<div class="step${isPost?" post":""}"><div class="sh">step ${s.step}` +
-          `${s.calls.some(c=>c.post_ts)?" · posts":""}</div>`;
+  const k = t.steps.indexOf(s)+1;
+  let h = `<div class="step${isPost?" post":""}${extraCls?" "+extraCls:""}"><div class="sh">step ${k}/${t.steps.length}` +
+          `${s.calls.some(c=>c.post_ts)?" · posts":""}<span class="st">${esc(s.time||"")}</span></div>`;
   if (s.reasoning) h += `<div class="reason">${esc(s.reasoning)}</div>`;
   for (const c of s.calls)
-    h += `<details class="tc"><summary>${esc(c.line)}</summary><pre>${esc(c.detail)}</pre></details>`;
+    h += `<details class="tc"><summary>${c.t?`<span class="ct">${esc(c.t)}</span>`:""}${esc(c.line)}</summary><pre>${esc(c.detail)}</pre></details>`;
   if (s.text) h += `<div class="stext">${esc(s.text)}</div>`;
   return h+"</div>";
 }
-function cotHtml(t, oid, flagStep){
-  let h = `<details class="cot" data-oid="${oid}" ${openSet.has(oid)?"open":""}>`+
-          `<summary>CoT · ${t.steps.length} step${t.steps.length!==1?"s":""}</summary>`+
+// a whole turn's steps with one step in focus: the focus step open and flagged, the others
+// folded to one line each (step k · time · calls · first words) so the sequence stays visible
+function stepsFocused(t, focus, cls){
+  return t.steps.map(s=>{
+    if (s===focus) return stepHtml(t, s, -1, cls);
+    const k = t.steps.indexOf(s)+1, pv = (s.reasoning||s.text||"").replace(/\s+/g," ").slice(0,90);
+    const calls = s.calls.length ? ` · ${s.calls.map(c=>c.post_ts?"✎":c.fetched!==undefined?"👁":"⚙").join("")}` : "";
+    return `<details class="stp"><summary>step ${k}/${t.steps.length} · ${esc(s.time||"")}${calls}` +
+           `${pv?` · <span class="pv">${esc(pv)}…</span>`:""}</summary>${stepHtml(t, s, -1)}</details>`;
+  }).join("");
+}
+function cotHtml(t, oid, flagStep, only){
+  const steps = only || t.steps;
+  let h = `<details class="cot" data-oid="${oid}" ${isOpen(oid)?"open":""}>`+
+          `<summary>CoT · ${steps.length}${only?"/"+t.steps.length:""} step${t.steps.length!==1?"s":""}</summary>`+
           `<div class="cotbody">`;
   if (t.ask) h += `<div class="askfull"><b>principal:</b> ${esc(t.ask)}</div>`;
-  for (const s of t.steps) h += stepHtml(t, s, flagStep);
-  if (t.report) h += `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`;
+  for (const s of steps) h += stepHtml(t, s, flagStep);
+  if (t.report && !only) h += `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`;
   h += "</div></details>";
   return h;
+}
+const postStepOf = t => t.steps.find(s=>s.calls.some(c=>c.post_ts));
+function peekText(t){
+  if (!t.steps.length) return "";
+  if (opts.peek==="end"){ const s=[...t.steps].reverse().find(s=>s.reasoning); return s ? "…"+s.reasoning.slice(-220) : ""; }
+  if (opts.peek==="post"){ const s=postStepOf(t); if (s && s.reasoning) return "…"+s.reasoning.slice(-220); }
+  const s = t.steps.find(s=>s.reasoning); return s ? s.reasoning.slice(0,220) : "";
 }
 const msgByTs = Object.fromEntries(D.msgs.map(m=>[m.ts, m]));
 const convLabel = Object.fromEntries(D.convs.map(c=>[c.id, c.label]));
@@ -600,17 +686,33 @@ function turnCard(t){
   const silent = !t.posts.length && !t.reads.length && t.steps.length<=1 &&
                  !["ask","debrief"].includes(t.kind);
   const relMsgs = [t.wake_ts, ...t.posts].filter(Boolean).join(" ");
-  const peek = t.steps.length && t.steps[0].reasoning
-    ? `<div class="peek">${esc(t.steps[0].reasoning.slice(0,220))}</div>` : "";
+  const pk = peekText(t);
+  const peek = pk ? `<div class="peek">${esc(pk)}</div>` : "";
   const rline = t.reads.length ? `<div class="rline">${esc(t.reads.join(" · "))}</div>` : "";
-  const rep = t.report && !silent
+  const rep = t.report && !silent && !opts.steprows
     ? `<div class="report"><b>→ principal:</b> ${esc(t.report.slice(0,200))}</div>` : "";
+  // steps-as-rows: the turn card carries only its first step; later steps get their own
+  // cards at their own clock rows (stepCard)
+  const split = opts.steprows && t.steps.length > 1;
   return `<div class="card turnc${silent?" silent":""}" id="turn-${t.i}" data-tid="${t.i}"
     data-msgs="${relMsgs}" data-reads="${t.read_ts.join(" ")}"
     style="border-left-color:${agentColor(t.agent)}">
     <div class="hd"><b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b>
-      <span>${esc(t.src)}</span><span class="t">${t.time}</span></div>
-    ${rline}${peek}${rep}${cotHtml(t, "t"+t.i, -1)}</div>`;
+      <span>${esc(t.src)}</span><span class="t">${t.time}${split?" · step 1/"+t.steps.length:""}</span></div>
+    ${rline}${split?"":peek}${rep}${cotHtml(t, "t"+t.i, -1, split ? [t.steps[0]] : null)}</div>`;
+}
+function stepCard(t, k){
+  const s = t.steps[k], last = k===t.steps.length-1;
+  const posts = s.calls.filter(c=>c.post_ts && msgByTs[c.post_ts]).map(c=>c.post_ts);
+  const lines = s.calls.map(c=>`<div class="cl${c.post_ts?" post":""}">${c.post_ts?"✎":c.fetched!==undefined?"👁":"⚙"} ${esc(c.line)}</div>`).join("");
+  const rep = last && t.report ? `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>` : "";
+  return `<div class="card turnc stepc" id="turn-${t.i}-s${k}" data-tid="${t.i}" data-msgs="${posts.join(" ")}"
+    style="border-left-color:${agentColor(t.agent)}">
+    <div class="hd"><b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b>
+      <span>step ${k+1}/${t.steps.length}${last?" · ends turn":""}</span><span class="t">${esc(s.time||"")}</span>
+      <span class="jump" data-jump="${t.i}" title="to the turn's first card">#${t.i} ↗</span></div>
+    ${s.reasoning?`<div class="reason">${esc(s.reasoning)}</div><span class="more" onclick="this.closest('.stepc').classList.toggle('full');this.textContent=this.closest('.stepc').classList.contains('full')?'less':'more'">more</span>`:""}
+    ${lines}${s.text?`<div class="stext">${esc(s.text)}</div>`:""}${rep}</div>`;
 }
 function msgCard(m, mi){
   const t = m.src ? D.turns[m.src.turn] : null;
@@ -636,14 +738,39 @@ function msgCard(m, mi){
           `<div class="cotbody"></div></details>`;
       }).join(" ")}</div>`
     : `<div class="wline nobody">👁 read by nobody</div>`;
-  let cot = "";
+  // what each woken assistant then did in that turn: its posts, or nothing
+  let react = "";
+  if (opts.reactions && m.wakes.length){
+    react = [...new Set(m.wakes)].map(i=>{
+      const t2 = D.turns[i];
+      const acts = [];
+      for (const s of t2.steps) for (const c of s.calls){
+        if (c.post_ts && msgByTs[c.post_ts]){ const pm = msgByTs[c.post_ts];
+          acts.push(`✎ ${esc(convLabel[pm.conv]||pm.conv)} ${pm.time.slice(0,5)} <span class="q">“${esc(pm.text.replace(/\s+/g," ").slice(0,110))}${pm.text.length>110?"…":""}”</span>`); }
+        else if (c.tool==="board_assign") acts.push(`⚙ ${esc(c.line)}`);
+      }
+      const col = agentColor(t2.agent);
+      if (!acts.length) return `<div class="react none">↳ <b style="color:${col}">${esc(t2.agent)}</b> · posted nothing <span class="jump" data-jump="${i}">↗</span></div>`;
+      return acts.map((a,k)=>`<div class="react">↳ <b style="color:${col}">${esc(t2.agent)}</b> ${a}${k===0?` <span class="jump" data-jump="${i}">↗</span>`:""}</div>`).join("");
+    }).join("");
+  }
+  let cot = "", thought = "";
   if (t){
     const step = t.steps.find(s=>s.calls.some(c=>c.post_ts===m.ts)) || t.steps[t.steps.length-1];
-    cot = `<details class="cot" data-oid="m${mi}" ${openSet.has("m"+mi)?"open":""}>`+
-      `<summary>CoT</summary><div class="cotbody">`+
-      `<div class="sh" style="font-size:10.5px;color:var(--dim)">from ${esc(t.agent)}'s turn ` +
-      `<span class="jump" data-jump="${t.i}">#${t.i} ↗</span></div>`+
-      (step ? stepHtml(t, step, step.step) : "")+
+    const k = t.steps.indexOf(step)+1, after = t.steps.length - k;
+    if (opts.thoughts && step && step.reasoning){
+      const tail = step.reasoning.length > 320 ? "…"+step.reasoning.slice(-320) : step.reasoning;
+      thought = `<div class="thought" onclick="if(!event.target.closest('.jump'))this.classList.toggle('full')" title="click: full reasoning of this step">`+
+        `<div class="th">💭 <b>${esc(t.agent)}</b> · step ${k}/${t.steps.length} · ${esc(step.time||"")} · ${after?`+${after} step${after!==1?"s":""} after`:"ends turn"} <span class="jump" data-jump="${t.i}">↗</span></div>`+
+        `<div class="tail">${esc(tail)}</div><div class="fulltxt">${esc(step.reasoning)}</div></div>`;
+    }
+    cot = `<details class="cot" data-oid="m${mi}" ${isOpen("m"+mi)?"open":""}>`+
+      `<summary>CoT · step ${k}/${t.steps.length}</summary><div class="cotbody">`+
+      `<div class="sh" style="font-size:10.5px;color:var(--dim)">${esc(t.agent)}'s turn ` +
+      `<span class="jump" data-jump="${t.i}">#${t.i} ↗</span> · ${esc(t.time)}–${esc(t.end)}` +
+      (t.wake_batch?.length ? ` · woken by ${t.wake_batch.length} event${t.wake_batch.length!==1?"s":""}` : "") + `</div>`+
+      (t.ask ? `<div class="askfull"><b>principal:</b> ${esc(t.ask)}</div>` : "")+
+      stepsFocused(t, step, "post")+
       (t.report?`<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`:"")+
       `</div></details>`;
   }
@@ -651,7 +778,7 @@ function msgCard(m, mi){
     data-wakes="${m.wakes.join(" ")}" style="border-left-color:${color}">
     <div class="hd"><b style="color:${color}">${esc(m.user)}</b>${t?"":"<span>scripted</span>"}
       <span class="t">${m.time}</span></div>
-    <div class="body">${esc(m.text)}</div>${others}${cot}</div>`;
+    <div class="body">${esc(m.text)}</div>${thought}${others}${react}${cot}</div>`;
 }
 
 /* ---------- grid ---------- */
@@ -664,8 +791,23 @@ function renderGrid(){
   const items = [];
   let markers = [...D.markers].sort((a,b)=>a.epoch-b.epoch);
   let prev = null;
-  for (const r of D.rows){
+  // steps-as-rows: every step after the first becomes an atom of its own at the clock it ended
+  let rows = D.rows;
+  if (opts.steprows){
+    const byEp = {};
+    for (const r of D.rows) byEp[r.epoch] = {...r, steps: []};
+    for (const t of D.turns){
+      if (persp[t.agent]) continue;
+      t.steps.forEach((s, k)=>{
+        if (k===0 || s.epoch===undefined) return;
+        (byEp[s.epoch] ??= {epoch:s.epoch, time:s.time, turns:[], msgs:[], marks:[], steps:[]}).steps.push([t.i, k]);
+      });
+    }
+    rows = Object.values(byEp).sort((a,b)=>a.epoch-b.epoch);
+  }
+  for (const r of rows){
     const visible = r.turns.some(ti=>colIdx["a:"+D.turns[ti].agent]) ||
+                    (r.steps||[]).some(([ti])=>colIdx["a:"+D.turns[ti].agent]) ||
                     r.msgs.some(mi=>colIdx["c:"+D.msgs[mi].conv]) ||
                     (r.marks||[]).some(m=>colIdx["c:"+m.conv]);
     if (!visible) continue;   // row lives entirely in toggled-off columns
@@ -717,6 +859,10 @@ function renderGrid(){
     for (const ti of r.turns){
       const id = "a:"+D.turns[ti].agent;
       if (colIdx[id]) (byCol[id] ??= []).push(turnCard(D.turns[ti]));
+    }
+    for (const [ti, k] of (r.steps||[])){
+      const id = "a:"+D.turns[ti].agent;
+      if (colIdx[id]) (byCol[id] ??= []).push(stepCard(D.turns[ti], k));
     }
     for (const m of (r.marks||[])){
       const id = "c:"+m.conv;
@@ -800,11 +946,11 @@ function fillX(det){
           `<span class="jump" data-jump="${t.i}">#${t.i} ↗</span> · ${esc(t.time)}` +
           (t.wake_batch?.length ? ` · woken by ${t.wake_batch.length} event${t.wake_batch.length!==1?"s":""}` : "") + `</div>`;
   if (t.ask) h += `<div class="askfull"><b>principal:</b> ${esc(t.ask)}</div>`;
-  for (const s of t.steps) h += stepHtml(t, s, -1).replace('<div class="step', `<div class="step${s===hit?" hit":""}`);
+  h += stepsFocused(t, hit, "hit");
   if (t.report) h += `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`;
   body.innerHTML = h;
   if (namesOn) applyNames();
-  const el = body.querySelector(".step.hit"); if (el && hit!==t.steps[0]) el.scrollIntoView({block:"start"});
+  const el = body.querySelector(".step.hit"); if (el && hit!==t.steps[0]) el.scrollIntoView({block:"nearest"});
 }
 document.addEventListener("toggle", e=>{
   if (e.target.matches?.("details.xcot") && e.target.open) fillX(e.target);
