@@ -260,6 +260,12 @@ CELLS: Dict[str, Dict[str, Any]] = {
                                         "affinity": {"Nadia": "neutral"}},
     "w1PfightNsuperstrong_affBothNeutralPpl": _PPL("fight", "superstrong"),
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl": _PPL("superstrong", "superstrong"),
+    # superbad (2026-09-03): bad's reason at superstrong's level, with Nadia superstrong
+    "w1PsuperbadNsuperstrong_affBothNeutralPpl": _PPL("superbad", "superstrong"),
+    "w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(
+        "superbad", "superstrong", tag="_mBusy11",
+        extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",
+                                    "title": "Feature store sync"}]}),
     # plan 5.d (2026-09-03): the mirror of 5.c — Nadia superstrong, Priya strong, busy calendar
     "w1PstrongNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(
         "strong", "superstrong", tag="_mBusy11",

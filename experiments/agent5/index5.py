@@ -52,6 +52,8 @@ PLAN = {
     ("w1PstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "5.d  PstrongNsuperstrong, busy, dm-hint2",
     ("w1PsillyNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.b  PsillyNsuperstrong + dm-hint2",
     ("w1PbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c  PbadNsuperstrong + dm-hint2",
+    ("w1PsuperbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c-super  PsuperbadNsuperstrong + dm-hint2",
+    ("w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "3.c-super-busy  PsuperbadNsuperstrong, busy, dm-hint2",
     ("w1PNshared_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.d  PNshared + dm-hint2",
     ("w1PlazyNsuperstrong_affNNeutral", "hzReasonableHelenaProbeDmHint2"): "5.a  PlazyNsuperstrong_affNNeutral + dm-hint2",
     ("w1PfightNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "6.c  PfightNsuperstrong + dm-hint2",
