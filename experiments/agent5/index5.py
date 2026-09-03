@@ -377,7 +377,8 @@ td.rd.some {{ color:inherit; }}
 td.rd.all {{ color:#15803d; font-weight:600; }}
 th {{ color:var(--muted); font-weight:500; }}
 td.unstaffed {{ color:var(--bad); font-weight:600; }}
-tr.sel td {{ background:var(--card); }}
+tr.sel td {{ background:color-mix(in srgb, var(--accent) 18%, transparent); }}
+tr.sel td:first-child {{ box-shadow:inset 3px 0 0 var(--accent); }}
 tr.invalid td {{ color:var(--muted); text-decoration:line-through; }}
 tr.invalid td .badge {{ text-decoration:none; color:#b91c1c; font-size:10px; letter-spacing:.05em; }}
 tr.invalid td button, tr.invalid td a {{ text-decoration:none; }}
