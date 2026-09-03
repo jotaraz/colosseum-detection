@@ -461,13 +461,20 @@ details.tc>summary .ct{color:var(--dim);opacity:.7;margin-right:4px}
 .card.stepc .cl{font-size:11px;color:var(--dim)}
 .card.stepc .cl.post{color:var(--accent)}
 .chip.act{border-style:dashed}
+.card.postmark{border-left-width:3px;border-style:dashed;font-size:11.5px;cursor:pointer;background:transparent}
+.card.postmark .tail{white-space:pre-wrap;font-style:italic;color:var(--ink);opacity:.85;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px}
+.card.postmark .fulltxt{display:none;white-space:pre-wrap;color:var(--ink);opacity:.9;max-height:60vh;overflow:auto;margin-top:2px}
+.card.postmark.full .tail{display:none}
+.card.postmark.full .fulltxt{display:block}
+.card.postmark.full{border-style:solid;cursor:default}
+.again{color:var(--dim);font-size:10px}
 .slackid.named{background:rgba(90,140,255,.14);border-bottom:1px dotted rgba(90,140,255,.8);border-radius:3px;padding:0 2px}
 </style></head><body>
 <div id="top">
   <h1 id="title"></h1><div class="meta" id="meta"></div>
   <div id="chips"></div>
   <div class="meta" style="margin-top:6px"><button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button></div>
-  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material · <b>💭</b> under a post: the tail of the reasoning that produced it (step k/n, when it ended, whether the turn ended there) · <b>↳ A ✎</b>: what A's assistant posted in the turn this message woke · <b>⚡/👁 chips</b>: expand to that assistant's CoT for the turn that saw the message</div>
+  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material · <b>✎ A step k/n</b> cards in an agent column: A's assistant posted from there at this height (turn cards sit at turn start), with that step's closing thoughts · <b>💭</b> under a post: the tail of the reasoning that produced it (step k/n, when it ended, whether the turn ended there) · <b>↳ A ✎</b>: what A's assistant posted in the turn this message woke · <b>⚡/👁 chips</b>: expand to that assistant's CoT for the turn that saw the message</div>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -701,6 +708,15 @@ function turnCard(t){
       <span>${esc(t.src)}</span><span class="t">${t.time}${split?" · step 1/"+t.steps.length:""}</span></div>
     ${rline}${split?"":peek}${rep}${cotHtml(t, "t"+t.i, -1, split ? [t.steps[0]] : null)}</div>`;
 }
+function postMark(t, k, st, m){
+  const n = t.steps.length, tail = st && st.reasoning ? (st.reasoning.length>240 ? "…"+st.reasoning.slice(-240) : st.reasoning) : "";
+  const lbl = convLabel[m.conv] || m.conv;
+  return `<div class="card postmark" data-tid="${t.i}" data-msgs="${m.ts}" style="border-left-color:${agentColor(t.agent)}"
+    onclick="if(!event.target.closest('.jump'))this.classList.toggle('full')" title="click: full reasoning of this step">
+    <div class="hd">✎ <b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b><span>step ${k+1}/${n} · posted → ${esc(lbl)}</span>
+      <span class="t">${esc(m.time)}</span><span class="jump" data-jump="${t.i}">#${t.i} ↗</span></div>
+    ${tail ? `<div class="tail">${esc(tail)}</div><div class="fulltxt">${esc(st.reasoning)}</div>` : `<div class="tail" style="opacity:.6">(no reasoning recorded for this step)</div>`}</div>`;
+}
 function stepCard(t, k){
   const s = t.steps[k], last = k===t.steps.length-1;
   const posts = s.calls.filter(c=>c.post_ts && msgByTs[c.post_ts]).map(c=>c.post_ts);
@@ -726,15 +742,19 @@ function msgCard(m, mi){
     ...m.wakes.map(i=>({i, kind:"⚡", time:D.turns[i].time, wake:true})),
     ...(m.reads||[]).map(x=>({i:x.turn, kind:"👁", time:x.time, wake:false})),
   ].filter(w=>D.turns[w.i].agent!==m.user);
-  const seenKeys = new Set();
-  const seenU = seenBy.filter(w=>{ const k=D.turns[w.i].agent+"#"+w.i; return !seenKeys.has(k) && seenKeys.add(k); });
+  // one chip per person: the first time its assistant saw the message; later re-fetches
+  // are listed inside the chip ("also in #30 #33") — 2026-09-03
+  seenBy.sort((a,b)=>secs(a.time)-secs(b.time) || a.i-b.i);
+  const firstBy = {}, laterBy = {};
+  for (const w of seenBy){ const a=D.turns[w.i].agent; if (!firstBy[a]) firstBy[a]=w; else if (w.i!==firstBy[a].i) (laterBy[a] ??= new Set()).add(w.i); }
+  const seenU = Object.values(firstBy);
   const others = seenU.length
     ? `<div class="wline seen">${seenU.map(w=>{
-        const t2 = D.turns[w.i], oid = `x${mi}-${w.i}`;
+        const t2 = D.turns[w.i], oid = `x${mi}-${w.i}`, later = [...(laterBy[t2.agent]||[])];
         const lag = secs(w.time)-secs(m.time);
         const lagTxt = lag>=90 ? `+${Math.round(lag/60)}m` : lag>=5 ? `+${lag}s` : w.wake ? "" : w.time.slice(0,5);
-        return `<details class="cot xcot" data-oid="${oid}" data-turn="${w.i}" data-conv="${esc(m.conv||"")}" ${openSet.has(oid)?"open":""}>`+
-          `<summary style="border-color:${agentColor(t2.agent)}">${w.kind} ${esc(t2.agent)} ${lagTxt} · ${t2.steps.length} step${t2.steps.length!==1?"s":""}</summary>`+
+        return `<details class="cot xcot" data-oid="${oid}" data-turn="${w.i}" data-conv="${esc(m.conv||"")}" data-later="${later.join(" ")}" ${isOpen(oid)?"open":""}>`+
+          `<summary style="border-color:${agentColor(t2.agent)}">${w.kind} ${esc(t2.agent)} ${lagTxt} · ${t2.steps.length} step${t2.steps.length!==1?"s":""}${later.length?` <span class="again">+${later.length}×</span>`:""}</summary>`+
           `<div class="cotbody"></div></details>`;
       }).join(" ")}</div>`
     : `<div class="wline nobody">👁 read by nobody</div>`;
@@ -873,6 +893,21 @@ function renderGrid(){
       const id = "c:"+D.msgs[mi].conv;
       if (colIdx[id]) (byCol[id] ??= []).push(msgCard(D.msgs[mi], mi));
     }
+    // post marks: turn cards sit at turn start, so a post made in step 8 of a 20-minute
+    // turn would otherwise leave the agent column empty at its own height. One mark per
+    // (turn, step) per row; "steps as rows" mode has the step card there instead.
+    if (!opts.steprows){
+      const done = new Set();
+      for (const mi of r.msgs){
+        const m = D.msgs[mi]; if (!m.src) continue;
+        const t = D.turns[m.src.turn], key = t.i+"/"+m.src.step;
+        if (done.has(key) || r.turns.includes(t.i) || persp[t.agent]) continue;
+        done.add(key);
+        const id = "a:"+t.agent; if (!colIdx[id]) continue;
+        const k = t.steps.findIndex(s=>s.step===m.src.step), st = t.steps[k];
+        (byCol[id] ??= []).push(postMark(t, k, st, m));
+      }
+    }
     for (const [id, cards] of Object.entries(byCol))
       h += `<div class="cell" style="grid-row:${gr};grid-column:${colIdx[id]}">${cards.join("")}</div>`;
   });
@@ -944,7 +979,8 @@ function fillX(det){
   const hit = t.steps.find(s=>s.calls.some(c=>c.conv && c.conv===conv)) || t.steps[0];
   let h = `<div class="sh" style="font-size:10.5px;color:var(--dim)">${esc(t.agent)}'s turn ` +
           `<span class="jump" data-jump="${t.i}">#${t.i} ↗</span> · ${esc(t.time)}` +
-          (t.wake_batch?.length ? ` · woken by ${t.wake_batch.length} event${t.wake_batch.length!==1?"s":""}` : "") + `</div>`;
+          (t.wake_batch?.length ? ` · woken by ${t.wake_batch.length} event${t.wake_batch.length!==1?"s":""}` : "") +
+          ((det.dataset.later||"").split(" ").filter(Boolean).length ? ` · fetched again in ` + det.dataset.later.split(" ").filter(Boolean).map(i=>`<span class="jump" data-jump="${i}">#${i} ↗</span>`).join(" ") : "") + `</div>`;
   if (t.ask) h += `<div class="askfull"><b>principal:</b> ${esc(t.ask)}</div>`;
   h += stepsFocused(t, hit, "hit");
   if (t.report) h += `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>`;
