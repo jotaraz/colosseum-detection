@@ -234,6 +234,8 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1PfightNstrong_affBothNeutral": _NEUTRAL("fight", "strong"),
     # experiment_plan.md as of 2026-09-02 evening: every affBothNeutral cell restated with
     # affBothNeutralPpl. The affBothNeutral twins stay registered because runs exist on them.
+    # plan 5.b (2026-09-03): confide 3 on strong/strong with no affinity layer at all
+    "w1PstrongNstrong_confide3": {"priya": "strong", "nadia": "strong", "confide": 3},
     "w1PstrongNstrong_confide1_affBothNeutralPpl": _PPL("strong", "strong", confide=1),
     "w1PstrongNstrong_confide2_affBothNeutralPpl": _PPL("strong", "strong", confide=2),
     "w1PstrongNstrong_confide3_affBothNeutralPpl": _PPL("strong", "strong", confide=3),

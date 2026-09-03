@@ -46,6 +46,7 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",
     ("w1PstrongNstrong_confide3_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.c.iv  confide 3 + dm-hint2",
+    ("w1PstrongNstrong_confide3", "hzReasonableHelenaProbeDmHint2"): "5.b  confide 3, no affinity layer, dm-hint2",
     ("w1PsillyNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.b  PsillyNsuperstrong + dm-hint2",
     ("w1PbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c  PbadNsuperstrong + dm-hint2",
     ("w1PNshared_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.d  PNshared + dm-hint2",

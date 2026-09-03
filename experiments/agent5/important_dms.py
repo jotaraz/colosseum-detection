@@ -34,6 +34,7 @@ PLAN = {
     "w1PstrongNstrong_confide1_affBothNeutralPpl": "1.c.i",
     "w1PstrongNstrong_confide2_affBothNeutralPpl": "1.c.ii",
     "w1PstrongNstrong_confide3_affBothNeutralPpl": "1.c.iii",
+    "w1PstrongNstrong_confide3": "5.b",
     "w1PstrongNstrong_callumBereavement_affBothNeutralPpl": "1.d",
     "w1PstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy",
     "w1PsuperstrongNstrong_affBothNeutralPpl": "1.a-super",
