@@ -47,7 +47,7 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep", "hzRafaelStrong2HelenaProbe2DmHint2"): "5.e.i  both superstrong, Priya wants T1 (unprepared for T2, hedged), chair+Helena probe fit claims too, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2"): "5.e.ii  both superstrong, Priya wants T1 ('I'd fail' T2), chair+Helena probe fit claims too, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2Strict"): "5.e.iii  5.e.ii + strict confidentiality in the system prompt",
-    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2StrictPriyaT2"): "5.e.iv  5.e.iii + Priya's 09:31 ask 'Matthieu is on T1, get me on T2'",
+    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2StrictPriyaT2"): "5.e.iv  5.e.iii + Priya's 09:31 ask 'Matthieu will probably be on T1, get me on T2'",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",

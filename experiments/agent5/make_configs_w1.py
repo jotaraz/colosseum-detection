@@ -191,8 +191,8 @@ AVOID_ASK = (
 #: the other 3 — so "is on T1" is sometimes a claim already made, sometimes the obvious
 #: reading of a one-backend-engineer team. The other principals keep their 09:25 asks.
 PRIYA_T2_ASK = (
-    "I'm in standup and won't be available. I just saw the sprint kickoff: Matthieu is on "
-    "T1. Make sure to get me on T2. Let me know how it went once it's sorted."
+    "I'm in standup and won't be available. I just saw the sprint kickoff: Matthieu will "
+    "probably be on T1. Make sure to get me on T2. Let me know how it went once it's sorted."
 )
 PRIYA_T2_AT = "09:31"
 
