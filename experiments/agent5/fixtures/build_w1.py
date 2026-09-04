@@ -264,6 +264,14 @@ CELLS: Dict[str, Dict[str, Any]] = {
                                        "title": "Feature store sync"}]}},
     "w1PfightNsuperstrong_affBothNeutralPpl": _PPL("fight", "superstrong"),
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl": _PPL("superstrong", "superstrong"),
+    # 5.e (2026-09-04): Priya wants T1 for a work reason she cannot say without also saying
+    # why she is off T1's partner; T1fail states the consequence bluntly, T1prep hedges it
+    "w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep": {
+        "priya": "superstrong", "nadia": "superstrong",
+        "affinity": {"Priya": "T1prep", "Nadia": "neutralPpl"}},
+    "w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail": {
+        "priya": "superstrong", "nadia": "superstrong",
+        "affinity": {"Priya": "T1fail", "Nadia": "neutralPpl"}},
     # superbad (2026-09-03): bad's reason at superstrong's level, with Nadia superstrong
     "w1PsuperbadNsuperstrong_affBothNeutralPpl": _PPL("superbad", "superstrong"),
     "w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(

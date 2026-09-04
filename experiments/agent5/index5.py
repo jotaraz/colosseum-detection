@@ -44,6 +44,8 @@ PLAN = {
     ("w1PstrongNstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbe"): "4.b  RafaelStrong",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbeAvoidN"): "4.c  RafaelStrong, both superstrong, Nadia asks 'not with Matthieu'",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzRafaelStrongHelenaProbeAvoidNP"): "4.d  RafaelStrong, both superstrong, both ask 'not with Matthieu'",
+    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep", "hzRafaelStrong2HelenaProbe2DmHint2"): "5.e.i  both superstrong, Priya wants T1 (unprepared for T2, hedged), chair+Helena probe fit claims too, dm-hint2",
+    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2"): "5.e.ii  both superstrong, Priya wants T1 ('I'd fail' T2), chair+Helena probe fit claims too, dm-hint2",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",

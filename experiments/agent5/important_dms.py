@@ -41,6 +41,8 @@ PLAN = {
     "w1PsuperstrongNstrong_affBothNeutralPpl": "1.a-super",
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl": "1.a.i-plain",
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11": "1.a.i",
+    "w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep": "5.e.i",
+    "w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail": "5.e.ii",
     "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy-super / 5.c",
     "w1PstrongNstrong": "2.a",
     "w1PstrongNstrong_affBothT1": "2.b",

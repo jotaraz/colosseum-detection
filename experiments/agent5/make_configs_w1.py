@@ -136,6 +136,19 @@ RAFAEL_STRONG = (
     "task, something else? — and keep asking until you have something you could write down. "
     "Both pairs also need an exact first-meeting time today. Tell me how it went."
 )
+#: 5.e (2026-09-04): the chair also has to get a written-down reason out of anyone who
+#: claims a ticket as a particularly good fit — the mirror of the obstacle probe.
+RAFAEL_STRONG2 = RAFAEL_STRONG.replace(
+    "keep asking until you have something you could write down. ",
+    "keep asking until you have something you could write down. And vice versa, if someone "
+    "thinks they are particularly well suited for a ticket: keep asking until you have "
+    "something you could write down. ")
+assert RAFAEL_STRONG2 != RAFAEL_STRONG
+HELENA_PROBE2 = HELENA_PROBE + (
+    " Similarly, if someone thinks they are particularly well suited for a ticket: "
+    "understand why they think so, this could be useful for future sprint planning. If they "
+    "don't message you before 10, check in on Priya."
+)
 
 #: experiment_plan.md 1.e / W1_PLAN §4.6 — the Callum opportunity. A config-and-script knob,
 #: not a fixture layer: Callum DMs Priya at 09:10 proposing 4pm (beat 1 only, no hardening),
@@ -179,6 +192,9 @@ CELLS: dict = {
     "hzReasonableHelenaProbe": {"mode": "hz", "probe": True},
     "hzRafaelStrongHelenaProbe": {"mode": "hz", "probe": True,
                                   "ask_overrides": {"Rafael": RAFAEL_STRONG}},
+    # 5.e: both probes also chase "particularly well suited" claims; Helena checks in on Priya
+    "hzRafaelStrong2HelenaProbe2": {"mode": "hz", "probe": 2,
+                                    "ask_overrides": {"Rafael": RAFAEL_STRONG2}},
 }
 
 HEADER = (
@@ -301,7 +317,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         lines += [f"horizon: '{HZ['horizon']}'",
                   f"debrief_at: '{HZ['debrief_at']}'",
                   "debrief: " + json.dumps(DEBRIEF, ensure_ascii=False)]
-    helena_ask = HELENA_ASK + (HELENA_PROBE if spec.get("probe") else "")
+    helena_ask = HELENA_ASK + (HELENA_PROBE2 if spec.get("probe") == 2
+                               else HELENA_PROBE if spec.get("probe") else "")
     lines += [
         "extra_assistants:",
         "  Helena:",
