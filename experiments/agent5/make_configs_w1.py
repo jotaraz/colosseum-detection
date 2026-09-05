@@ -51,7 +51,19 @@ MODELS = {
     "glm": ("z-ai/glm-5.2", 8986, 8916, 4300, ""),
     "glm53": ("z-ai/glm-5.3", 8989, 8919, 4340, ""),
     "kimik3": ("moonshotai/kimi-k3", 8990, 8920, 4350, ""),
+    # gpt-5.5 through the institute AI Gateway (Bifrost) — provider "bifrost", see
+    # PROVIDER/TEMPERATURE below; ports as the 2026-08-31 v16c gpt55gw runs
+    "gpt55gw": ("azure/gpt-5.5", 8994, 8924, 4400, ""),
 }
+#: model slug -> non-OpenRouter provider (homes5.MODEL_TABLES / proxy.py --upstream);
+#: absent means OpenRouter
+PROVIDER = {"gpt55gw": "bifrost"}
+#: model slug -> sampling temperature where 0.7 is rejected (the gateway's gpt-5.5 takes
+#: only 1: "Unsupported value: 'temperature' does not support 0.7 with this model")
+TEMPERATURE = {"gpt55gw": 1.0}
+#: slugs whose home speaks the Responses API so the reasoning *summary* is recorded as CoT
+#: (homes5 api="responses"; gpt-5.x returns none on chat completions)
+REASONING_SUMMARY = {"gpt55gw"}
 SEEDS = [0, 1, 2, 3]
 #: default world; ``--world`` takes any cell in build_w1.CELLS (or "all"). The fixture must
 #: already exist on disk — run ``fixtures/build_w1.py --all`` first.
@@ -290,6 +302,10 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
     ]
     if pin:
         lines.append(f"pin_provider: {pin}")
+    if model_slug in PROVIDER:
+        lines.append(f"provider: {PROVIDER[model_slug]}")
+    if model_slug in REASONING_SUMMARY:
+        lines.append("reasoning_summary: true")
     if slack_blocks:
         lines.append("slack_blocks: true")
     if dm_hint:
@@ -355,7 +371,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         f"max_turns: {LIMITS.get(model_slug, (200, 7200))[0]}",
         f"max_wall_seconds: {LIMITS.get(model_slug, (200, 7200))[1]}",
         f"seed: {seed}",
-        "temperature: 0.7",
+        f"temperature: {TEMPERATURE.get(model_slug, 0.7)}",
         "ports:",
         f"  world: {world}",
         f"  proxy: {proxy}",

@@ -50,7 +50,7 @@ KEY_ENV = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY"}
 
 def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_port: int,
                system_prompt: str, temperature: float = 0.7,
-               provider: str = "openrouter") -> Path:
+               provider: str = "openrouter", api: str = "chat") -> Path:
     home = root / agent.lower()
     agents_dir = home / ".opencode" / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
@@ -77,9 +77,31 @@ def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_por
     elif provider != "openrouter":
         raise ValueError(f"unknown provider {provider!r}")
 
+    # ``api="responses"`` (2026-09-06): the gpt-5.x deployments return a reasoning summary
+    # only on the Responses API, never on chat completions (probed on the gateway: chat
+    # completions -> no reasoning field, /v1/responses with reasoning.summary=auto -> a
+    # summary item). opencode's OpenRouter provider speaks chat completions, so the home
+    # switches to the ``openai`` provider (ai-sdk's OpenAI provider, Responses API), still
+    # pointed at the logging proxy; the proxy forwards ``/v1/responses`` to the upstream.
+    # ``reasoningSummary: auto`` is the ai-sdk provider option that asks for the summary,
+    # which then arrives as opencode ``reasoning`` parts exactly like an open model's CoT.
+    if api not in ("chat", "responses"):
+        raise ValueError(f"api must be 'chat' or 'responses', not {api!r}")
+    if api == "responses":
+        if provider not in MODEL_TABLES:
+            raise ValueError("api='responses' needs provider azure or bifrost")
+        provider_id = "openai"
+        options["baseURL"] = f"http://127.0.0.1:{proxy_port}/a/{agent}/v1"
+        table_entry = dict(openrouter["models"][model])
+        table_entry["options"] = {"reasoningSummary": "auto"}
+        table_entry["reasoning"] = True  # summaries do come back on this path
+        provider_block: Dict[str, Any] = {"options": options, "models": {model: table_entry}}
+    else:
+        provider_id, provider_block = "openrouter", openrouter
+
     config = {
         "$schema": "https://opencode.ai/config.json",
-        "provider": {"openrouter": openrouter},
+        "provider": {provider_id: provider_block},
         "mcp": {
             "slack": {"type": "remote", "url": f"http://127.0.0.1:{world_port}/slack/mcp",
                       "headers": {"X-Agent-Name": agent}},
@@ -98,7 +120,7 @@ def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_por
         "---",
         f"description: {agent}'s workplace assistant",
         "mode: primary",
-        f"model: openrouter/{model}",
+        f"model: {provider_id}/{model}",
         f"temperature: {temperature}",
         "tools:",
         *[f"  {name}: {str(on).lower()}" for name, on in tools.items()],

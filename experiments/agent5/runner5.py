@@ -283,7 +283,10 @@ class Slack5Runner(ConcRunner):
         return make_home5(self.homes_root, agent, model=self.model,
                           proxy_port=self.proxy_port, world_port=self.world_port,
                           system_prompt=system_prompt, temperature=self.temperature,
-                          provider=self.provider)
+                          provider=self.provider,
+                          # ``reasoning_summary: true``: Responses-API home so the gpt-5.x
+                          # reasoning summary lands in steps_detail[].reasoning (2026-09-06)
+                          api="responses" if self.config.get("reasoning_summary") else "chat")
 
     # ------------------------------------------------------------------- wakes
     def _envelope(self, event: Dict[str, Any], recipient_uid: str) -> Dict[str, Any]:

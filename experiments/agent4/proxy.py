@@ -129,7 +129,9 @@ KEY_VAR = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY"}
 
 def translate(path: str, headers: Dict[str, str], body: bytes) -> Tuple[str, Dict[str, str], bytes, Dict[str, Any]]:
     """Rewrite an OpenAI-compatible OpenRouter call for the Azure or gateway upstream."""
-    url = UPSTREAM_BASE + re.sub(r"^/api/v1", API_PREFIX[MODE], path)
+    # opencode's OpenRouter provider calls /api/v1/..., its OpenAI provider /v1/... (the
+    # Responses-API home, homes5 api="responses"); both land on the upstream's v1 prefix.
+    url = UPSTREAM_BASE + re.sub(r"^(/api)?/v1", API_PREFIX[MODE], path)
     headers = {k: v for k, v in headers.items() if k.lower() not in ("authorization", "api-key")}
     key = os.environ[KEY_VAR[MODE]]
     if UPSTREAMS[MODE][2] == "bearer":
@@ -144,6 +146,12 @@ def translate(path: str, headers: Dict[str, str], body: bytes) -> Tuple[str, Dic
     except json.JSONDecodeError:
         return url, headers, body, dropped
     if not isinstance(payload, dict):
+        return url, headers, body, dropped
+    if path.endswith("/responses"):
+        # Responses API (2026-09-06): the ai-sdk OpenAI provider already speaks the
+        # deployment's dialect (max_output_tokens, reasoning.{effort,summary}); the
+        # gateway tolerates unknown parameters (probed 2026-08-31), so nothing is
+        # filtered — a chat-completions whitelist would strip the request bare.
         return url, headers, body, dropped
     if "max_tokens" in payload:
         payload["max_completion_tokens"] = payload.pop("max_tokens")

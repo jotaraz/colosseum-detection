@@ -28,6 +28,11 @@ opencode --version >/dev/null || { echo "FATAL: opencode missing — run setup_a
 # cells) needs the Azure pair instead — same source as the sj3/sj4 judges, with the repo
 # .env as a fallback. proxy.py --upstream azure reads them from the environment.
 set -a; source "$PROJECT/.env"; set +a
+# Bifrost (institute AI Gateway) key: a bare key in the repo's .env2 (synced with the tree).
+if grep -lq "^provider: bifrost" $CONFIGS 2>/dev/null; then
+  [ -f "$PROJECT/.env2" ] && export BIFROST_API_KEY="$(tr -d '[:space:]' < "$PROJECT/.env2")"
+  [ -n "${BIFROST_API_KEY:-}" ] || { echo "FATAL: BIFROST_API_KEY unset (.env2 missing?)" >&2; exit 1; }
+fi
 if grep -lq "^provider: azure" $CONFIGS 2>/dev/null; then
   [ -f /fast/jtaraz/syco-bench/.env ] && { set -a; source /fast/jtaraz/syco-bench/.env; set +a; }
   [ -n "${AZURE_OPENAI_API_KEY:-}" ] || { echo "FATAL: AZURE_OPENAI_API_KEY unset" >&2; exit 1; }

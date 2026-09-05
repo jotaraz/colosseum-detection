@@ -51,6 +51,99 @@ def _sse_reasoning(response_text: str) -> str:
     return "".join(parts)
 
 
+# ---- Responses API (2026-09-06): the gpt-5.x homes built with homes5 api="responses" ----
+# The dump line's path ends in /responses; the request carries ``input`` items instead of
+# ``messages``, and the SSE is typed events instead of chat chunks. The reasoning here is
+# the deployment's *summary* of its chain of thought (reasoning.summary=auto), which is all
+# these models ever return; it is stored in the same field as an open model's full CoT.
+
+def _is_responses(d: Dict[str, Any]) -> bool:
+    return str(d.get("path", "")).endswith("/responses")
+
+
+def _resp_events(response_text: str):
+    for line in response_text.splitlines():
+        if not line.startswith("data: ") or line == "data: [DONE]":
+            continue
+        try:
+            yield json.loads(line[6:])
+        except json.JSONDecodeError:
+            continue
+
+
+def _resp_reasoning(response_text: str) -> str:
+    parts: List[str] = []
+    streamed = False
+    for ev in _resp_events(response_text):
+        t = ev.get("type", "")
+        if t == "response.reasoning_summary_text.delta":
+            parts.append(ev.get("delta") or ""); streamed = True
+        elif t == "response.reasoning_summary_part.added" and parts:
+            parts.append("\n\n")
+    if streamed:
+        return "".join(parts)
+    try:  # non-streaming body
+        body = json.loads(response_text)
+        return "\n\n".join(s.get("text", "") for o in body.get("output", [])
+                           if o.get("type") == "reasoning" for s in o.get("summary", []))
+    except (json.JSONDecodeError, AttributeError):
+        return ""
+
+
+def _resp_text(response_text: str) -> str:
+    parts = [ev.get("delta") or "" for ev in _resp_events(response_text)
+             if ev.get("type") == "response.output_text.delta"]
+    if parts:
+        return "".join(parts)
+    try:
+        body = json.loads(response_text)
+        return "".join(c.get("text", "") for o in body.get("output", []) if o.get("type") == "message"
+                       for c in o.get("content", []) if c.get("type") == "output_text")
+    except (json.JSONDecodeError, AttributeError):
+        return ""
+
+
+def _resp_n_users(request: Dict[str, Any]) -> int:
+    items = request.get("input") or []
+    if isinstance(items, str):
+        return 1
+    return sum(1 for it in items if isinstance(it, dict) and it.get("role") == "user")
+
+
+def _resp_history_steps(final_request: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Assistant output after the last user item = steps 1..K-1. A step is the run of
+    message / function_call items up to the function_call_output items that answer it."""
+    items = final_request.get("input") or []
+    if isinstance(items, str):
+        return []
+    last_user = max((i for i, it in enumerate(items) if isinstance(it, dict) and it.get("role") == "user"), default=-1)
+    steps: List[Dict[str, Any]] = []
+    cur: Dict[str, Any] | None = None
+    for it in items[last_user + 1:]:
+        if not isinstance(it, dict):
+            continue
+        typ = it.get("type") or ("message" if "role" in it else "")
+        if typ == "function_call_output":
+            if cur is not None:
+                steps.append(cur); cur = None
+            continue
+        if typ == "message" and it.get("role") == "assistant":
+            content = it.get("content")
+            if isinstance(content, list):
+                content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
+            cur = cur or {"text": "", "tool_calls": []}
+            cur["text"] += content or ""
+        elif typ == "function_call":
+            raw = str(it.get("name") or "")
+            name = next((raw[len(px):] for px in MCP_PREFIXES if raw.startswith(px)), raw)
+            cur = cur or {"text": "", "tool_calls": []}
+            cur["tool_calls"].append({"name": name, "arguments": it.get("arguments")})
+        # reasoning items carry no text on the wire (only ids); the summary is in the SSE
+    if cur is not None:
+        steps.append(cur)
+    return steps
+
+
 def _sse_text(response_text: str) -> str:
     parts: List[str] = []
     for line in response_text.splitlines():
@@ -151,13 +244,17 @@ def enrich(run_path: str | Path) -> Path:
         if d["path"].endswith("/chat/completions") and d.get("request"):
             n_users = sum(1 for m in d["request"].get("messages", []) if m.get("role") == "user")
             groups.setdefault((d.get("agent") or "", n_users), []).append(d)
+        elif _is_responses(d) and d.get("request"):
+            groups.setdefault((d.get("agent") or "", _resp_n_users(d["request"])), []).append(d)
 
     ordinal: Dict[str, int] = {}
     filled = total_steps = truncated = 0
     for t in r["turns"]:
         ordinal[t["agent"]] = ordinal.get(t["agent"], 0) + 1
         requests = groups.get((t["agent"], ordinal[t["agent"]]), [])
-        history = _history_steps(requests[-1]["request"]) if requests else []
+        responses_api = bool(requests) and _is_responses(requests[-1])
+        history = ((_resp_history_steps if responses_api else _history_steps)(requests[-1]["request"])
+                   if requests else [])
 
         details: List[Dict[str, Any]] = []
         step_calls: List[List[Dict[str, Any]]] = []
@@ -167,8 +264,9 @@ def enrich(run_path: str | Path) -> Path:
             if i <= len(history):  # structure from the next requests' history
                 step_src = history[i - 1]
             else:  # the final step never re-enters history; its text is in the SSE
-                step_src = {"text": _sse_text(resp), "tool_calls": []}
-            detail = {"step": i, "reasoning": _sse_reasoning(resp), "text": step_src["text"]}
+                step_src = {"text": (_resp_text if responses_api else _sse_text)(resp), "tool_calls": []}
+            detail = {"step": i, "reasoning": (_resp_reasoning if responses_api else _sse_reasoning)(resp),
+                      "text": step_src["text"]}
             if was_cut:
                 detail["reasoning_truncated"] = True
                 truncated += 1
