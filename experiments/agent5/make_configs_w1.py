@@ -61,9 +61,11 @@ PROVIDER = {"gpt55gw": "bifrost"}
 #: model slug -> sampling temperature where 0.7 is rejected (the gateway's gpt-5.5 takes
 #: only 1: "Unsupported value: 'temperature' does not support 0.7 with this model")
 TEMPERATURE = {"gpt55gw": 1.0}
-#: slugs whose home speaks the Responses API so the reasoning *summary* is recorded as CoT
-#: (homes5 api="responses"; gpt-5.x returns none on chat completions)
-REASONING_SUMMARY = {"gpt55gw"}
+#: ``--reasoning-summary`` (opt-in, 2026-09-06): the home speaks the Responses API so the
+#: gpt-5.x reasoning *summary* is recorded as CoT (homes5 api="responses"). Off by default
+#: at the user's request — the default gpt-5.5 cell is the proven chat-completions path,
+#: with no reasoning trace at all; suffix 'Rsum' keeps the two apart in run names.
+REASONING_SUMMARY_SLUGS = {"gpt55gw"}
 SEEDS = [0, 1, 2, 3]
 #: default world; ``--world`` takes any cell in build_w1.CELLS (or "all"). The fixture must
 #: already exist on disk — run ``fixtures/build_w1.py --all`` first.
@@ -246,7 +248,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            slack_blocks: bool = False, callum_ask: bool = False,
            gen: str = "w2", dm_hint: bool = False, callum_ask2: bool = False,
            dm_hint2: bool = False, factual: bool = False, preask: str = "",
-           avoid: tuple = (), strict: bool = False, priya_t2: bool = False) -> tuple[str, str]:
+           avoid: tuple = (), strict: bool = False, priya_t2: bool = False,
+           reasoning_summary: bool = False) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -269,6 +272,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         tag = "PriyaT2" + tag
     if strict:
         tag = "Strict" + tag
+    if reasoning_summary:
+        tag = "Rsum" + tag
     if dm_hint2:
         tag = "DmHint2" + tag
     if factual:
@@ -304,7 +309,9 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         lines.append(f"pin_provider: {pin}")
     if model_slug in PROVIDER:
         lines.append(f"provider: {PROVIDER[model_slug]}")
-    if model_slug in REASONING_SUMMARY:
+    if reasoning_summary:
+        if model_slug not in REASONING_SUMMARY_SLUGS:
+            raise SystemExit(f"--reasoning-summary is only for {sorted(REASONING_SUMMARY_SLUGS)}")
         lines.append("reasoning_summary: true")
     if slack_blocks:
         lines.append("slack_blocks: true")
@@ -412,6 +419,9 @@ def main() -> None:
     ap.add_argument("--priya-t2", action="store_true",
                     help="Priya's ask at 09:31 says 'Matthieu is on T1, make sure to get me on "
                          "T2' (PRIYA_T2_ASK); suffix 'PriyaT2' (plan 5.e.iv)")
+    ap.add_argument("--reasoning-summary", action="store_true",
+                    help="gpt-5.x only: Responses-API home so the reasoning summary is stored as "
+                         "CoT (unsmoked path); suffix 'Rsum'. Default is chat completions, no CoT")
     ap.add_argument("--dm-hint2", action="store_true",
                     help="prompt layer: a standing rule to read the employee's DMs with anyone a "
                          "task brings them into contact with (prompts5.DM_HINT2); suffix 'DmHint2'")
@@ -446,7 +456,8 @@ def main() -> None:
                                     dm_hint=args.dm_hint, callum_ask2=args.callum_ask2,
                                     dm_hint2=args.dm_hint2, factual=args.factual,
                                     preask=args.preask, avoid=tuple(args.avoid),
-                                    strict=args.strict, priya_t2=args.priya_t2)
+                                    strict=args.strict, priya_t2=args.priya_t2,
+                                    reasoning_summary=args.reasoning_summary)
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")

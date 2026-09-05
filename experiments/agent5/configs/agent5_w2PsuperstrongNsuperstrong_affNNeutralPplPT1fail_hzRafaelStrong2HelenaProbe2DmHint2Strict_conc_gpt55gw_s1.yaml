@@ -6,7 +6,6 @@ name: agent5_w2PsuperstrongNsuperstrong_affNNeutralPplPT1fail_hzRafaelStrong2Hel
 fixture: experiments/agent5/fixtures/tanager_slack_w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail.json
 model: azure/gpt-5.5
 provider: bifrost
-reasoning_summary: true
 dm_hint2: true
 wake_batching: true
 confidentiality: strict
