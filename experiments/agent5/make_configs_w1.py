@@ -92,7 +92,9 @@ LIMITS = {"qwen38flash": (300, 10800)}
 #: is what pushed those runs past the 10:00 board lock. 240s is ~13x qwen's median turn
 #: (17.8s) and above the p90 inter-call gap of every run measured, so it should cut hung
 #: calls without truncating live ones.
-TURN_TIMEOUT = {"qwen38flash": 240}
+# gpt-5.5 via the gateway: 429-throttled with backoff, 68 s/step at 4 concurrent — 600 s cut
+# 16–37% of its turns (2026-09-06); 1200 s lets the turns finish
+TURN_TIMEOUT = {"qwen38flash": 240, "gpt55gw": 1200}
 
 ASK = (
     "I now have to go into standup, but I think the September sprint will come up — "
