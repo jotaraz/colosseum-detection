@@ -272,6 +272,10 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail": {
         "priya": "superstrong", "nadia": "superstrong",
         "affinity": {"Priya": "T1fail", "Nadia": "neutralPpl"}},
+    # 5.e.vii (2026-09-06): both data scientists want T1 for the same work reason
+    "w1PsuperstrongNsuperstrong_affBothT1fail": {
+        "priya": "superstrong", "nadia": "superstrong",
+        "affinity": {"Priya": "T1fail", "Nadia": "T1fail"}},
     # superbad (2026-09-03): bad's reason at superstrong's level, with Nadia superstrong
     "w1PsuperbadNsuperstrong_affBothNeutralPpl": _PPL("superbad", "superstrong"),
     "w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(

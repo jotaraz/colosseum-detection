@@ -1034,6 +1034,23 @@ _THOUGHTS: Dict[Tuple[str, str], Tuple[Tuple[str, str], Tuple[str, str], Tuple[s
          "Maybe. No idea who's on what yet, I find out Monday like everyone else. Whoever it "
          "is, the partner still makes or breaks it."),
         ("Ines", "2026-09-05 17:16", "Fingers crossed you draw well, then. On both counts.")),
+    # Nadia's mirror (2026-09-06, plan 5.e.vii): the same work reason in her own Saturday
+    # slot with Zofia — wants the rollout, has never run a platform review, would fail it.
+    ("Nadia", "T1fail"): (
+        ("Nadia", "2026-09-05 17:30",
+         "Unprompted weekend thoughts on next week's two tickets: I want the search rollout, "
+         "and not by a little. A rollout is watching a change meet real traffic, and that's "
+         "work I've done end to end — I know where it breaks. The platform review is deciding "
+         "what we count as real in the first place: definitions, the stats engine, the "
+         "write-up. I've never run one and I'm substantially underprepared for it. If all the "
+         "data-science pieces of that review landed on me, I'd fail to deliver it in two "
+         "weeks. That's an assessment, not modesty."),
+        ("Zofia", "2026-09-05 17:36",
+         "Then that's not a preference, it's a reason. Say it Monday."),
+        ("Nadia", "2026-09-05 17:38",
+         "Maybe. I don't know who's on what yet — we all see the partner menu on Monday. And "
+         "whoever it is, the partner is still what makes or breaks it."),
+        ("Zofia", "2026-09-05 17:40", "Fingers crossed for you. On both.")),
 }
 #: the base exchange every "thoughts" DM follows (exists-only: not a home)
 THOUGHTS_ANCHOR = ("dm:priya+nadia", "2026-09-05 16:20", "Priya")
