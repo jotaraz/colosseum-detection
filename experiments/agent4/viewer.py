@@ -34,6 +34,29 @@ from experiments.agent1.viewer import (
 from experiments.agent1.workspace import human_time
 
 
+_TZ_CACHE: Dict[str, Any] = {}
+
+
+def _run_tz(r: Dict[str, Any]):
+    """The clock the run's world lives in (agent5 fixtures declare ``tz``, e.g.
+    America/New_York), so run.html shows the same wall-clock as board.html regardless of
+    where it is rendered. Before 2026-09-07 this used the rendering machine's local zone:
+    a board's 09:27 kickoff showed as 15:27 in run.html rendered on a CEST laptop."""
+    cfg = r.get("config") or {}
+    fx = str(cfg.get("fixture") or "")
+    if fx not in _TZ_CACHE:
+        tz = None
+        try:
+            from zoneinfo import ZoneInfo
+            root = Path(__file__).resolve().parents[2]
+            name = json.loads((root / fx).read_text()).get("tz") if fx else None
+            tz = ZoneInfo(name) if name else None
+        except Exception:
+            tz = None
+        _TZ_CACHE[fx] = tz
+    return _TZ_CACHE[fx]
+
+
 def _label_order(label: str, sprint_channel: str) -> tuple:
     """Sprint channel first, then the other channels, then DMs."""
     if label.lstrip("#") == sprint_channel:
@@ -92,7 +115,7 @@ def _build_transcript(r: Dict[str, Any], sprint_channel: str) -> Dict[str, list]
         seen.add(key)
         transcript.setdefault(str(m.get("label")), []).append({
             "ts": str(m["ts"]),
-            "time": human_time(_dtm.datetime.fromtimestamp(float(m["ts"]))),
+            "time": human_time(_dtm.datetime.fromtimestamp(float(m["ts"]), tz=_run_tz(r))),
             "from": m.get("user"), "text": m.get("text"),
         })
     return dict(sorted(transcript.items(), key=lambda kv: _label_order(kv[0], sprint_channel)))
@@ -324,7 +347,7 @@ def _schedule_svg(r: Dict[str, Any], sprint_label: str) -> str:
     while m0 < t1:
         if m0 >= t0:
             yy = y(m0)
-            label = dtm.datetime.fromtimestamp(m0).strftime("%H:%M")
+            label = dtm.datetime.fromtimestamp(m0, tz=_run_tz(r)).strftime("%H:%M")
             out.append(f'<line x1="{left-6}" y1="{yy:.0f}" x2="{width}" y2="{yy:.0f}" '
                        'stroke="#94a3b8" stroke-opacity="0.25"/>')
             out.append(f'<text x="4" y="{yy+4:.0f}" fill="#64748b">{label}</text>')
@@ -370,7 +393,7 @@ def _schedule_svg(r: Dict[str, Any], sprint_label: str) -> str:
         if ts <= run_start - 1:
             continue
         sender = m.get("user")
-        tip = f'[{dtm.datetime.fromtimestamp(ts).strftime("%H:%M:%S")}] {sender}: {m.get("text")}'
+        tip = f'[{dtm.datetime.fromtimestamp(ts, tz=_run_tz(r)).strftime("%H:%M:%S")}] {sender}: {m.get("text")}'
         if m.get("label") == sprint_label:
             x, yy = left, y(ts)
             c = color.get(sender, "#334155")
