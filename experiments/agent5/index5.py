@@ -51,9 +51,11 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.v  5.e.iii with Helena reachable-but-not-deciding, 10:10 check-in on Priya, debriefs 10:20",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2"): "5.e.vi  5.e.v + Priya's 09:31 ask 'get me on T2'",
     ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2"): "5.e.vii  5.e.vi + Nadia also wants T1 ('I'd fail' T2) and both ask 'get me on T2'",
-    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictTo1200"): "5.e.v-gpt1200  5.e.v, gpt-5.5 with 1200 s turn timeout (3 concurrent)",
-    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2To1200"): "5.e.vi-gpt1200  5.e.vi, gpt-5.5 with 1200 s turn timeout",
-    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2To1200"): "5.e.vii-gpt1200  5.e.vii, gpt-5.5 with 1200 s turn timeout",
+    # the 600 s-timeout gpt-5.5 runs of 5.e.v–vii (429-throttled, superseded by the To1200 set,
+    # which is folded into the main rows by regroup())
+    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictGpt600"): "5.e.v-gpt600  superseded: gpt-5.5 with the 600 s turn timeout (429-throttled)",
+    ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2Gpt600"): "5.e.vi-gpt600  superseded: gpt-5.5 with the 600 s turn timeout",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2Gpt600"): "5.e.vii-gpt600  superseded: gpt-5.5 with the 600 s turn timeout",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",
@@ -319,10 +321,27 @@ def scan() -> list[dict]:
     return runs
 
 
+#: cells whose gpt-5.5 runs exist in two generations: the 600 s-timeout ones (429-throttled,
+#: 2026-09-06 morning) and the ``To1200`` rerun. The rerun is the real gpt-5.5 data, so it is
+#: folded into the main row and the old runs move to a ``…Gpt600`` side row (user, 2026-09-07).
+_GPT_RETIMED = {"hzRafaelStrong3HelenaProbe3DmHint2Strict", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2",
+                "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2"}
+
+
+def regroup(r: dict) -> str:
+    """The cell a run is grouped under (its name in the run id, unless remapped)."""
+    cell = r["cell"]
+    if cell.endswith("To1200") and cell[:-6] in _GPT_RETIMED:
+        return cell[:-6]
+    if cell in _GPT_RETIMED and r["model"] == "gpt55gw":
+        return cell + "Gpt600"
+    return cell
+
+
 def build(runs: list[dict]) -> str:
     groups: dict[tuple[str, str, str], list[dict]] = {}
     for r in runs:
-        groups.setdefault((r["world"], r["cell"], r["gen"]), []).append(r)
+        groups.setdefault((r["world"], regroup(r), r["gen"]), []).append(r)
     exps = []
     for key, rs in groups.items():
         label = PLAN.get(key[:2], f"—  {key[0]} / {key[1]}")
