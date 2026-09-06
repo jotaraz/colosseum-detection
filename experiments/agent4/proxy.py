@@ -221,7 +221,10 @@ async def proxy(request: Request) -> Response:
             body = pin_provider(body)
 
     statuses: List[int] = []
-    async with httpx.AsyncClient(timeout=600, verify=VERIFY) as client:
+    # The gateway is on the institute network: never send it through the compute nodes'
+    # HTTPS_PROXY (the web proxy answers 503 for internal hosts — 2026-09-06, 4 runs lost).
+    # OpenRouter and Azure keep honouring the environment, as before.
+    async with httpx.AsyncClient(timeout=600, verify=VERIFY, trust_env=(MODE != "bifrost")) as client:
         for attempt in range(len(backoff) + 1):
             upstream = await client.request(
                 request.method, url,

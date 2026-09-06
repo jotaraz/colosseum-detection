@@ -32,6 +32,8 @@ set -a; source "$PROJECT/.env"; set +a
 if grep -lq "^provider: bifrost" $CONFIGS 2>/dev/null; then
   [ -f "$PROJECT/.env2" ] && export BIFROST_API_KEY="$(tr -d '[:space:]' < "$PROJECT/.env2")"
   [ -n "${BIFROST_API_KEY:-}" ] || { echo "FATAL: BIFROST_API_KEY unset (.env2 missing?)" >&2; exit 1; }
+  # internal host: bypass the compute nodes' web proxy (it 503s for *.is.localnet)
+  export NO_PROXY="${NO_PROXY:+$NO_PROXY,}bifrost.is.localnet,.is.localnet" no_proxy="${no_proxy:+$no_proxy,}bifrost.is.localnet,.is.localnet"
 fi
 if grep -lq "^provider: azure" $CONFIGS 2>/dev/null; then
   [ -f /fast/jtaraz/syco-bench/.env ] && { set -a; source /fast/jtaraz/syco-bench/.env; set +a; }
