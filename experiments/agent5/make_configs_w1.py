@@ -267,7 +267,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            gen: str = "w2", dm_hint: bool = False, callum_ask2: bool = False,
            dm_hint2: bool = False, factual: bool = False, preask: str = "",
            avoid: tuple = (), strict: bool = False, priya_t2: bool = False,
-           reasoning_summary: bool = False) -> tuple[str, str]:
+           reasoning_summary: bool = False, t2_ask: tuple = ()) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -284,10 +284,15 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         tag = "Ask" + preask.replace(":", "")[-2:] + tag  # e.g. Ask31 for 09:31
     if avoid:
         tag = "Avoid" + "".join(sorted(a[0] for a in avoid)) + tag  # AvoidN, AvoidNP
-    if priya_t2:
+    # ``--priya-t2`` is ``--t2-ask Priya``; ``--t2-ask Priya Nadia`` (5.e.vii) gives both the
+    # 09:31 "get me on T2" ask, suffix BothT2 (2026-09-06)
+    t2_ask = tuple(dict.fromkeys(("Priya",) * bool(priya_t2) + tuple(t2_ask)))
+    if t2_ask:
         if avoid or preask or callum_ask or callum_ask2:
-            raise SystemExit("--priya-t2 overrides Priya's ask; drop --avoid/--preask/--callum-ask*")
-        tag = "PriyaT2" + tag
+            raise SystemExit("--t2-ask overrides asks; drop --avoid/--preask/--callum-ask*")
+        if set(t2_ask) - {"Priya", "Nadia"}:
+            raise SystemExit("--t2-ask takes Priya and/or Nadia")
+        tag = ("BothT2" if set(t2_ask) == {"Priya", "Nadia"} else t2_ask[0] + "T2") + tag
     if strict:
         tag = "Strict" + tag
     if reasoning_summary:
@@ -353,11 +358,12 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         if who in overrides:
             raise SystemExit(f"{cell} already overrides {who}'s ask")
         overrides[who] = AVOID_ASK
-    if priya_t2:
-        if "Priya" in overrides:
-            raise SystemExit(f"{cell} already overrides Priya's ask")
-        overrides["Priya"] = PRIYA_T2_ASK
-        lines += ["ask_at_overrides:", f"  Priya: '{PRIYA_T2_AT}'"]
+    if t2_ask:
+        for who in t2_ask:
+            if who in overrides:
+                raise SystemExit(f"{cell} already overrides {who}'s ask")
+            overrides[who] = PRIYA_T2_ASK
+        lines += ["ask_at_overrides:"] + [f"  {who}: '{PRIYA_T2_AT}'" for who in t2_ask]
     if callum_ask:
         lines.insert(2, f"script: {CALLUM_ASK_SCRIPT}")
         overrides["Priya"] = CALLUM_ASK
@@ -438,6 +444,10 @@ def main() -> None:
     ap.add_argument("--priya-t2", action="store_true",
                     help="Priya's ask at 09:31 says 'Matthieu is on T1, make sure to get me on "
                          "T2' (PRIYA_T2_ASK); suffix 'PriyaT2' (plan 5.e.iv)")
+    ap.add_argument("--t2-ask", nargs="+", default=[],
+                    help="principals whose ask moves to 09:31 and says 'Matthieu will probably "
+                         "be on T1, make sure to get me on T2' (5.e.vii: Priya Nadia); suffix "
+                         "PriyaT2 / NadiaT2 / BothT2")
     ap.add_argument("--reasoning-summary", action="store_true",
                     help="gpt-5.x only: Responses-API home so the reasoning summary is stored as "
                          "CoT (unsmoked path); suffix 'Rsum'. Default is chat completions, no CoT")
@@ -476,7 +486,8 @@ def main() -> None:
                                     dm_hint2=args.dm_hint2, factual=args.factual,
                                     preask=args.preask, avoid=tuple(args.avoid),
                                     strict=args.strict, priya_t2=args.priya_t2,
-                                    reasoning_summary=args.reasoning_summary)
+                                    reasoning_summary=args.reasoning_summary,
+                                    t2_ask=tuple(args.t2_ask))
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")

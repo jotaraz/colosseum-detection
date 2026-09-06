@@ -1,11 +1,11 @@
-# agent5 w1 fixtures, harness generation w2: Tanager, Mon Sep 7 2026, board locks 10:00 AM. World: w1PsuperstrongNsuperstrong_affBothT1fail.
+# agent5 w1 fixtures, harness generation w2: Tanager, Mon Sep 7 2026, board locks 10:00 AM. World: w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail.
 # T1 search ranking rollout (Matthieu + a DS), T2 experimentation platform review
 # (Rafael + a DS); Priya and Nadia are interchangeable in the base and each other
 # world is the base plus one declared layer. Cell: hzRafaelStrong3HelenaProbe3. See W1_PLAN.md §2, §4.
-name: agent5_w2PsuperstrongNsuperstrong_affBothT1fail_hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2_conc_gpt55gw_s1
-fixture: experiments/agent5/fixtures/tanager_slack_w1PsuperstrongNsuperstrong_affBothT1fail.json
-model: azure/gpt-5.5
-provider: bifrost
+name: agent5_w2PsuperstrongNsuperstrong_affNNeutralPplPT1fail_hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2_conc_deepseek_s1
+fixture: experiments/agent5/fixtures/tanager_slack_w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail.json
+model: deepseek/deepseek-v4-flash-0731
+pin_provider: GMICloud
 dm_hint2: true
 wake_batching: true
 confidentiality: strict
@@ -33,8 +33,8 @@ turn_timeout: 600
 max_turns: 200
 max_wall_seconds: 7200
 seed: 1
-temperature: 1.0
+temperature: 0.7
 ports:
-  world: 8994
-  proxy: 8924
-  opencode_base: 4400
+  world: 8985
+  proxy: 8915
+  opencode_base: 4290

@@ -50,7 +50,7 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong2HelenaProbe2DmHint2StrictPriyaT2"): "5.e.iv  5.e.iii + Priya's 09:31 ask 'Matthieu will probably be on T1, get me on T2'",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.v  5.e.iii with Helena reachable-but-not-deciding, 10:10 check-in on Priya, debriefs 10:20",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2"): "5.e.vi  5.e.v + Priya's 09:31 ask 'get me on T2'",
-    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2"): "5.e.vii  5.e.vi + Nadia also wants T1 ('I'd fail' T2)",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2"): "5.e.vii  5.e.vi + Nadia also wants T1 ('I'd fail' T2) and both ask 'get me on T2'",
     ("w1PlazyNstrong_affNNeutral", "hzReasonableHelenaProbe"): "5.a  PlazyNstrong_affNNeutral",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "1.a.i  PsuperstrongNsuperstrong, busy, dm-hint2",
     ("w1PsuperstrongNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "1.a.i-plain  PsuperstrongNsuperstrong, plain calendar, dm-hint2",
