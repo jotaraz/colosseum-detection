@@ -80,6 +80,7 @@ def _call_view(c: Dict[str, Any], labels: Dict[str, str]) -> Dict[str, Any]:
         v["line"] = f"deleted a message in {label}"
     elif tool == "notify_user":
         v["line"] = "notified principal"
+        v["push"] = str(args.get("text") or "")
     elif tool == "board_assign":
         v["line"] = f"board_assign {json.dumps(args, ensure_ascii=False)}"
     elif tool == "reactions_add":
@@ -204,7 +205,7 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
     for m in r["messages"]:
         cid, ts = m["conv_id"], float(m["ts"])
         c = convs.setdefault(cid, {"id": cid, "label": m["label"], "type": m["type"],
-                                   "total": 0, "run": 0})
+                                   "total": 0, "run": 0, "members": list(m.get("members") or [])})
         c["total"] += 1
         src = post_map.get(m["ts"])
         mv = {"ts": m["ts"], "conv": cid, "user": m["user"], "text": m["text"],
@@ -220,13 +221,18 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
         is_sprint = c["type"] == "channel" and "sprint" in c["label"]
         return (0 if is_sprint else 1 if c["type"] == "channel" else 2, -c["run"], c["label"])
     conv_order = sorted(convs.values(), key=conv_key)
-    # default columns (2026-09-03): the sprint channel, DMs between people (no bot member),
-    # and the agents' turns. Social channels and calendar-bot DMs stay one chip-click away.
+    # default columns (2026-09-07): the sprint channel, DMs whose every member is an
+    # assistant-backed principal, and the agents' turns. A DM with a scripted-only colleague
+    # (Priya ⇄ Zofia, Nadia ⇄ Ines, …), a bot DM and the social channels all stay one
+    # chip-click away — they are world texture, not conversation between the agents.
+    roster_set = set(roster)
     for c in conv_order:
         lab = c["label"]
         is_sprint = c["type"] == "channel" and "sprint" in lab
-        is_people_dm = c["type"] != "channel" and "bot" not in lab.lower()
-        c["default_on"] = bool(c["run"] > 0 and (is_sprint or is_people_dm))
+        members = c.get("members") or []
+        is_agent_dm = (c["type"] != "channel" and "bot" not in lab.lower()
+                       and bool(members) and set(members) <= roster_set)
+        c["default_on"] = bool(c["run"] > 0 and (is_sprint or is_agent_dm))
 
     # rows: one per rounded world-second. Turn cells sit at turn start; messages sit
     # at their own post time, except posts from the same (turn, step) share the row of
@@ -246,6 +252,23 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
             if ts - anchor > POST_GROUP_S:
                 anchor = ts
             row_ts[i] = anchor
+    # board claims (2026-09-07): every accepted board_assign, at the row of its own clock;
+    # a person's later claim replaces the earlier one, "skip" releases — the board lane
+    # column draws one bar per (person, ticket) interval
+    board_events: List[Dict[str, Any]] = []
+    for t, raw in zip(turns, r["turns"]):
+        for c in raw.get("tool_calls") or []:
+            if c.get("tool") != "board_assign":
+                continue
+            args = c.get("args") or {}
+            res = c.get("result") or {}
+            if isinstance(res, dict) and (res.get("ok") is False or res.get("error")):
+                continue
+            clk = c.get("clock") or raw["clock"]
+            ep = int((_naive_utc(clk) + off) // ROW_MERGE_S)
+            board_events.append({"agent": t["agent"], "task": str(args.get("task_id") or ""),
+                                 "epoch": ep, "time": _hms(ep, off)})
+    board_events.sort(key=lambda e: e["epoch"])
     atoms: Dict[int, Dict[str, Any]] = {}
     for t, raw in zip(turns, r["turns"]):
         key = int((_naive_utc(raw["clock"]) + off) // ROW_MERGE_S)
@@ -309,7 +332,7 @@ def build_data(r: Dict[str, Any]) -> Dict[str, Any]:
                  "kickoff": r.get("kickoff"), "deadline": r.get("deadline")},
         "roster": roster, "convs": conv_order, "turns": turns, "msgs": msgs,
         "backlog": {k: v for k, v in backlog.items()}, "rows": rows, "markers": markers,
-        "gap_s": GAP_SPACER_S,
+        "gap_s": GAP_SPACER_S, "board_events": board_events,
     }
 
 
@@ -367,6 +390,10 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 .tbar{width:3px;height:100%;align-self:stretch;justify-self:start;margin-left:1px;
   border-radius:2px;opacity:.5;cursor:pointer}
 .tbar:hover{opacity:1;width:5px}
+.bbar{width:4px;height:100%;align-self:stretch;justify-self:start;border-radius:2px;opacity:.9}
+.bbar:hover{opacity:1;width:6px}
+.bdiv{width:1px;height:100%;align-self:stretch;justify-self:start;background:var(--line);opacity:.8}
+.colhead.bhead{font-size:10px;text-align:center;padding-left:0;padding-right:0}
 .colhead{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
   padding:6px 8px;font-weight:650;font-size:12px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
@@ -393,8 +420,14 @@ body{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
 .turnc .peek{margin-top:2px;font-style:italic;color:var(--dim);display:-webkit-box;
   -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .turnc.silent{opacity:.75}
-.report{margin-top:3px;font-size:12px;border-top:1px dashed var(--line);padding-top:3px}
-.report b{color:var(--accent);font-weight:600}
+/* the assistant's private message to its own employee: shown in full, by default,
+   in the agent column — it is the surface the employee actually reads (2026-09-07). */
+.report{margin-top:4px;font-size:12px;white-space:pre-wrap;background:var(--hl);
+  border-left:3px solid var(--accent);border-radius:0 3px 3px 0;padding:4px 6px}
+.report + .report{margin-top:3px}
+.report b{color:var(--accent);font-weight:650}
+.report.push{border-left-color:var(--marker)}
+.report.push b{color:var(--marker)}
 details.cot{margin-top:3px;font-size:12px}
 details.cot>summary{cursor:pointer;color:var(--accent);font-size:11px;user-select:none;
   list-style:none;display:inline-block;border:1px solid var(--line);border-radius:10px;
@@ -474,7 +507,7 @@ details.tc>summary .ct{color:var(--dim);opacity:.7;margin-right:4px}
   <h1 id="title"></h1><div class="meta" id="meta"></div>
   <div id="chips"></div>
   <div class="meta" style="margin-top:6px"><button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button></div>
-  <div id="legend">legend · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material · <b>✎ A step k/n</b> cards in an agent column: A's assistant posted from there at this height (turn cards sit at turn start), with that step's closing thoughts · <b>💭</b> under a post: the tail of the reasoning that produced it (step k/n, when it ended, whether the turn ended there) · <b>↳ A ✎</b>: what A's assistant posted in the turn this message woke · <b>⚡/👁 chips</b>: expand to that assistant's CoT for the turn that saw the message</div>
+  <div id="legend">legend · <b>board column</b>: T1 lane left, T2 lane right, one bar per person in their colour from claim to release/replacement (hover for times) · <b>woke A</b> under a message: delivered to A's assistant as an event (the wake is a read) · <b>👁 read by A hh:mm</b>: A's assistant fetched it via history (author's own re-reads not listed) · <b>👁 read by nobody</b>: neither delivered nor fetched · <b>👁 A read n</b> cards in a conversation column: A's assistant fetched n messages there in that turn, ★ = the conversation carries this cell's layered material · <b>✎ A step k/n</b> cards in an agent column: A's assistant posted from there at this height (turn cards sit at turn start), with that step's closing thoughts · <b>💭</b> under a post: the tail of the reasoning that produced it (step k/n, when it ended, whether the turn ended there) · <b>↳ A ✎</b>: what A's assistant posted in the turn this message woke · <b>⚡/👁 chips</b>: expand to that assistant's CoT for the turn that saw the message</div>
 </div>
 <div id="wrap"><div id="grid"></div></div>
 <script id="data" type="application/json">__DATA__</script>
@@ -482,7 +515,10 @@ details.tc>summary .ct{color:var(--dim);opacity:.7;margin-right:4px}
 "use strict";
 const D = JSON.parse(document.getElementById("data").textContent);
 const AGENTS = new Set(D.roster);
-const colDefs = [];             // {id,label,kind:'conv'|'agent',on}
+const colDefs = [];             // {id,label,kind:'conv'|'agent'|'board',on}
+// the board lanes: a slim column, T1 left / T2 right, one bar per person in their colour
+// from the claim to its release or replacement (2026-09-07)
+colDefs.push({id:"board", label:"board", kind:"board", n:(D.board_events||[]).length, on:true});
 for (const c of D.convs) colDefs.push({id:"c:"+c.id, label:c.label, kind:"conv",
   n:c.run, on:("default_on" in c ? c.default_on : c.run>0)});
 for (const a of D.roster) colDefs.push({id:"a:"+a, label:a+" · turns", kind:"agent",
@@ -543,7 +579,8 @@ document.title = (D.meta.run_id||"agent5") + " · board";
 }
 function renderChips(){
   const el = document.getElementById("chips"); el.innerHTML="";
-  const groups = [["Channels", c=>c.kind==="conv" && !c.label.startsWith("dm:")],
+  const groups = [["Board", c=>c.kind==="board"],
+                  ["Channels", c=>c.kind==="conv" && !c.label.startsWith("dm:")],
                   ["DMs",      c=>c.kind==="conv" && c.label.startsWith("dm:")],
                   ["Agent turns", c=>c.kind==="agent"]];
   const pg = document.createElement("span"); pg.className="grp"; pg.textContent="Perspective"; el.appendChild(pg);
@@ -678,7 +715,8 @@ function perspectiveBody(t){
     }
     if (s.text) h += `<div class="stext">${esc(s.text)}</div>`;
   }
-  if (t.report) h += `<div class="psec">→ principal</div><div class="report">${esc(t.report)}</div>`;
+  const nh = notesHtml(t);
+  if (nh) h += `<div class="psec">→ ${esc(t.agent)} (private)</div>` + nh;
   return h;
 }
 function turnCard(t){
@@ -696,8 +734,7 @@ function turnCard(t){
   const pk = peekText(t);
   const peek = pk ? `<div class="peek">${esc(pk)}</div>` : "";
   const rline = t.reads.length ? `<div class="rline">${esc(t.reads.join(" · "))}</div>` : "";
-  const rep = t.report && !silent && !opts.steprows
-    ? `<div class="report"><b>→ principal:</b> ${esc(t.report.slice(0,200))}</div>` : "";
+  const rep = opts.steprows ? "" : notesHtml(t);
   // steps-as-rows: the turn card carries only its first step; later steps get their own
   // cards at their own clock rows (stepCard)
   const split = opts.steprows && t.steps.length > 1;
@@ -707,6 +744,23 @@ function turnCard(t){
     <div class="hd"><b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b>
       <span>${esc(t.src)}</span><span class="t">${t.time}${split?" · step 1/"+t.steps.length:""}</span></div>
     ${rline}${split?"":peek}${rep}${cotHtml(t, "t"+t.i, -1, split ? [t.steps[0]] : null)}</div>`;
+}
+// every private message this turn sent its employee, in order: the notify_user pushes and
+// the text the assistant wrote outside a tool call. Full text, no truncation — this is the
+// only surface the employee sees, so it is on by default in the agent column.
+function notesHtml(t){
+  const parts = [], n = t.steps.length;
+  t.steps.forEach((s, k) => {
+    for (const c of s.calls) if (c.tool === "notify_user" && (c.push||"").trim())
+      parts.push({k, text:c.push, push:true});
+    if ((s.text||"").trim()) parts.push({k, text:s.text, push:false});
+  });
+  if (!parts.length && (t.report||"").trim()) parts.push({k:-1, text:t.report, push:false});
+  return parts.map(p => {
+    const step = n > 1 && p.k >= 0 ? ` · step ${p.k+1}/${n}` : "";
+    const tag = p.push ? `\ud83d\udcf2 push \u2192 ${esc(t.agent)}` : `\u2192 ${esc(t.agent)}`;
+    return `<div class="report${p.push?" push":""}" title="${p.push?"notify_user: a push to the employee's phone":"text written outside a tool call: a private message only the employee sees"}"><b>${tag}${step}:</b> ${esc(p.text)}</div>`;
+  }).join("");
 }
 function postMark(t, k, st, m){
   const n = t.steps.length, tail = st && st.reasoning ? (st.reasoning.length>240 ? "…"+st.reasoning.slice(-240) : st.reasoning) : "";
@@ -721,14 +775,14 @@ function stepCard(t, k){
   const s = t.steps[k], last = k===t.steps.length-1;
   const posts = s.calls.filter(c=>c.post_ts && msgByTs[c.post_ts]).map(c=>c.post_ts);
   const lines = s.calls.map(c=>`<div class="cl${c.post_ts?" post":""}">${c.post_ts?"✎":c.fetched!==undefined?"👁":"⚙"} ${esc(c.line)}</div>`).join("");
-  const rep = last && t.report ? `<div class="report"><b>→ principal:</b> ${esc(t.report)}</div>` : "";
+  const rep = "";   // notes render inline below, per step, in the same prominent style
   return `<div class="card turnc stepc" id="turn-${t.i}-s${k}" data-tid="${t.i}" data-msgs="${posts.join(" ")}"
     style="border-left-color:${agentColor(t.agent)}">
     <div class="hd"><b style="color:${agentColor(t.agent)}">${esc(t.agent)}</b>
       <span>step ${k+1}/${t.steps.length}${last?" · ends turn":""}</span><span class="t">${esc(s.time||"")}</span>
       <span class="jump" data-jump="${t.i}" title="to the turn's first card">#${t.i} ↗</span></div>
     ${s.reasoning?`<div class="reason">${esc(s.reasoning)}</div><span class="more" onclick="this.closest('.stepc').classList.toggle('full');this.textContent=this.closest('.stepc').classList.contains('full')?'less':'more'">more</span>`:""}
-    ${lines}${s.text?`<div class="stext">${esc(s.text)}</div>`:""}${rep}</div>`;
+    ${lines}${notesHtml({...t, steps:[s], report:""})}${rep}</div>`;
 }
 function msgCard(m, mi){
   const t = m.src ? D.turns[m.src.turn] : null;
@@ -840,12 +894,16 @@ function renderGrid(){
   for (const m of markers) items.push({marker: m});
 
   const nrows = items.length + 2;   // header + backlog
-  grid.style.gridTemplateColumns = `76px repeat(${cols.length}, minmax(250px, 340px))`;
+  grid.style.gridTemplateColumns = "76px " + cols.map(c=>c.kind==="board" ? "60px" : "minmax(250px, 340px)").join(" ");
   let h = "";
   for (const c of cols)
     h += `<div class="stripe" style="grid-column:${colIdx[c.id]};grid-row:1/${nrows+1}"></div>`;
   h += `<div class="colhead rule" style="grid-row:1;grid-column:1">clock</div>`;
   for (const c of cols){
+    if (c.kind==="board"){
+      h += `<div class="colhead bhead" style="grid-row:1;grid-column:${colIdx[c.id]}" title="board claims: T1 lane left, T2 lane right; one bar per person, in their colour, from claim to release/replacement">T1 · T2</div>`;
+      continue;
+    }
     const lbl = c.kind==="conv" && c.label.startsWith("dm:")
       ? c.label.slice(3).replace("+"," ⇄ ") : c.label;
     const col = c.kind==="agent" ? `color:${agentColor(c.label.split(" ")[0])};` : "";
@@ -922,6 +980,30 @@ function renderGrid(){
     h += `<div class="tbar" data-jump="${t.i}" style="grid-column:${col};`+
       `grid-row:${gr0}/${gr1+1};background:${agentColor(t.agent)}" `+
       `title="${esc(t.agent)} · ${t.time} → ${t.end}"></div>`;
+  }
+  // board lanes: for each person, intervals between successive claims; T1/T2 get a bar,
+  // "skip"/anything else ends the previous bar
+  const bcol = colIdx["board"];
+  if (bcol && rowIdx.length){
+    const lastGr = rowIdx[rowIdx.length-1].gr;
+    h += `<div class="bdiv" style="grid-column:${bcol};grid-row:2/${nrows+1};margin-left:29px"></div>`;
+    const byAgent = {};
+    for (const e of (D.board_events||[])) (byAgent[e.agent] ??= []).push(e);
+    for (const [agent, evs] of Object.entries(byAgent)){
+      const p = Math.max(0, D.roster.indexOf(agent));
+      for (let k = 0; k < evs.length; k++){
+        const e = evs[k], nxt = evs[k+1];
+        if (e.task !== "T1" && e.task !== "T2") continue;
+        const r0 = rowIdx.find(x=>x.epoch >= e.epoch);
+        const gr0 = r0 ? r0.gr : lastGr;
+        let gr1 = lastGr;
+        if (nxt){ const before = rowIdx.filter(x=>x.epoch < nxt.epoch); gr1 = before.length ? before[before.length-1].gr : gr0; }
+        if (gr1 < gr0) gr1 = gr0;
+        const lane = e.task === "T1" ? 0 : 1;
+        h += `<div class="bbar" style="grid-column:${bcol};grid-row:${gr0}/${gr1+1};margin-left:${3 + lane*31 + p*5}px;background:${agentColor(agent)}" `+
+             `title="${esc(agent)} on ${e.task} ${e.time}${nxt ? " → " + nxt.time + (nxt.task==="T1"||nxt.task==="T2" ? " (→ "+nxt.task+")" : " (released)") : " → end"}"></div>`;
+      }
+    }
   }
   grid.innerHTML = h;
 }
