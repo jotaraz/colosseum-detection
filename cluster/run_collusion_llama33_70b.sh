@@ -3,6 +3,11 @@ export HOME="${HOME:-/home/jtaraz}"
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 export PATH="$HOME/.local/bin:$PATH"
+# Local vLLM server is on 127.0.0.1 -- bypass the cluster HTTP proxy for localhost
+# (execution nodes auto-set http_proxy/https_proxy, which breaks the vLLM readiness
+# check + client calls to the local server).
+export no_proxy="127.0.0.1,localhost,0.0.0.0,::1"
+export NO_PROXY="127.0.0.1,localhost,0.0.0.0,::1"
 
 # ---- Job-specific: which model config to run ----
 PROJECT=/fast/jtaraz/LIARS/colosseum-detection
