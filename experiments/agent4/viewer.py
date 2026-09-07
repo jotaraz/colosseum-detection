@@ -411,72 +411,99 @@ def _schedule_svg(r: Dict[str, Any], sprint_label: str) -> str:
             "events.</p>" + "".join(out))
 
 
-def _calendar_tab(r: Dict[str, Any]) -> str:
-    """Every calendar call, per assistant: what it looked at (whose calendar, which window,
-    which events came back), what it created, answered or cancelled (2026-09-07)."""
-    tz = _run_tz(r)
+def _fixture_calendars(r: Dict[str, Any]) -> Dict[str, list]:
+    """The fixture's calendars in agent1's viewer shape: who -> [{date, start, end, title,
+    minutes}], sorted. Empty when the run's fixture cannot be found."""
     import datetime as _d
-    rows_by: Dict[str, list] = {}
-    summary: Dict[str, Dict[str, Any]] = {}
-    for t in r.get("turns") or []:
-        for c in t.get("tool_calls") or []:
-            tool = str(c.get("tool") or "")
-            if "calendar" not in tool:
+    cfg = r.get("config") or {}
+    fx = str(cfg.get("fixture") or "")
+    try:
+        root = Path(__file__).resolve().parents[2]
+        cals = json.loads((root / fx).read_text()).get("calendars") or {}
+    except Exception:
+        return {}
+    out: Dict[str, list] = {}
+    for who, events in cals.items():
+        rows = []
+        for e in events or []:
+            try:
+                a = _d.datetime.fromisoformat(str(e.get("start"))); b = _d.datetime.fromisoformat(str(e.get("end")))
+            except Exception:
                 continue
-            a = t.get("agent") or "?"
-            args = c.get("args") or {}
-            res = c.get("result") or {}
-            clk = str(c.get("clock") or "")[11:16]
-            sm = summary.setdefault(a, {"looks": 0, "others": 0, "windows": [], "events": 0,
-                                        "created": 0, "responded": 0, "cancelled": 0})
-            if tool.endswith("calendar_list_events"):
-                whose = args.get("employee") or res.get("employee") or a
-                other = bool(args.get("employee")) and args.get("employee") != a
-                evs = res.get("events") or []
-                win = f'{res.get("from", args.get("start", ""))} → {res.get("to", args.get("end", ""))}'
-                sm["looks"] += 1; sm["others"] += other; sm["events"] += len(evs)
-                if win not in sm["windows"]:
-                    sm["windows"].append(win)
-                titles = "; ".join(f'{e.get("start", "")}–{e.get("end", "")} {e.get("title", "")}' for e in evs)
-                note = res.get("note") or res.get("error") or ""
-                what = (f'looked at <b>{esc(whose)}</b>\'s calendar, {esc(win)}: {len(evs)} event'
-                        f'{"s" if len(evs) != 1 else ""}' + (f' — {esc(titles)}' if titles else "")
-                        + (f' <i>({esc(note)})</i>' if other else ""))
-                kind = "looked" + (" (other)" if other else "")
-            elif tool.endswith("calendar_create_event"):
-                sm["created"] += 1; kind = "created"
-                what = (f'<b>{esc(args.get("title"))}</b> {esc(args.get("start"))}–{esc(str(args.get("end"))[-5:])}'
-                        f' with {esc(", ".join(args.get("attendees") or []))}'
-                        + (f' → {esc(res.get("id"))}' if res.get("id") else "")
-                        + (f' <i>({esc(res.get("error"))})</i>' if res.get("error") else ""))
-            elif tool.endswith("calendar_respond"):
-                sm["responded"] += 1; kind = "responded"
-                what = (f'{esc(args.get("response"))} {esc(args.get("event_id"))}'
-                        + (f' — “{esc(args.get("note"))}”' if args.get("note") else ""))
-            elif tool.endswith("calendar_cancel_event"):
-                sm["cancelled"] += 1; kind = "cancelled"
-                what = (f'{esc(args.get("event_id"))} {esc(res.get("title") or "")}'
-                        + (f' — “{esc(args.get("note"))}”' if args.get("note") else ""))
-            else:
-                kind = tool; what = esc(json.dumps(args)[:200])
-            rows_by.setdefault(a, []).append(f'<tr><td class="when">{esc(clk)}</td><td>{esc(kind)}</td><td>{what}</td></tr>')
-    if not rows_by:
-        return '<p class="sub">no calendar calls in this run</p>'
-    order = list((r.get("system_prompts") or {}).keys()) or sorted(rows_by)
-    out = []
-    for a in [x for x in order if x in rows_by] + [x for x in rows_by if x not in order]:
-        sm = summary[a]
-        line = (f'looked {sm["looks"]}× ({sm["events"]} events seen'
-                + (f', {sm["others"]} at someone else\'s' if sm["others"] else "") + ")"
-                + (f' · created {sm["created"]}' if sm["created"] else "")
-                + (f' · responded {sm["responded"]}' if sm["responded"] else "")
-                + (f' · cancelled {sm["cancelled"]}' if sm["cancelled"] else ""))
-        wins = " · ".join(esc(w) for w in sm["windows"][:4])
-        out.append(block(f'{esc(a)}\'s assistant <span class="tag">{line}</span>'
-                         + (f' <span class="sub">windows: {wins}</span>' if wins else ""),
-                         f'<table class="notif"><tr><th>clock</th><th>action</th><th>what</th></tr>{"".join(rows_by[a])}</table>',
-                         open_=True))
-    return "".join(out)
+            rows.append({"date": a.strftime("%Y-%m-%d"), "start": a.strftime("%H:%M"), "end": b.strftime("%H:%M"),
+                         "title": str(e.get("title") or ""), "minutes": int((b - a).total_seconds() // 60),
+                         "_a": a, "_b": b})
+        out[who] = sorted(rows, key=lambda x: (x["date"], x["start"]))
+    return out
+
+
+def _calendar_tab(r: Dict[str, Any]) -> str:
+    """agent1's Calendars section (load-per-day grid, each person's days, `checked ×n`
+    tags) over the run's fixture, plus what agent1 could not show: for each assistant the
+    exact windows it asked for, which of its own events those windows covered, and every
+    event it created, answered or cancelled during the run (2026-09-07)."""
+    import datetime as _d
+    from experiments.agent1.viewer import render_calendars, calendar_checks
+    turns = r.get("turns") or []
+    calendars = _fixture_calendars(r)
+    checks = calendar_checks(turns)
+    # agent5's world refuses other people's calendars with a note rather than status=refused
+    for t in turns:
+        for c in t.get("tool_calls") or []:
+            if str(c.get("tool") or "").endswith("calendar_list_events"):
+                a = t.get("agent") or ""; emp = (c.get("args") or {}).get("employee")
+                if emp and emp != a:
+                    checks.setdefault(a, {"calls": 0, "failed": 0, "refused": 0, "empty_window": 0})["refused"] += 1
+    src = "calendars from the fixture the run was built on; “checked” counts calendar_list_events calls by that person's assistant"
+    head = render_calendars({w: [{k: v for k, v in e.items() if not k.startswith("_")} for e in evs]
+                             for w, evs in calendars.items()}, checks, src) if calendars \
+        else '<p class="sub">fixture calendars not found; showing the calls only</p>'
+
+    # per assistant: windows asked for → which own events they covered; creates/responses/cancels
+    detail = []
+    order = list((r.get("system_prompts") or {}).keys()) or sorted({t.get("agent") for t in turns})
+    for a in order:
+        looks, acts = [], []
+        for t in turns:
+            if t.get("agent") != a:
+                continue
+            for c in t.get("tool_calls") or []:
+                tool = str(c.get("tool") or "")
+                if "calendar" not in tool:
+                    continue
+                args = c.get("args") or {}; res = c.get("result") or {}; clk = str(c.get("clock") or "")[11:16]
+                if tool.endswith("calendar_list_events"):
+                    try:
+                        w0 = _d.datetime.fromisoformat(str(args.get("start"))); w1 = _d.datetime.fromisoformat(str(args.get("end")))
+                    except Exception:
+                        w0 = w1 = None
+                    own = calendars.get(a) or []
+                    covered = [e for e in own if w0 and w1 and w0 <= e["_a"] < w1]
+                    n_ret = len(res.get("events") or [])
+                    emp = args.get("employee")
+                    what = (f'{esc(str(args.get("start"))[:16].replace("T", " "))} → {esc(str(args.get("end"))[:16].replace("T", " "))}'
+                            + (f' <b>({esc(emp)}\'s calendar — refused)</b>' if emp and emp != a else "")
+                            + (f' · zero-width' if w0 is not None and w0 == w1 else "")
+                            + f' · {n_ret} returned'
+                            + (f' · covers {len(covered)}/{len(own)} own events: ' + esc("; ".join(f'{e["date"][5:]} {e["start"]} {e["title"]}' for e in covered)) if own and not (emp and emp != a) else ""))
+                    looks.append(f'<tr><td class="when">{esc(clk)}</td><td>looked</td><td>{what}</td></tr>')
+                elif tool.endswith("calendar_create_event"):
+                    acts.append(f'<tr><td class="when">{esc(clk)}</td><td>created</td><td><b>{esc(args.get("title"))}</b> '
+                                f'{esc(str(args.get("start")).replace("T", " "))}–{esc(str(args.get("end"))[-5:])} with {esc(", ".join(args.get("attendees") or []))}'
+                                + (f' → {esc(res.get("id"))}' if res.get("id") else "") + (f' <i>({esc(res.get("error"))})</i>' if res.get("error") else "") + '</td></tr>')
+                elif tool.endswith("calendar_respond"):
+                    acts.append(f'<tr><td class="when">{esc(clk)}</td><td>responded</td><td>{esc(args.get("response"))} {esc(args.get("event_id"))}'
+                                + (f' — “{esc(args.get("note"))}”' if args.get("note") else "") + '</td></tr>')
+                elif tool.endswith("calendar_cancel_event"):
+                    acts.append(f'<tr><td class="when">{esc(clk)}</td><td>cancelled</td><td>{esc(args.get("event_id"))} {esc(res.get("title") or "")}'
+                                + (f' — “{esc(args.get("note"))}”' if args.get("note") else "") + '</td></tr>')
+        if not looks and not acts:
+            continue
+        title = (f'{esc(a)}\'s assistant — what it asked the calendar <span class="tag">{len(looks)} look'
+                 f'{"s" if len(looks) != 1 else ""}</span>' + (f'<span class="tag post">{len(acts)} change{"s" if len(acts) != 1 else ""}</span>' if acts else ""))
+        detail.append(block(title, '<table class="notif"><tr><th>clock</th><th></th><th>window · what it saw / did</th></tr>'
+                            + "".join(looks + acts) + "</table>", open_=True))
+    return head + ("<h2>Windows checked, per assistant</h2>" + "".join(detail) if detail else '<p class="sub">no calendar calls in this run</p>')
 
 
 def render(run_path: str | Path) -> Path:
