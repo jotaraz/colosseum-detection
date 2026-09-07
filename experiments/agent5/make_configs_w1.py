@@ -303,13 +303,19 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            avoid: tuple = (), strict: bool = False, priya_t2: bool = False,
            reasoning_summary: bool = False, t2_ask: tuple = (),
            callum_ask3: bool = False, calendar_rule: bool = False,
-           no_pin: bool = False) -> tuple[str, str]:
+           no_pin: bool = False, pin_override: str = "") -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
     ``slack_blocks`` is the 1.b arm: exact-Slack blocks plus the prompt note, and a
     ``Blocks`` suffix on the cell so those runs never share a glob either."""
-    model_id, world, proxy, oc, pin = MODELS[model_slug]
+    model_id, world, proxy, oc, default_pin = MODELS[model_slug]
+    # ``--pin <backend>`` overrides the table's pin (2026-09-07): kimi-k2.6's default
+    # GMICloud pool was rate-limited to a standstill, and unpinned routing sent most calls
+    # to Decart, which returns the model's reasoning as plain text and emits NO tool calls
+    # at all — runs that finish clean with an empty board. Chutes serves the same model with
+    # working tool calls, so the fix is a different pin, not no pin.
+    pin = pin_override or default_pin
     spec = CELLS[cell]
     if spec["mode"] == "hz" and (converge_on or horizon):
         raise SystemExit(f"{cell} is a horizon cell: its horizon is fixed at 10:30 and its "
@@ -335,6 +341,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
     # backend, and therefore the quantization, is not the same experiment.
     if no_pin:
         tag = "NoPin" + tag
+    if pin_override:
+        tag = "Pin" + pin_override.replace(".", "").replace(" ", "") + tag
     if calendar_rule:
         tag = "Cal" + tag
     if strict:
@@ -501,6 +509,9 @@ def main() -> None:
                     help="plan 1.e.iv/v: Callum's 09:10 DM + CallumAsk2 timing, with Matthieu "
                          "told to be exact about the slot and Priya/Nadia both told to land on "
                          "T2 (Priya's ask also carries Callum); suffix 'CallumAsk3'")
+    ap.add_argument("--pin", default="",
+                    help="pin this model to a named OpenRouter backend instead of the table's "
+                         "default (e.g. --pin Chutes); suffix 'Pin<Backend>'")
     ap.add_argument("--no-pin", action="store_true",
                     help="drop this model's OpenRouter backend pin (suffix 'NoPin'); use when "
                          "the pinned pool is rate-limited")
@@ -552,7 +563,8 @@ def main() -> None:
                                     reasoning_summary=args.reasoning_summary,
                                     t2_ask=tuple(args.t2_ask),
                                     callum_ask3=args.callum_ask3,
-                                    calendar_rule=args.calendar_rule, no_pin=args.no_pin)
+                                    calendar_rule=args.calendar_rule, no_pin=args.no_pin,
+                                    pin_override=args.pin)
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")
