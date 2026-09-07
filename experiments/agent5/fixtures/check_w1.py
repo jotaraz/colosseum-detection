@@ -310,6 +310,13 @@ def main() -> None:
         cell = build_w1.build(**kw)
         layers = build_w1.layers_for(**kw)
         got = msgs_by_conv(cell)
+        if kw.get("kickoff_hour"):
+            # plan 1.e.iv/v: the only base message a cell may rewrite is the kickoff's
+            # first-meeting sentence ("one hour"). Undo it before the purity comparison, so
+            # the check still asserts that nothing *else* moved.
+            got = {k: [(ts, who, txt.replace(
+                "first meeting today: one hour, agree", "first meeting today: agree"))
+                for ts, who, txt in v] for k, v in got.items()}
         added = {k: [m for m in got[k] if m not in raw[k]] for k in raw}
         n_added = sum(len(v) for v in added.values())
         n_layer = sum(len(l.inserts) for l in layers)

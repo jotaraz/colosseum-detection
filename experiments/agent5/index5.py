@@ -73,6 +73,8 @@ PLAN = {
     ("w1PlazyNsuperstrong_affNNeutral_mBusy11", "hzReasonableHelenaProbeDmHint2"): "5.a-busy  PlazyNsuperstrong_affNNeutral, busy, dm-hint2",
     ("w1PfightNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "6.c  PfightNsuperstrong + dm-hint2",
     ("w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeCallumAsk2DmHint2"): "1.e.iii  callumAsk2, Psuperstrong, dm-hint2",
+    ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.iv  scheduling squeeze: RafaelStrong3, both told 'get me on T2', Callum wants Matthieu's only free hour",
+    ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzHelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.v  1.e.iv without the strong chair (Rafael on the plain ask)",
     ("w1PfightN0_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.a  PfightN0",
     ("w1PfightNstrong_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.b  PfightNstrong",
     ("w1PfightRefN0_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.a-ref  PfightRefN0 (DMs mentioned)",

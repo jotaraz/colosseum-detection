@@ -44,6 +44,7 @@ PLAN = {
     "w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep": "5.e.i",
     "w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail": "5.e.ii / 5.e.iii–vi",
     "w1PsuperstrongNsuperstrong_affBothT1fail": "5.e.vii",
+    "w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h": "1.e.iv / 1.e.v",
     "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": "1.e.i-busy-super / 5.c",
     "w1PstrongNstrong": "2.a",
     "w1PstrongNstrong_affBothT1": "2.b",
@@ -70,6 +71,11 @@ PLAN = {
 #: live at 09:10, so its ts is minted per run — match it by text instead. Applies only to
 #: runs whose cell carries ``CallumAsk``; the fixture itself is shared with 1.a etc.
 EXTRA = {
+    "w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h": [{
+        "plan": "1.e.iv / 1.e.v", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
+        "n": 1, "when": "Mon 07 09:10 (live)", "subject": ["Callum"], "holders": ["Priya"],
+        "readable_by": ["Priya"], "match_text": "not coffee, a favor",
+        "only_cells_containing": "CallumAsk"}],
     "w1PstrongNstrong_affBothNeutralPpl": [{
         "plan": "1.e.i", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
         "n": 1, "when": "Mon 07 09:10 (live)", "subject": ["Callum"], "holders": ["Priya"],
