@@ -411,6 +411,74 @@ def _schedule_svg(r: Dict[str, Any], sprint_label: str) -> str:
             "events.</p>" + "".join(out))
 
 
+def _calendar_tab(r: Dict[str, Any]) -> str:
+    """Every calendar call, per assistant: what it looked at (whose calendar, which window,
+    which events came back), what it created, answered or cancelled (2026-09-07)."""
+    tz = _run_tz(r)
+    import datetime as _d
+    rows_by: Dict[str, list] = {}
+    summary: Dict[str, Dict[str, Any]] = {}
+    for t in r.get("turns") or []:
+        for c in t.get("tool_calls") or []:
+            tool = str(c.get("tool") or "")
+            if "calendar" not in tool:
+                continue
+            a = t.get("agent") or "?"
+            args = c.get("args") or {}
+            res = c.get("result") or {}
+            clk = str(c.get("clock") or "")[11:16]
+            sm = summary.setdefault(a, {"looks": 0, "others": 0, "windows": [], "events": 0,
+                                        "created": 0, "responded": 0, "cancelled": 0})
+            if tool.endswith("calendar_list_events"):
+                whose = args.get("employee") or res.get("employee") or a
+                other = bool(args.get("employee")) and args.get("employee") != a
+                evs = res.get("events") or []
+                win = f'{res.get("from", args.get("start", ""))} → {res.get("to", args.get("end", ""))}'
+                sm["looks"] += 1; sm["others"] += other; sm["events"] += len(evs)
+                if win not in sm["windows"]:
+                    sm["windows"].append(win)
+                titles = "; ".join(f'{e.get("start", "")}–{e.get("end", "")} {e.get("title", "")}' for e in evs)
+                note = res.get("note") or res.get("error") or ""
+                what = (f'looked at <b>{esc(whose)}</b>\'s calendar, {esc(win)}: {len(evs)} event'
+                        f'{"s" if len(evs) != 1 else ""}' + (f' — {esc(titles)}' if titles else "")
+                        + (f' <i>({esc(note)})</i>' if other else ""))
+                kind = "looked" + (" (other)" if other else "")
+            elif tool.endswith("calendar_create_event"):
+                sm["created"] += 1; kind = "created"
+                what = (f'<b>{esc(args.get("title"))}</b> {esc(args.get("start"))}–{esc(str(args.get("end"))[-5:])}'
+                        f' with {esc(", ".join(args.get("attendees") or []))}'
+                        + (f' → {esc(res.get("id"))}' if res.get("id") else "")
+                        + (f' <i>({esc(res.get("error"))})</i>' if res.get("error") else ""))
+            elif tool.endswith("calendar_respond"):
+                sm["responded"] += 1; kind = "responded"
+                what = (f'{esc(args.get("response"))} {esc(args.get("event_id"))}'
+                        + (f' — “{esc(args.get("note"))}”' if args.get("note") else ""))
+            elif tool.endswith("calendar_cancel_event"):
+                sm["cancelled"] += 1; kind = "cancelled"
+                what = (f'{esc(args.get("event_id"))} {esc(res.get("title") or "")}'
+                        + (f' — “{esc(args.get("note"))}”' if args.get("note") else ""))
+            else:
+                kind = tool; what = esc(json.dumps(args)[:200])
+            rows_by.setdefault(a, []).append(f'<tr><td class="when">{esc(clk)}</td><td>{esc(kind)}</td><td>{what}</td></tr>')
+    if not rows_by:
+        return '<p class="sub">no calendar calls in this run</p>'
+    order = list((r.get("system_prompts") or {}).keys()) or sorted(rows_by)
+    out = []
+    for a in [x for x in order if x in rows_by] + [x for x in rows_by if x not in order]:
+        sm = summary[a]
+        line = (f'looked {sm["looks"]}× ({sm["events"]} events seen'
+                + (f', {sm["others"]} at someone else\'s' if sm["others"] else "") + ")"
+                + (f' · created {sm["created"]}' if sm["created"] else "")
+                + (f' · responded {sm["responded"]}' if sm["responded"] else "")
+                + (f' · cancelled {sm["cancelled"]}' if sm["cancelled"] else ""))
+        wins = " · ".join(esc(w) for w in sm["windows"][:4])
+        out.append(block(f'{esc(a)}\'s assistant <span class="tag">{line}</span>'
+                         + (f' <span class="sub">windows: {wins}</span>' if wins else ""),
+                         f'<table class="notif"><tr><th>clock</th><th>action</th><th>what</th></tr>{"".join(rows_by[a])}</table>',
+                         open_=True))
+    return "".join(out)
+
+
 def render(run_path: str | Path) -> Path:
     run_path = Path(run_path)
     r = json.loads(run_path.read_text())
@@ -466,6 +534,7 @@ def render(run_path: str | Path) -> Path:
                         "are not shown</p>") + channels_tab
 
     schedule_tab = _schedule_svg(r, sprint_label="#" + sprint_channel if sprint_channel else "")
+    calendar_tab = _calendar_tab(r)
 
     notif_rows = "".join(
         f'<tr><td class="when">{esc(n.get("time"))}</td><td><b>{esc(n.get("agent"))}</b></td>'
@@ -498,6 +567,7 @@ def render(run_path: str | Path) -> Path:
         '<button id="tab-timeline" class="tabbtn on" onclick="showTab(\'timeline\')">timeline</button>'
         '<button id="tab-channels" class="tabbtn" onclick="showTab(\'channels\')">channels</button>'
         '<button id="tab-schedule" class="tabbtn" onclick="showTab(\'schedule\')">schedule</button>'
+        '<button id="tab-calendar" class="tabbtn" onclick="showTab(\'calendar\')" title="every calendar call per assistant: whose calendar, which window, what came back, what was created/answered/cancelled">calendar</button>'
         + ('<button id="btn-names" onclick="toggleNames()" title="Replace raw Slack ids '
            'with ⟨names⟩ — a viewer overlay, not what was written">ids → names</button>'
            if id_names else "")
@@ -505,7 +575,7 @@ def render(run_path: str | Path) -> Path:
     )
     js = (
         "function setAll(v){document.querySelectorAll('details').forEach(d=>d.open=v)}"
-        "function showTab(t){for(const n of ['timeline','channels','schedule']){"
+        "function showTab(t){for(const n of ['timeline','channels','schedule','calendar']){"
         "document.getElementById('pane-'+n).style.display=(n===t?'':'none');"
         "document.getElementById('tab-'+n).classList.toggle('on',n===t);}}"
         # ids → names toggle: wrap known Slack ids in text nodes on first use (TreeWalker,
@@ -549,6 +619,7 @@ def render(run_path: str | Path) -> Path:
            f'<div id="pane-timeline">{timeline}{wake_panel}{notif_panel}</div>'
            f'<div id="pane-channels" style="display:none">{channels_tab}</div>'
            f'<div id="pane-schedule" style="display:none; overflow-x:auto">{schedule_tab}</div>'
+           f'<div id="pane-calendar" style="display:none">{calendar_tab}</div>'
            f"</main><script>{js}</script></body></html>")
 
     out = run_path.parent / "run.html"

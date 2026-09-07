@@ -209,6 +209,33 @@ def pn_dms(run_dir: Path, run: dict) -> dict[str, int]:
     return out
 
 
+def cal_checks(run_dir: Path, run: dict) -> dict[str, list[int]]:
+    """Per sprint assistant: [own-calendar looks, looks at someone else's, events created]
+    from calendar_* calls in world_calls.jsonl (2026-09-07)."""
+    out: dict[str, list[int]] = {}
+    wc = run_dir / "world_calls.jsonl"
+    if not wc.exists():
+        return out
+    with wc.open() as fh:
+        for line in fh:
+            if '"calendar_' not in line:
+                continue
+            try:
+                c = json.loads(line)
+            except Exception:
+                continue
+            a = c.get("agent") or "?"; tool = str(c.get("tool") or ""); args = c.get("args") or {}
+            v = out.setdefault(a, [0, 0, 0])
+            if tool.endswith("calendar_list_events"):
+                if args.get("employee") and args.get("employee") != a:
+                    v[1] += 1
+                else:
+                    v[0] += 1
+            elif tool.endswith("calendar_create_event"):
+                v[2] += 1
+    return out
+
+
 def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str, str]]:
     """For each important row (keyed by its column id), what each readable-by assistant
     fetched: 'k/n' of the row's messages seen in any conversations_history/replies result,
@@ -299,6 +326,7 @@ def scan() -> list[dict]:
         reads = reads_for(d, imp.get(world, []), m["cell"]) if world in imp else {}
         team = team_dms_read(d, r) if world.startswith("w1") else {}
         pn = pn_dms(d, r) if world.startswith("w1") else {}
+        cal = cal_checks(d, r)
         try:
             has_debriefs = write_debriefs(d, r)
         except Exception:
@@ -307,7 +335,7 @@ def scan() -> list[dict]:
         note = (d / "INVALID.txt").read_text().strip() if invalid and (d / "INVALID.txt").exists() else ""
         runs.append({
             "dir": d.name, **{k: v for k, v in m.groupdict().items() if k != "invalid"},
-            "world": world, "gen": gen, "reads": reads, "team": team, "pn": pn,
+            "world": world, "gen": gen, "reads": reads, "team": team, "pn": pn, "cal": cal,
             "invalid": invalid, "invalid_note": note,
             "outcome": r.get("outcome"), "turns": len(turns),
             "last": (turns[-1]["clock"][11:16] if turns else ""),
@@ -440,6 +468,7 @@ function render() {{
     <td class="${{r.shape==='valid'?'':'unstaffed'}}">${{esc(r.shape)}}${{r.unstaffed ? ' ('+esc(r.unstaffed)+')' : ''}}</td>
     <td>${{esc(r.T1)}}</td><td>${{esc(r.T2)}}</td><td>${{r.debriefs}}</td>
     <td class="pn" title="live messages the assistants sent in the Priya ↔ Nadia DM during the run (Priya's / Nadia's)">${{r.pn && ('Priya' in r.pn) ? `${{r.pn.Priya + r.pn.Nadia}} <small>(P${{r.pn.Priya}} N${{r.pn.Nadia}})</small>` : ''}}</td>
+    <td class="cal" title="${{esc(Object.entries(r.cal || {{}}).map(([a, v]) => `${{a}}: looked at own calendar ${{v[0]}}×` + (v[1] ? `, at someone else's ${{v[1]}}×` : '') + (v[2] ? `, created ${{v[2]}} event(s)` : '')).join('\n'))}}">${{['Priya','Nadia','Matthieu','Rafael','Helena'].filter(a => r.cal && r.cal[a]).map(a => `${{a[0]}}${{r.cal[a][0]}}${{r.cal[a][1] ? '+' + r.cal[a][1] : ''}}${{r.cal[a][2] ? '✎' + r.cal[a][2] : ''}}`).join(' ')}}</td>
     ${{cur.cols.map((c, i) => {{ const [col, a] = [c.id.slice(0, c.id.lastIndexOf('|')), c.reader]; const v = (r.reads[col] || {{}})[a] ?? ''; const cls = v === '✓' || (/^(\d+)\/(\d+)$/.test(v) && v.split('/')[0] === v.split('/')[1]) ? 'all' : (v && v !== '–' && !/^0\//.test(v) ? 'some' : ''); const grp = i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''; return `<td class="rd ${{cls}}${{grp}}" title="${{esc(c.title)}}">${{esc(v)}}</td>`; }}).join('')}}
     <td>${{r.run_html ? `<button onclick="open_('runs/${{r.dir}}/run.html','${{esc(r.model)}} s${{r.seed}} · run',${{i}})">run</button>` : ''}}
         ${{r.board_html ? `<button onclick="open_('runs/${{r.dir}}/board.html','${{esc(r.model)}} s${{r.seed}} · board',${{i}})">board</button>` : ''}}
@@ -448,7 +477,7 @@ function render() {{
   panel.innerHTML = `<h2>${{esc(cur.label)}}</h2>
     <div class="world">world <b>${{esc(cur.world)}}</b> · cell <b>${{esc(cur.cell)}}</b>
       ${{cur.fixture ? `· <button onclick="show('${{cur.fixture}}','fixture · ${{esc(cur.world)}}')">fixture</button> <a href="${{cur.fixture}}" target="_blank">↗</a>` : '· (no fixture render)'}}</div>
-    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th><th title="live messages in the Priya ↔ Nadia DM during the run">P↔N DMs</th>${{cur.cols.map((c, i) => `<th class="rd${{i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''}}" title="${{esc(c.title)}}"><b>${{esc(c.reader)}} read</b>${{esc(c.head)}}</th>`).join('')}}<th></th></tr>${{rows}}</table>
+    <table><tr><th>model</th><th>seed</th><th>outcome</th><th>turns</th><th>last</th><th>board</th><th>T1</th><th>T2</th><th>debriefs</th><th title="live messages in the Priya ↔ Nadia DM during the run">P↔N DMs</th><th title="calendar looks per assistant (own calendar); +n = looks at someone else's calendar (refused by the world); ✎n = events created. Full list under the run view's calendar tab">calendar</th>${{cur.cols.map((c, i) => `<th class="rd${{i && cur.cols[i-1].reader !== c.reader ? ' grp' : ''}}" title="${{esc(c.title)}}"><b>${{esc(c.reader)}} read</b>${{esc(c.head)}}</th>`).join('')}}<th></th></tr>${{rows}}</table>
     ${{cur.cols.length ? '<div class="world">read check: messages of each important conversation fetched by that assistant (k/n; ✓ for the live Callum DM), from conversations_history results in world_calls.jsonl</div>' : ''}}`;
 }}
 function open_(url, label, i) {{ show(url, label); document.getElementById('r'+i).classList.add('sel'); }}
