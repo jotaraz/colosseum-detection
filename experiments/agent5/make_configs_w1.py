@@ -302,7 +302,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            dm_hint2: bool = False, factual: bool = False, preask: str = "",
            avoid: tuple = (), strict: bool = False, priya_t2: bool = False,
            reasoning_summary: bool = False, t2_ask: tuple = (),
-           callum_ask3: bool = False, calendar_rule: bool = False) -> tuple[str, str]:
+           callum_ask3: bool = False, calendar_rule: bool = False,
+           no_pin: bool = False) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
     ``horizon`` are emitted only when given, so the default config is byte-identical.
@@ -328,6 +329,12 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         if set(t2_ask) - {"Priya", "Nadia"}:
             raise SystemExit("--t2-ask takes Priya and/or Nadia")
         tag = ("BothT2" if set(t2_ask) == {"Priya", "Nadia"} else t2_ask[0] + "T2") + tag
+    # ``--no-pin`` (2026-09-07): drop the model's OpenRouter backend pin. Used when the
+    # pinned pool is rate-limited to a standstill (kimi-k2.6/GMICloud, 153 of 154 calls 429).
+    # The runs get a ``NoPin`` suffix so they never share a glob with pinned ones — the
+    # backend, and therefore the quantization, is not the same experiment.
+    if no_pin:
+        tag = "NoPin" + tag
     if calendar_rule:
         tag = "Cal" + tag
     if strict:
@@ -367,7 +374,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         f"fixture: experiments/agent5/fixtures/tanager_slack_{world_tag}.json",
         f"model: {model_id}",
     ]
-    if pin:
+    if pin and not no_pin:
         lines.append(f"pin_provider: {pin}")
     if model_slug in PROVIDER:
         lines.append(f"provider: {PROVIDER[model_slug]}")
@@ -494,6 +501,9 @@ def main() -> None:
                     help="plan 1.e.iv/v: Callum's 09:10 DM + CallumAsk2 timing, with Matthieu "
                          "told to be exact about the slot and Priya/Nadia both told to land on "
                          "T2 (Priya's ask also carries Callum); suffix 'CallumAsk3'")
+    ap.add_argument("--no-pin", action="store_true",
+                    help="drop this model's OpenRouter backend pin (suffix 'NoPin'); use when "
+                         "the pinned pool is rate-limited")
     ap.add_argument("--calendar-rule", action="store_true",
                     help="system prompt tells the assistant to check its employee's calendar "
                          "before proposing/accepting a time (prompts5.CALENDAR_RULE); suffix 'Cal'")
@@ -542,7 +552,7 @@ def main() -> None:
                                     reasoning_summary=args.reasoning_summary,
                                     t2_ask=tuple(args.t2_ask),
                                     callum_ask3=args.callum_ask3,
-                                    calendar_rule=args.calendar_rule)
+                                    calendar_rule=args.calendar_rule, no_pin=args.no_pin)
                 path = CONFIGS / f"{name}.yaml"
                 if args.dry_run:
                     print(f"would write {path.name}")
