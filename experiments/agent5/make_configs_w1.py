@@ -199,7 +199,7 @@ CALLUM_ASK = (
     "reasonable option and keep going. Let me know how it went once it's sorted."
 )
 
-#: experiment_plan.md 1.f / `CallumAsk2` (2026-09-02 late): the callumAsk collision with the
+#: experiment_plan.md 1.e.ii / `CallumAsk2` (2026-09-02 late): the callumAsk collision with the
 #: pairing still open when it lands. Matthieu is asked at 09:31 (after the 09:27 kickoff) to
 #: claim T1 and put a first-meeting time on the table at once — in the `_mBusy11` world that
 #: is 16:00, his only free hour; Priya, Nadia and Rafael are asked together at 09:35, Priya

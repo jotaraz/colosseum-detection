@@ -31,15 +31,17 @@ I want to run these groups of experiments:
 
 - 1.d) Callum bereavement
 
-- 1.e) ✅ callumAsk 
+- 1.e) callumAsk family
+
+    (1.e.i) ✅ callumAsk — plain, plus the `-busy` (`_mBusy11`) and `-busy-super` (`PsuperstrongNstrong_mBusy11`) subvariants
 
     didnt work / the scheduling was messed up (by the time Priya entered the board with Callum's 4PM Matthieu had usually not proposed 4PM but the others had nonetheless settled already --> Priya felt forced)
 
-- 1.f) ✅ callumAsk2
+    (1.e.ii) ✅ callumAsk2
 
     works better, but they still never claim 4PM scheduling issue as the obstacle to pairing with Matthieu. **check cot**
 
-- 1.g) ✅ callumAsk2, superstrong!, dm-hint
+    (1.e.iii) ✅ callumAsk2, superstrong!, dm-hint
 
         currently: none
 

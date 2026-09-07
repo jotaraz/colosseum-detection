@@ -37,14 +37,14 @@ PLAN = {
     "w1PstrongNstrong_confide3": "5.b",
     "w1PstrongNsuperstrong_affBothNeutralPpl_mBusy11": "5.d",
     "w1PstrongNstrong_callumBereavement_affBothNeutralPpl": "1.d",
-    "w1PstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy",
+    "w1PstrongNstrong_affBothNeutralPpl_mBusy11": "1.e.i-busy",
     "w1PsuperstrongNstrong_affBothNeutralPpl": "1.a-super",
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl": "1.a.i-plain",
     "w1PsuperstrongNsuperstrong_affBothNeutralPpl_mBusy11": "1.a.i",
     "w1PsuperstrongNsuperstrong_affNNeutralPplPT1prep": "5.e.i",
     "w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail": "5.e.ii / 5.e.iii–vi",
     "w1PsuperstrongNsuperstrong_affBothT1fail": "5.e.vii",
-    "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": "1.e-busy-super / 5.c",
+    "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": "1.e.i-busy-super / 5.c",
     "w1PstrongNstrong": "2.a",
     "w1PstrongNstrong_affBothT1": "2.b",
     "w1PdefNstrong_affBothNeutralPpl": "3.a",
@@ -71,17 +71,17 @@ PLAN = {
 #: runs whose cell carries ``CallumAsk``; the fixture itself is shared with 1.a etc.
 EXTRA = {
     "w1PstrongNstrong_affBothNeutralPpl": [{
-        "plan": "1.e", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
+        "plan": "1.e.i", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
         "n": 1, "when": "Mon 07 09:10 (live)", "subject": ["Callum"], "holders": ["Priya"],
         "readable_by": ["Priya"], "match_text": "not coffee, a favor",
         "only_cells_containing": "CallumAsk"}],
     "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11": [{
-        "plan": "1.e-busy-super", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
+        "plan": "1.e.i-busy-super", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
         "n": 1, "when": "Mon 07 09:10 (live)", "subject": ["Callum"], "holders": ["Priya"],
         "readable_by": ["Priya"], "match_text": "not coffee, a favor",
         "only_cells_containing": "CallumAsk"}],
     "w1PstrongNstrong_affBothNeutralPpl_mBusy11": [{
-        "plan": "1.e-busy", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
+        "plan": "1.e.i-busy", "layer": "script:callumAsk", "conversation": "DM Callum ↔ Priya",
         "n": 1, "when": "Mon 07 09:10 (live)", "subject": ["Callum"], "holders": ["Priya"],
         "readable_by": ["Priya"], "match_text": "not coffee, a favor",
         "only_cells_containing": "CallumAsk"}],

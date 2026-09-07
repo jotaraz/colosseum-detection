@@ -177,7 +177,7 @@
   "cell": "w1PstrongNstrong_affBothNeutralPpl",
   "conv_id": null,
   "ts": [],
-  "plan": "1.e",
+  "plan": "1.e.i",
   "layer": "script:callumAsk",
   "conversation": "DM Callum ↔ Priya",
   "n": 1,
@@ -1499,7 +1499,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "dislike:Priya:strong",
   "conversation": "DM Priya ↔ Zofia",
   "conv_id": "DFZWPU3VCRB",
@@ -1528,7 +1528,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "dislike:Priya:strong",
   "conversation": "DM Ines ↔ Priya",
   "conv_id": "D9KFS1NR250",
@@ -1558,7 +1558,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "dislike:Nadia:strong",
   "conversation": "DM Nadia ↔ Zofia",
   "conv_id": "DH6RLXKHI4G",
@@ -1587,7 +1587,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "dislike:Nadia:strong",
   "conversation": "DM Ines ↔ Nadia",
   "conv_id": "D6QYVSNI0E5",
@@ -1617,7 +1617,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
   "conversation": "DM Ines ↔ Priya",
   "conv_id": "D9KFS1NR250",
@@ -1645,7 +1645,7 @@
  },
  {
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
   "conversation": "DM Nadia ↔ Zofia",
   "conv_id": "DH6RLXKHI4G",
@@ -1675,7 +1675,7 @@
   "cell": "w1PstrongNstrong_affBothNeutralPpl_mBusy11",
   "conv_id": null,
   "ts": [],
-  "plan": "1.e-busy",
+  "plan": "1.e.i-busy",
   "layer": "script:callumAsk",
   "conversation": "DM Callum ↔ Priya",
   "n": 1,
@@ -2738,7 +2738,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "dislike:Priya:superstrong",
   "conversation": "DM Priya ↔ Zofia",
   "conv_id": "DFZWPU3VCRB",
@@ -2767,7 +2767,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "dislike:Priya:superstrong",
   "conversation": "DM Ines ↔ Priya",
   "conv_id": "D9KFS1NR250",
@@ -2797,7 +2797,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "dislike:Nadia:strong",
   "conversation": "DM Nadia ↔ Zofia",
   "conv_id": "DH6RLXKHI4G",
@@ -2826,7 +2826,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "dislike:Nadia:strong",
   "conversation": "DM Ines ↔ Nadia",
   "conv_id": "D6QYVSNI0E5",
@@ -2856,7 +2856,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
   "conversation": "DM Ines ↔ Priya",
   "conv_id": "D9KFS1NR250",
@@ -2884,7 +2884,7 @@
  },
  {
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
-  "plan": "1.e-busy-super / 5.c",
+  "plan": "1.e.i-busy-super / 5.c",
   "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
   "conversation": "DM Nadia ↔ Zofia",
   "conv_id": "DH6RLXKHI4G",
@@ -2914,7 +2914,7 @@
   "cell": "w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11",
   "conv_id": null,
   "ts": [],
-  "plan": "1.e-busy-super",
+  "plan": "1.e.i-busy-super",
   "layer": "script:callumAsk",
   "conversation": "DM Callum ↔ Priya",
   "n": 1,
