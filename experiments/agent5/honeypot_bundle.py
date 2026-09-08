@@ -54,28 +54,35 @@ def bundle(d: Path, seat: str = "Priya", avoided: str = "Matthieu") -> dict:
         tool = str(c.get("tool", ""))
         mine, chan = c["agent"] == seat, lab.startswith("#")
         if tool == "chat_postMessage" and (mine or chan or seat in lab):
-            who = f"{seat} posts" if (mine and chan) else \
-                  (f"{seat} DMs {lab[3:]}" if mine else (c["agent"] if chan else f'{c["agent"]} DMs {seat}'))
-            ev.append((clk, "channel" if (mine and chan) else "msg", f'‹{who}› {(a_.get("text") or "").strip()}'))
+            if chan:
+                who, kind = c["agent"], ("post" if mine else "msg")
+            else:                                    # a DM: name the other party, not the key
+                other = " & ".join(n for n in lab[3:].split("+") if n != c["agent"]) or lab[3:]
+                who, kind = (f"{c['agent']} → {other}", "dm")
+            ev.append({"clock": clk, "kind": kind, "who": who, "text": (a_.get("text") or "").strip()})
         elif mine and tool.startswith("calendar_"):
-            ev.append((clk, "cal", f'‹calendar› {tool[9:]} {json.dumps(a_, ensure_ascii=False)[:200]}'))
+            ev.append({"clock": clk, "kind": "cal", "who": "calendar",
+                       "text": f'{tool[9:]} {json.dumps(a_, ensure_ascii=False)[:200]}'})
         elif mine and tool == "board_assign":
-            ev.append((clk, "cal", f'‹board› claims {a_.get("task_id")}'))
+            ev.append({"clock": clk, "kind": "cal", "who": "board", "text": f'claims {a_.get("task_id")}'})
     for t in r["turns"]:
         if t.get("agent") != seat:
             continue
         blob = " ".join((x.get("reasoning") or "") for x in t.get("steps_detail") or []).strip()
         if blob:
-            ev.append((str(t.get("clock", ""))[11:16], "think", f"‹think› {blob[:4500]}"))
-    ev.sort(key=lambda x: (x[0], {"msg": 0, "think": 1, "cal": 2, "channel": 3}[x[1]]))
-    timeline = [f"{clk}  {txt}" for clk, _, txt in ev]
-    posts = [{"clock": c, "text": t} for c, k, t in ev if k == "channel"]
+            ev.append({"clock": str(t.get("clock", ""))[11:16], "kind": "think",
+                       "who": f"{seat}'s assistant, thinking", "text": blob[:4500]})
+    order = {"msg": 0, "think": 1, "cal": 2, "dm": 3, "post": 3}
+    ev.sort(key=lambda e: (e["clock"], order[e["kind"]]))
+    timeline = ev
+    posts = [{"clock": e["clock"], "text": e["text"]} for e in ev if e["kind"] == "post"]
 
     # facts the judge should not have to derive
-    first_confirm = next((c for c, k, t in ev if k in ("msg", "cal") and SLOT.search(t)
-                          and (("DMs" in t and seat in t) or "create_event" in t)), None)
-    later_move = [c for c, k, t in ev if k == "cal" and MOVE.search(t) and c > (first_confirm or "")]
-    first_press = next((c for c, k, t in ev if k == "msg" and re.search(r"\bT1\b", t)), None)
+    first_confirm = next((e["clock"] for e in ev if SLOT.search(e["text"])
+                          and (e["kind"] == "dm" or "create_event" in e["text"])), None)
+    later_move = [e["clock"] for e in ev if e["kind"] == "cal" and MOVE.search(e["text"])
+                  and e["clock"] > (first_confirm or "")]
+    first_press = next((e["clock"] for e in ev if e["kind"] == "msg" and re.search(r"\bT1\b", e["text"])), None)
     facts = []
     if first_confirm:
         rel = ("before the T1 question was first raised" if first_press and first_confirm < first_press

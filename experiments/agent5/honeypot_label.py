@@ -40,8 +40,19 @@ h1{font-size:16px;margin:0 0 2px}
 section{margin:14px 0}
 section>h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:0 0 5px}
 pre,.box{white-space:pre-wrap;background:var(--card);border-radius:7px;padding:7px 10px;margin:0 0 6px;font:12.5px/1.45 inherit}
-.post{border-left:3px solid var(--accent)}
-.rz{border-left:3px solid var(--muted);max-height:230px;overflow:auto}
+.row{border-radius:8px;padding:6px 10px;margin:0 0 7px;background:var(--card)}
+.row .hd{display:flex;gap:8px;align-items:baseline;font-size:11.5px;margin-bottom:2px}
+.row .who{font-weight:600}
+.row .body{white-space:pre-wrap;font-size:12.5px;line-height:1.45}
+.row.post{border-left:4px solid var(--accent)}
+.row.msg{border-left:4px solid var(--line)}
+.row.dm{border-left:4px dashed var(--accent);background:transparent}
+.row.cal{border-left:4px solid #15803d;font-size:11.5px;opacity:.85}
+.row.think{border:1px dashed var(--muted);background:transparent;opacity:.92}
+.row.think .body{font-style:italic;max-height:210px;overflow:auto;color:var(--muted)}
+.row.think .who{color:var(--muted);font-style:normal}
+body.nothink .row.think{display:none}
+#tools{position:sticky;top:0;z-index:5;background:Canvas;padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
 .t{color:var(--muted);font-size:11px;margin-right:6px}
 #gates{position:sticky;bottom:0;background:Canvas;border-top:2px solid var(--line);padding:10px 0 8px}
 .gate{display:flex;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px dotted var(--line)}
@@ -65,9 +76,13 @@ const RUNS = JSON.parse(document.getElementById("data").textContent);
 const GATES = __GATES__;
 const KEY = "honeypot_labels_v1";
 let STORAGE_OK = true;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { STORAGE_OK = false; return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { STORAGE_OK = false; } };
+let THINK_OFF = false;
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { STORAGE_OK = false; return {}; } };
 const save = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { STORAGE_OK = false; } };
 let L = load(), cur = 0;
+THINK_OFF = lsGet("hp_think") === "0";
 const esc = s => (s ?? "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const hi = s => esc(s).replace(/(16:00|4 ?pm|Callum|unmovable|immovable|can'?t move|prior commitment)/gi, m => `<mark>${m}</mark>`);
 const done = r => { const l = L[r.run]; return l && GATES.every(g => l[g[0]] !== undefined && l[g[0]] !== null); };
@@ -96,9 +111,16 @@ function render(){
     sec("the 16:00 request", `<div class="box">${hi(r.request_dm)}</div>`) +
     sec(`${esc(r.seat)}'s calendar that day`, `<div class="box">${esc(r.calendar.join("  ·  "))}</div>`) +
     sec("established about the 16:00 hour", r.booking_facts.map(x => `<div class="box">${hi(x)}</div>`).join("")) +
-    sec("the run, in order", r.timeline.map(x => {
-        const k = /‹think›/.test(x) ? "rz" : /‹posts›/.test(x) ? "post" : "";
-        return `<div class="box ${k}">${hi(x)}</div>`; }).join("")) +
+    sec("the run, in order",
+      `<div id="tools"><button id="tt" class="${THINK_OFF?"":"on"}">
+         ${THINK_OFF?"show":"hide"} thinking</button>
+       <span class="t" style="margin-left:8px">${r.timeline.filter(e=>e.kind==="think").length} thinking ·
+       ${r.timeline.filter(e=>e.kind!=="think").length} messages &amp; actions</span></div>` +
+      r.timeline.map(e => {
+        const tag = {post:"in #sep-2026-sprint", msg:"in #sep-2026-sprint", dm:"DM", cal:"", think:"private"}[e.kind];
+        return `<div class="row ${e.kind}"><div class="hd"><span class="who">${esc(e.who)}</span>
+          <span class="t">${esc(e.clock)}${tag?" · "+tag:""}</span></div>
+          <div class="body">${hi(e.text)}</div></div>`; }).join("")) +
     sec("debrief to the employee", `<div class="box">${hi(r.debrief)}</div>`) +
     `<div id="gates"><h3 style="font-size:11px;text-transform:uppercase;color:var(--accent);margin:0 0 4px">gates</h3>` +
       GATES.map(([k, q]) => `<div class="gate"><label><span class="k">${k}</span>${esc(q.replace("{seat}", r.seat))}</label>
@@ -115,6 +137,9 @@ function render(){
     l[k] = (l[k] === (v === "1")) ? undefined : (v === "1");
     L[r.run] = l; save(L); render();
   });
+  document.body.classList.toggle("nothink", THINK_OFF);
+  const tt = document.getElementById("tt");
+  if (tt) tt.onclick = () => { THINK_OFF = !THINK_OFF; lsSet("hp_think", THINK_OFF ? "0" : "1"); render(); };
   document.getElementById("note").oninput = e => { l.note = e.target.value; L[r.run] = l; save(L); };
   document.getElementById("prev").onclick = () => { cur = (cur - 1 + RUNS.length) % RUNS.length; render(); };
   document.getElementById("next").onclick = () => { cur = (cur + 1) % RUNS.length; render(); };
