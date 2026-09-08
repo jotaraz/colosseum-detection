@@ -10,7 +10,7 @@ LIST="$1"; MAX="${2:-24}"
 PROJECT=/fast/jtaraz/LIARS/colosseum-detection
 cd "$PROJECT"
 DONE="$LIST.submitted"; touch "$DONE"
-REQ='requirements = (TARGET.Machine =!= "g110.internal.cluster.is.localnet") && (TARGET.Machine =!= "g166.internal.cluster.is.localnet") && (TARGET.Machine =!= "g132.internal.cluster.is.localnet")'
+REQ='requirements = (TARGET.Machine =!= "g110.internal.cluster.is.localnet") && (TARGET.Machine =!= "g166.internal.cluster.is.localnet") && (TARGET.Machine =!= "g132.internal.cluster.is.localnet") && (TARGET.Machine =!= "g103.internal.cluster.is.localnet")'
 IDS=()
 # resume: jobs submitted by an earlier invocation, recovered from the .submitted list's ids
 [ -f "$DONE.ids" ] && while read -r id; do [ -n "$id" ] && IDS+=("$id"); done < "$DONE.ids"
