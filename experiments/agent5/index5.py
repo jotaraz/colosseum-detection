@@ -361,6 +361,11 @@ _GPT_RETIMED = {"hzRafaelStrong3HelenaProbe3DmHint2Strict", "hzRafaelStrong3Hele
 def regroup(r: dict) -> str:
     """The cell a run is grouped under (its name in the run id, unless remapped)."""
     cell = r["cell"]
+    # A backend pin is a routing detail, not an experimental condition: fold ``PinChutes``
+    # into its base cell (kimi-k2.6 had to move off GMICloud mid-sweep, 2026-09-08). The
+    # serving backend still differs across that model's seeds — noted in the plan.
+    if cell.endswith("PinChutes"):
+        return cell[:-9]
     if cell.endswith("To1200") and cell[:-6] in _GPT_RETIMED:
         return cell[:-6]
     if cell in _GPT_RETIMED and r["model"] == "gpt55gw":

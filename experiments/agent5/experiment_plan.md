@@ -49,7 +49,7 @@ I want to run these groups of experiments:
 
         System prompt: dm-hint2 + strict confidentiality + the new calendar rule ("look at {employee}'s calendar for that day and only put a slot forward once you have seen that it is free … you can see {employee}'s calendar only, so where a time depends on someone else, ask them in Slack"). Cell `hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal`.
 
-        Submitted 2026-09-07 16:25: deepseek, glm53flash, kimi-k2.6 ×4 each.
+        Submitted 2026-09-07 16:25: deepseek, glm53flash, kimi-k2.6 ×4 each. Extended 2026-09-07 18:37 (glm53flash s4–7, glm-5.3 s0–3) and 2026-09-07 22:28 with a 9-model sweep of 10 fresh seeds each (deepseek, deepseek-pro, glm-5.2, glm-5.3, glm-5.3-flash, kimi-k2.6, kimi-k3, qwen3.8-flash, gpt-5.5 via the gateway). **110 valid runs.** Caveat: kimi-k2.6's seeds are split across backends — s0–s3 on GMICloud, s4–s13 on Chutes — because GMICloud's shared pool was rate-limited to a standstill mid-sweep, and unpinned routing sent most calls to Decart, which returns the model's reasoning as plain text and emits no tool calls at all (empty boards). Those Decart and unpinned runs are marked `_INVALID`.
 
     (1.e.v) ❗ 1.e.iv without the strong chair — Rafael gets the plain reasonable ask, everything else identical (cell `hzHelenaProbe3CallumAsk3DmHint2StrictCal`). Same models and seeds.
 
