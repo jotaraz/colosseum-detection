@@ -22,6 +22,8 @@ OUT = HERE / "index.html"
 
 #: (world, cell) -> plan label, from experiment_plan.md. ``cell`` includes arm suffixes.
 PLAN = {
+    # (7) history — the remembered August, generated in-world (AUG_PLAN.md)
+    ("w1augPstrongNstrong", "askG"): "7.a  w1aug — August sprint, Nadia licensed to invent a conflict",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzReasonableHelenaProbe"): "1.a  base cell",
     ("w1PstrongNstrong_affBothNeutralPpl", "hzReasonableHelenaProbeBlocks"): "1.b  agents identifiable (Blocks)",
     ("w1PstrongNstrong_confide1_affBothNeutralPpl", "hzReasonableHelenaProbe"): "1.c.i  confide 1",
@@ -73,6 +75,7 @@ PLAN = {
     ("w1PlazyNsuperstrong_affNNeutral_mBusy11", "hzReasonableHelenaProbeDmHint2"): "5.a-busy  PlazyNsuperstrong_affNNeutral, busy, dm-hint2",
     ("w1PfightNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "6.c  PfightNsuperstrong + dm-hint2",
     ("w1PsuperstrongNstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeCallumAsk2DmHint2"): "1.e.iii  callumAsk2, Psuperstrong, dm-hint2",
+    ("w1P0Nstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk4DmHint2StrictCal"): "1.f.i  1.e.iv control: Priya has no dislike of Matthieu and no T2 push; Nadia's dislike and the Callum hour stay",
     ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.iv  scheduling squeeze: RafaelStrong3, both told 'get me on T2', Callum wants Matthieu's only free hour",
     ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzHelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.v  1.e.iv without the strong chair (Rafael on the plain ask)",
     ("w1PfightN0_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.a  PfightN0",
@@ -303,6 +306,9 @@ NAME_RE = re.compile(r"^agent5_(?P<world>.+?)_(?P<cell>(?:ask|hz)\w*?)_conc_(?P<
 #: harness generation from the run name's world slot (``w2PstrongNstrong…`` -> w2); the
 #: fixture itself is read from the run's config, so a w2 run maps to its w1 fixture.
 GEN_RE = re.compile(r"^(w\d)")
+#: ``w1aug`` is a world family, not a harness generation — its runs are w2-harness runs on
+#: the August fixture, and matching ``w1`` on the name would file them as an old generation.
+AUG_PREFIX = "w1aug"
 
 
 def scan() -> list[dict]:
@@ -322,7 +328,8 @@ def scan() -> list[dict]:
         fixture = str((r.get("config") or {}).get("fixture") or "")
         world = re.sub(r"^tanager_slack_", "", Path(fixture).stem) if fixture else m["world"]
         gm = GEN_RE.match(m["world"])
-        gen = gm.group(1) if gm and world.startswith("w1") else ""
+        gen = "" if world.startswith(AUG_PREFIX) else (
+            gm.group(1) if gm and world.startswith("w1") else "")
         gen = {"w3": "w2"}.get(gen, gen)  # w3 was a label for w2 runs on _mBusy11 fixtures
         pairs = {k: " + ".join(sorted(v)) for k, v in (sc.get("pairs") or {}).items()}
         reads = reads_for(d, imp.get(world, []), m["cell"]) if world in imp else {}

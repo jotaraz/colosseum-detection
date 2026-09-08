@@ -302,7 +302,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            dm_hint2: bool = False, factual: bool = False, preask: str = "",
            avoid: tuple = (), strict: bool = False, priya_t2: bool = False,
            reasoning_summary: bool = False, t2_ask: tuple = (),
-           callum_ask3: bool = False, calendar_rule: bool = False,
+           callum_ask3: bool = False, callum_ask4: bool = False, calendar_rule: bool = False,
            no_pin: bool = False, pin_override: str = "") -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
     under a different ending rule never share a glob with full rollouts; ``converge_on`` /
@@ -360,16 +360,17 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         raise SystemExit(f"gen must be one of {GENS}")
     if gen == "w2" and spec["mode"] == "hz":
         converge_on = "horizon"
-    if sum(map(bool, (callum_ask, callum_ask2, callum_ask3))) > 1:
-        raise SystemExit("pick one of --callum-ask / --callum-ask2 / --callum-ask3")
-    if callum_ask or callum_ask2 or callum_ask3:
+    if sum(map(bool, (callum_ask, callum_ask2, callum_ask3, callum_ask4))) > 1:
+        raise SystemExit("pick one of --callum-ask / --callum-ask2 / --callum-ask3 / --callum-ask4")
+    if callum_ask or callum_ask2 or callum_ask3 or callum_ask4:
         if "callumBereavement" in world_tag:
             raise SystemExit("callumAsk is incompatible with callumBereavement (W1_PLAN §4.6)")
-        clash = [w for w in (("Priya", "Nadia", "Matthieu") if callum_ask3 else ("Priya",))
+        clash = [w for w in (("Priya", "Nadia", "Matthieu") if (callum_ask3 or callum_ask4) else ("Priya",))
                  if w in spec.get("ask_overrides", {})]
         if clash:
             raise SystemExit(f"{cell} already overrides {clash}'s ask; callumAsk needs it")
-        tag = ("CallumAsk3" if callum_ask3 else "CallumAsk2" if callum_ask2 else "CallumAsk") + tag
+        tag = ("CallumAsk4" if callum_ask4 else "CallumAsk3" if callum_ask3 else
+               "CallumAsk2" if callum_ask2 else "CallumAsk") + tag
     run_world = world_tag if gen == "w1" else gen + world_tag[len("w1"):]
     name = f"agent5_{run_world}_{cell}{tag}_conc_{model_slug}_s{seed}"
     fixture = HERE / "fixtures" / f"tanager_slack_{world_tag}.json"
@@ -427,6 +428,13 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         lines.insert(2, f"script: {CALLUM_ASK_SCRIPT}")
         overrides["Priya"] = CALLUM_ASK
         overrides["Matthieu"] = MATTHIEU_ASK2
+        lines += ["ask_at_overrides:"] + [f"  {who}: '{at}'" for who, at in CALLUM_ASK2_AT.items()]
+    if callum_ask4:
+        # plan 1.f.i: Priya has no reason to steer — the plain two-part callum ask, no T2 push.
+        lines.insert(2, f"script: {CALLUM_ASK_SCRIPT}")
+        overrides["Priya"] = CALLUM_ASK
+        overrides["Nadia"] = T2_ASK3
+        overrides["Matthieu"] = MATTHIEU_ASK3
         lines += ["ask_at_overrides:"] + [f"  {who}: '{at}'" for who, at in CALLUM_ASK2_AT.items()]
     if callum_ask3:
         lines.insert(2, f"script: {CALLUM_ASK_SCRIPT}")
@@ -515,6 +523,9 @@ def main() -> None:
     ap.add_argument("--no-pin", action="store_true",
                     help="drop this model's OpenRouter backend pin (suffix 'NoPin'); use when "
                          "the pinned pool is rate-limited")
+    ap.add_argument("--callum-ask4", action="store_true",
+                    help="plan 1.f.i: like --callum-ask3 but Priya gets the plain two-part callum "
+                         "ask (no 'get me on T2'); suffix 'CallumAsk4'")
     ap.add_argument("--calendar-rule", action="store_true",
                     help="system prompt tells the assistant to check its employee's calendar "
                          "before proposing/accepting a time (prompts5.CALENDAR_RULE); suffix 'Cal'")
@@ -562,7 +573,7 @@ def main() -> None:
                                     strict=args.strict, priya_t2=args.priya_t2,
                                     reasoning_summary=args.reasoning_summary,
                                     t2_ask=tuple(args.t2_ask),
-                                    callum_ask3=args.callum_ask3,
+                                    callum_ask3=args.callum_ask3, callum_ask4=args.callum_ask4,
                                     calendar_rule=args.calendar_rule, no_pin=args.no_pin,
                                     pin_override=args.pin)
                 path = CONFIGS / f"{name}.yaml"
