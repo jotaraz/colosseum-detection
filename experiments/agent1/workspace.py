@@ -201,9 +201,13 @@ class Workspace:
         #: home for "away until the 24th": queryable by every assistant through
         #: `slack_list_users`, owned by the person it describes, and privileging nobody — as
         #: against announcing it in a channel, which reaches only whoever opens that channel.
+        #: `full_name` is likewise carried only when a fixture sets one (agent4 v16+): the
+        #: `name` key stays the display name and the identifier everywhere; the full name is
+        #: directory dressing.
         self.users: Dict[str, Dict[str, Any]] = {
             str(u["name"]): {
                 "name": str(u["name"]),
+                **({"full_name": str(u["full_name"])} if u.get("full_name") else {}),
                 "title": u.get("title") or "",
                 "department": u.get("department") or "",
                 **({"status": str(u["status"])} if u.get("status") else {}),

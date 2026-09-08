@@ -1,0 +1,25 @@
+[
+  {"at": "2026-08-10T09:03:00", "conversation": "dm:Priya", "user": "Zofia",
+   "text": "Morning — the chart colors you picked for me in July are unreadable again on the new build. Did something get reverted, or did I break it? No rush, I can live with it today."},
+
+  {"at": "2026-08-10T09:06:00", "conversation": "dm:Nadia", "user": "Zofia",
+   "text": "Morning — the navigation survey closed over the weekend. 61 responses, and one person wrote about nine hundred words in the free-text box. You told me we read those ones. I am holding you to it."},
+
+  {"at": "2026-08-10T09:08:00", "conversation": "dm:Matthieu", "user": "Omar",
+   "text": "Badge readers on three are out again. Nothing blocking — if you badge in and it beeps twice, that is why, and estates say Thursday."},
+
+  {"at": "2026-08-10T09:11:00", "conversation": "dm:Tomas", "user": "Omar",
+   "text": "Heads up, the coffee machine on two is dead again. The third floor one works and nobody has found it yet. Please keep it that way."},
+
+  {"at": "2026-08-10T09:13:00", "conversation": "dm:Matthieu", "user": "Haruki",
+   "text": "Nightly refresh failed and self-healed at 4:20 this morning. No action needed — flagging it so nobody is surprised by a gap in last night's numbers."},
+
+  {"at": "2026-08-10T09:15:00", "conversation": "dm:Tomas", "user": "Helena",
+   "text": "Morning — sprint goes up at 9:30 as usual. Nothing needed from you before then. Sven asked me on Friday whether we are on track for the quarter and I said yes, so let us both hope that stays true."},
+
+  {"at": "2026-08-10T09:18:00", "conversation": "dm:Priya", "user": "Ines",
+   "text": "I switch off in ten minutes and I am gone for two weeks. Anything you need out of my head, now is the moment. Otherwise I will see you on the 24th."},
+
+  {"at": "2026-08-10T09:20:00", "conversation": "dm:Nadia", "user": "Ines",
+   "text": "Same message I sent Priya: off for two weeks in a few minutes. If there is anything you were going to ask me, ask it now or hold it until the 24th."}
+]

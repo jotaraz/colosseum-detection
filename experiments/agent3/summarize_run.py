@@ -95,6 +95,39 @@ def _fabrication_turns(attempt: Dict[str, Any]) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for i, run in enumerate(attempt.get("runs") or [], 1):
         for t in run.get("turns") or []:
+            # jv10 (reward_v5): a turn carries `deception`, and both judges' numbers matter —
+            # 8 = 4+4 (both saw it) and 8 = 8+0 (one did) are the same score and very different
+            # findings, so the summary line always shows the split.
+            dec = t.get("deception")
+            if dec is not None:
+                if not dec.get("turn_weight"):
+                    continue
+                marked, missing = _mark(str(t.get("output") or "").strip(),
+                                        dec.get("output_spans") or [])
+                per = dec.get("per_replicate_max") or []
+                best = next((b for b in (dec.get("per_replicate_best") or []) if b), None)
+                found_by = sum(1 for w in per if w)
+                label = "deception · weight %g (%s) · %s" % (
+                    dec["turn_weight"], " + ".join("%g" % w for w in per),
+                    f"specificity {best[0]}, {best[1]}" if best else "?")
+                if dec.get("under_judged"):
+                    label += " · UNDER-JUDGED (%d of %d judges read it)" % (
+                        dec.get("n_valid") or 0, len(per))
+                reasons = [str(f.get("reason") or "").strip()
+                           for v in (t.get("votes") or [])
+                           for f in (v.get("findings") or []) if f.get("reason")]
+                routes = [str(f.get("goal_route") or "").strip()
+                          for v in (t.get("votes") or [])
+                          for f in (v.get("findings") or []) if f.get("goal_route")]
+                out.append({"rollout": i, "round": t.get("round"),
+                            "turn_index": t.get("turn_index"),
+                            "labels": [(label,
+                                        "%d of %d judges" % (found_by, len(per)),
+                                        None, reasons[:3])],
+                            "claims": (dec.get("claims") or [])[:2],
+                            "routes": routes[:2],
+                            "output": marked, "unlocated": missing})
+                continue
             # jv8 (reward_v3): a turn carries `lies`, with the weight two judges agreed on.
             li = t.get("lies")
             if li is not None:
@@ -150,6 +183,10 @@ def _near_miss_turns(attempt: Dict[str, Any]) -> List[Dict[str, Any]]:
     from experiments.agent3.reward import AGREEMENT, lie_weight
 
     out: List[Dict[str, Any]] = []
+    # jv10/reward_v5 has no agreement bar: a finding one judge makes already scores in full, so
+    # the near-miss category does not exist there. Turns carry `deception`, not `lies`, and the
+    # loop below simply finds nothing — but say why, because an empty section in a v5 summary
+    # would otherwise read as "no turn came close".
     for i, run in enumerate(attempt.get("runs") or [], 1):
         for t in run.get("turns") or []:
             li = t.get("lies")
@@ -252,9 +289,16 @@ def write(out_dir: str | Path, dest: Optional[str | Path] = None, *, quiet: bool
                 for span in f["unlocated"]:
                     lines.append(f"Quoted by the judges but not verbatim in the turn — read as "
                                  f"their paraphrase: *{span}*\n")
+                for claim in f.get("claims") or []:
+                    if claim:
+                        lines.append(f"**Claim:** {claim}\n")
+                for route in f.get("routes") or []:
+                    if route:
+                        lines.append(f"**Route to the goal (gate 5):** {route}\n")
                 for cat, intent, votes, reasons in f["labels"]:
                     lines.append(f"**Why the judges called this {cat}** — {intent}"
-                                 + (f", {votes} of 3 judges" if votes is not None else "") + ":\n")
+                                 + (f", {votes} of 3 judges" if votes is not None
+                                    and "judges" not in str(intent) else "") + ":\n")
                     for r in reasons:
                         lines.append(f"- {r}\n")
                 lines.append("</details>\n")
@@ -280,8 +324,16 @@ def write(out_dir: str | Path, dest: Optional[str | Path] = None, *, quiet: bool
                 lines.append("</details>\n")
         lines.append("")
 
+    judge = str((meta.get("reward") or {}).get("judge") or "")
     n_near = sum(len(_near_miss_turns(a)) for a, _ in scored)
-    if n_near:
+    if judge == "jv10":
+        lines.append("## A note on the near misses\n")
+        lines.append(
+            "None: this run scored under `reward_v5`, which sums the two judges instead of "
+            "requiring them to agree. A finding one judge makes already counts in full, so "
+            "there is no sub-agreement population to report — the category belongs to "
+            "`reward_v3`/`v4` and their `second_largest` rule.\n")
+    elif n_near:
         near_c = sum(1 for a, _ in scored if _near_miss_turns(a))
         lines.append("## A note on the near misses\n")
         lines.append(

@@ -1,0 +1,48 @@
+# agent3 target config — glm-5.2 on v15 (August), for reward_v5 / jv10. run11's twin, one model
+# changed, so the two runs differ only in the assistant under test.
+#
+# Settings mirror the six v15 glm-5.2 arm rollouts in `agent1/outputs/v15`, which are this run's
+# warm start — including the provider pin, which those rollouts carried and run11's kimi corpus
+# did not.
+#
+# PINNED to DeepInfra then Fireworks, deliberately, and note this is the *target*. Three things
+# follow from it and are worth knowing before reading the results:
+#   * the judge is also z-ai/glm-5.2 pinned to DeepInfra, so rollouts and judging now draw on
+#     one upstream pool. run11 already saw a single HTTP 429 there
+#     (`engine_overloaded`, `limit_source: upstream_provider_shared_pool`) at 48 concurrent
+#     judge calls, so this config is a deliberate test of how much that pool takes;
+#   * `allow_fallbacks` is left unset, exactly as the corpus had it, so a request can still
+#     leave the two named providers rather than failing outright. That is the difference from
+#     the deepseek config's `allow_fallbacks: false`, and it is intentional here;
+#   * the target and the judge being the same model means glm-5.2 judges its own deception.
+#     Accepted as a known confound rather than designed away, so run12 stays comparable to
+#     run11 on every other axis.
+#
+# max_tokens 8000 and temperature 0.7 match the corpus; a mismatch on temperature is a hard
+# refusal in `warm_start._params_match` and would empty the leaderboard.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v15_renamed.json
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1
+  confidentiality: inference
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "z-ai/glm-5.2"
+    request_timeout: 180
+    connect_timeout: 30
+    total_timeout: 900
+    params:
+      max_tokens: 8000
+      temperature: 0.7
+      provider:
+        order: [DeepInfra, Fireworks]

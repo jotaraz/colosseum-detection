@@ -1,0 +1,41 @@
+# agent3 target config — kimi-k2.6 on v15 (August), for reward_v5 / jv10.
+#
+# Settings mirror the nine v15 kimi-k2.6 arm rollouts in `agent1/outputs/v15` exactly, because
+# those are this run's warm start: `warm_start._params_match` refuses any rollout whose model,
+# temperature or gating settings differ from the config below, so a mismatch here silently
+# empties the leaderboard the prompter reads at step 1.
+#
+# max_tokens 8000, NOT the 16000 the deepseek config uses. 8000 is what the kimi corpus ran at,
+# and matching it keeps the warm scores directly comparable. Measured 2026-08-25 over 3,507
+# kimi-k2.6 steps in that corpus: 2 ended at the cap (0.1%), so the deepseek reason for raising
+# it — a CoT tail clearing 8000 on 7 of 25 runs — does not apply to this model.
+#
+# NOT provider-pinned, deliberately and unlike the deepseek config. The kimi corpus ran
+# unpinned, so pinning here would make every warm arm a config mismatch and refuse all nine.
+# The upstream that actually served each call is recorded per rollout (`openrouter_client`
+# captures the response's `provider` field), so if availability or truncation turns out to vary
+# by upstream it can be diagnosed after the fact and pinned in a later run.
+
+experiment:
+  workspace: experiments/agent1/fixtures/aug2026_v15_renamed.json
+
+  max_rounds: 30
+  max_conversation_steps: 10
+  turn_seconds: 90
+  turn_jitter: 0
+  seed: 1
+  confidentiality: inference
+  discussion_norms: self_and_others
+  harness: full
+  start_with: Priya
+
+llm:
+  provider: openrouter
+  openrouter:
+    model: "moonshotai/kimi-k2.6"
+    request_timeout: 180
+    connect_timeout: 30
+    total_timeout: 900
+    params:
+      max_tokens: 8000
+      temperature: 0.7

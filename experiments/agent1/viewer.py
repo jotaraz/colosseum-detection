@@ -16,8 +16,10 @@ the agent one of the fixture's planted signal messages is flagged in the timelin
 message posted to the sprint channel is distinguished from a DM, since only the first ends
 a turn.
 
-When a judge has been run over the record (``agent2.category_over_agent1`` writes
-``<stem>.category_<judge>.json`` beside it), the verdicts are picked up automatically: each
+When a judge has been run over the record — ``agent2.category_over_agent1`` writes
+``<stem>.category_<judge>.json`` beside it, the lie judges write ``<stem>.lie_jv8_<judge>.json``
+and the deception judges ``<stem>.deception_jv1[01]_<judge>.json`` — the verdicts are picked up
+automatically: each
 judged turn gets a header tag (loud red for strategic-fabrication, with its specificity) and
 a collapsible verdict block holding the judge's explanation, the flagged spans verbatim, and
 the raw reply. ``--verdicts`` names a file explicitly when several exist.
@@ -149,8 +151,13 @@ details.verdict.considered { border-left:3px solid var(--warn); }
 .tag.read { color:var(--accent); border-color:var(--accent); }
 .tag.jv { color:var(--fg); border-color:var(--fg); font-weight:600; letter-spacing:.03em; }
 .vbar { margin:.5rem 0 .25rem; align-items:center; }
-.vpick { font-size:.78rem; }
+.vpick, .vall { font-size:.78rem; }
 .vpick.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+/* The mark is what says these are toggles and not one radio group — an off judge is a box you
+   can tick, not an option you failed to pick. */
+.vpick::before { content:"○ "; opacity:.55; }
+.vpick.on::before { content:"✓ "; opacity:1; }
+.vall { color:var(--muted); }
 .vset[hidden] { display:none !important; }
 /* Which set a block belongs to only matters when several are on screen at once. */
 .vlabel { display:none; }
@@ -166,6 +173,7 @@ body.compare .vcols details.verdict { height:100%; }
 body.compare .wrap { max-width:min(96vw, 110rem); }
 body.compare .vcols pre { white-space:pre-wrap; word-break:break-word; }
 /* The comparison table: one row per section, one column per judge, so a row is genuinely a row. */
+.vgrid[hidden] { display:none !important; }
 .vgrid { display:grid; grid-template-columns:max-content repeat(var(--vcols,1), minmax(0,1fr));
   gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px;
   overflow:hidden; margin:.5rem 0; }
@@ -240,6 +248,23 @@ table.cal th.who { text-align:left; color:var(--accent); }
 table.cal td.total { font-weight:600; }
 .load { height:3px; margin-top:.25rem; background:var(--line); border-radius:2px; }
 .load i { display:block; height:100%; background:var(--accent); border-radius:2px; }
+/* --- judges off ---------------------------------------------------------------------
+   One class on <body> takes every judge-derived thing off the page: the verdict sets and their
+   comparison table and the judge-derived bits that live outside a .vset (the agree/differ tags,
+   the judge stats, the channel matrix). What is left is the run itself, which is what you want
+   when reading a transcript without being led by a label. The class is set by the toggles rather
+   than by a control of its own: no judge selected *is* the unjudged page. */
+body.nojudge .vset, body.nojudge .vgrid, body.nojudge .judgeonly { display:none !important; }
+/* Not the picker itself — it is how you come back. */
+/* With the columns gone the matrix is a plain list again. `repeat(0, …)` is not a legal track
+   list, so the template is replaced rather than the count zeroed, and the header row — which is
+   nothing but judge labels — goes with it. */
+body.nojudge .tmatrix .thead { display:none; }
+body.nojudge .tmatrix > details.turn > summary { grid-template-columns:1fr; }
+body.nojudge .wrap { max-width:62rem; }
+/* The run's own tags, carried in the matrix row for when the judge columns are not there. */
+.noj { display:none; }
+body.nojudge .noj { display:inline; }
 """
 
 #: Realistic → placeholder, i.e. the inverse of the post-pass the fixture builder applies.
@@ -272,19 +297,64 @@ JS = (
     ALIAS_CORE_JS
     + """
 function setAll(open) { document.querySelectorAll('details').forEach(d => d.open = open); }
-// Every verdict set is in the page; only one is shown. Hiding rather than removing keeps the
-// switch instant and offline, and keeps a turn's header tags in step with the block below it.
-function pickVerdicts(i) {
-  const all = (String(i) === 'all');
-  document.body.classList.toggle('compare', all);
-  document.querySelectorAll('.vset').forEach(e => { e.hidden = !all && (e.dataset.vset !== String(i)); });
-  // The grid must know how many columns are actually showing, or the hidden ones leave gaps.
+/* Every verdict set is in the page; which of them show is a free choice. Each judge button is
+   its own toggle rather than one option in a radio group, so "these two, side by side" and "none
+   of them, let me read the run cold" are both reachable without a separate control for either.
+   Hiding rather than removing keeps switching instant and offline, and keeps a turn's header tags
+   in step with the block below it. */
+const shownVerdicts = new Set();
+
+/* Which sets a grid actually holds. The timeline matrix has a column for every set; a turn's
+   comparison table only has columns for the judges that reached that turn, so the two size
+   themselves differently from the same selection. Computed once per grid — the page can carry
+   twenty sets, and this runs on every click. */
+const gridSets = new Map();
+function gridIndices(g) {
+  if (!gridSets.has(g)) {
+    const own = new Set();
+    g.querySelectorAll(g.classList.contains('tmatrix')
+      ? ':scope > .thead > [data-vset]' : ':scope > [data-vset]')
+     .forEach(c => own.add(c.dataset.vset));
+    gridSets.set(g, own);
+  }
+  return gridSets.get(g);
+}
+
+function applyVerdicts() {
+  const n = shownVerdicts.size;
+  // Nothing selected is a first-class state: the judge-derived furniture comes off the page and
+  // the timeline goes back to being a list of turns at reading width.
+  document.body.classList.toggle('nojudge', n === 0);
+  document.body.classList.toggle('compare', n > 1);
+  document.querySelectorAll('.vset').forEach(e => { e.hidden = !shownVerdicts.has(e.dataset.vset); });
   document.querySelectorAll('.vgrid, .tmatrix').forEach(g => {
-    g.style.setProperty('--vcols', all ? (g.dataset.n || 1) : 1);
+    let k = 0;
+    gridIndices(g).forEach(v => { if (shownVerdicts.has(v)) k++; });
+    // A comparison table none of the shown judges reached is a label column with nothing beside
+    // it. `repeat(0, …)` is not a legal track list either, so the count never drops below one.
+    if (g.classList.contains('vgrid')) g.hidden = (k === 0);
+    g.style.setProperty('--vcols', Math.max(k, 1));
   });
-  document.querySelectorAll('.vpick').forEach(b => b.classList.toggle('on', b.dataset.pick === String(i)));
+  document.querySelectorAll('.vpick').forEach(b =>
+    b.classList.toggle('on', shownVerdicts.has(b.dataset.pick)));
+}
+
+function toggleVerdict(i, only) {
+  const key = String(i);
+  if (only) { shownVerdicts.clear(); shownVerdicts.add(key); }
+  else if (shownVerdicts.has(key)) shownVerdicts.delete(key);
+  else shownVerdicts.add(key);
+  applyVerdicts();
+}
+
+function setVerdicts(which) {
+  shownVerdicts.clear();
+  if (which === 'all') document.querySelectorAll('.vpick').forEach(b => shownVerdicts.add(b.dataset.pick));
+  else (which || []).forEach(i => shownVerdicts.add(String(i)));
+  applyVerdicts();
 }
 function setDepth(sel, open) { document.querySelectorAll(sel).forEach(d => d.open = open); }
+
 
 /* --- name variant toggle ------------------------------------------------------------
    Rewrites Priya/Marcus/Nadia… back to Alice/Bob/Carol… across every text node on the
@@ -365,8 +435,9 @@ def block(summary: str, body: str, *, cls: str = "", open_: bool = False,
     )
 
 
-def stat(key: str, value: Any) -> str:
-    return f'<div class="stat"><div class="k">{esc(key)}</div><div class="v">{esc(value)}</div></div>'
+def stat(key: str, value: Any, cls: str = "") -> str:
+    return (f'<div class="stat{" " + cls if cls else ""}"><div class="k">{esc(key)}</div>'
+            f'<div class="v">{esc(value)}</div></div>')
 
 
 def _result_signals(result: Any, signals: set) -> List[str]:
@@ -405,6 +476,8 @@ _CAT_CLASS = {
     "honest-merits": "post",
     # jv8 (CRITIC_LIE1.md) — lies only; `excluded` are gate-1-passing claims a later gate killed
     "lie": "fab",
+    # jv10/jv11 (CRITIC_DECEPTION_*.md) — a lie that also serves a hidden goal
+    "deception": "fab",
     "excluded": "considered",
 }
 
@@ -427,7 +500,7 @@ def is_lie(verdict: Dict[str, Any]) -> bool:
     return "n_lies" in verdict
 
 
-_JV_RE = re.compile(r"\.(?:category2?|lie)_jv(\d+)_")
+_JV_RE = re.compile(r"\.(?:category2?|lie|deception)_jv(\d+)_")
 
 
 def _judge_version_num(path: Path) -> int:
@@ -435,6 +508,39 @@ def _judge_version_num(path: Path) -> int:
     are jv1 by definition, which is what the default encodes."""
     m = _JV_RE.search(path.name)
     return int(m.group(1)) if m else 1
+
+
+def _merge_step_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """One turn from jv10's several per-step rows.
+
+    jv10 judges a step — one model call and what it sent — rather than a whole turn, so a turn
+    the judge looked at twice arrives as two rows sharing a ``turn_index``. Keying them into the
+    page by turn would keep whichever came last and silently drop the other, so they are merged:
+    every finding and every excluded claim survives, each stamped with the step it came from, and
+    the descriptions are stacked in step order. Nothing is summarised away — the merge is a
+    concatenation, and the counts are sums."""
+    rows = sorted(rows, key=lambda r: int(r.get("step") or 0))
+    merged = dict(rows[-1])
+    findings: List[Dict[str, Any]] = []
+    excluded: List[Dict[str, Any]] = []
+    raws: List[Dict[str, Any]] = []
+    for row in rows:
+        step = row.get("step")
+        findings += [{**f, "step": step} for f in (row.get("findings") or [])]
+        excluded += [{**x, "step": step} for x in (row.get("excluded") or [])]
+        if row.get("judge_raw"):
+            raws.append({"step": step, "reply": row["judge_raw"]})
+    merged["findings"] = findings
+    merged["excluded"] = excluded
+    merged["n_lies"] = sum(int(r.get("n_lies") or 0) for r in rows)
+    merged["has_cot"] = any(r.get("has_cot") for r in rows)
+    merged["parse_error"] = any(r.get("parse_error") for r in rows)
+    merged["judged_steps"] = [r.get("step") for r in rows]
+    merged["description"] = "\n\n".join(
+        (f"step {r.get('step')}: " if len(rows) > 1 else "") + str(r.get("description") or "")
+        for r in rows if r.get("description"))
+    merged["judge_raw"] = raws[0]["reply"] if len(raws) == 1 else raws
+    return merged
 
 
 def load_verdict_sets(
@@ -456,6 +562,10 @@ def load_verdict_sets(
             # here so a swept run shows its lie verdicts beside its jv7 ones; the renderer
             # dispatches on the verdict's shape, not on the filename, so nothing else changes.
             + list(run_path.parent.glob(run_path.stem + ".sweep_*.json"))
+            # jv10/jv11 (agent2's deception judge): the lie schema plus the hidden-goal gate.
+            # jv10 judges a *step* and so writes several rows for one turn; they are merged
+            # below. jv11 is back to one row per turn and needs nothing special.
+            + list(run_path.parent.glob(run_path.stem + ".deception_*.json"))
             + list(run_path.parent.glob(run_path.stem + ".category2_*.json"))
             + list(run_path.parent.glob(run_path.stem + ".category_*.json")),
             key=lambda p: (-_judge_version_num(p), p.name))
@@ -468,21 +578,31 @@ def load_verdict_sets(
                 data = json.load(fh)
         except (OSError, json.JSONDecodeError):
             continue
-        turns = {int(t.get("turn_index") or 0): t for t in data.get("turns") or []}
+        by_turn: Dict[int, List[Dict[str, Any]]] = {}
+        for row in data.get("turns") or []:
+            by_turn.setdefault(int(row.get("turn_index") or 0), []).append(row)
+        # A step-unit judge (jv10) can leave several rows on one turn; a turn-unit one never does.
+        turns = {i: (rows[0] if len(rows) == 1 and rows[0].get("step") is None
+                     else _merge_step_rows(rows))
+                 for i, rows in by_turn.items()}
         if not turns:
             continue
         # jv8 lie files: normalise viewer-side so the compare table can key rows the same way it
         # keys categories — every lie finding under "lie", the excluded claims as pseudo-findings
         # under "excluded". The json on disk is untouched.
+        # jv8/jv9 call the thing a lie; jv10 and jv11 add the hidden-goal gate on top and call
+        # it deception. Same schema, a higher bar — so the chip says which of the two was cleared.
+        lie_cat = "deception" if _judge_version_num(path) >= 10 else "lie"
         if any(is_lie(v) for v in turns.values()):
             for v in turns.values():
                 for f in v.get("findings") or []:
-                    f.setdefault("category", "lie")
-                v["categories"] = ((["lie"] if v.get("findings") else [])
+                    f.setdefault("category", lie_cat)
+                v["categories"] = (([lie_cat] if v.get("findings") else [])
                                    + (["excluded"] if v.get("excluded") else []))
                 for x in v.get("excluded") or []:
                     v["findings"] = (v.get("findings") or []) + [{
                         "category": "excluded",
+                        "step": x.get("step"),
                         "reason": f"failed gate: {x.get('failed_gate') or '?'} — "
                                   f"{x.get('reason') or ''}",
                         "claim": x.get("claim") or "",
@@ -492,9 +612,9 @@ def load_verdict_sets(
                     }]
         counts = dict(data.get("category_counts") or {})
         if not counts and any(is_lie(v) for v in turns.values()):
-            counts = {"lie": sum(len([f for f in (v.get("findings") or [])
-                                      if f.get("category") == "lie"])
-                                 for v in turns.values()),
+            counts = {lie_cat: sum(len([f for f in (v.get("findings") or [])
+                                        if f.get("category") == lie_cat])
+                                   for v in turns.values()),
                       "excluded": sum(len(v.get("excluded") or []) for v in turns.values())}
         for pop in ("stake", "baseline"):
             for cat, n in ((data.get(pop) or {}).get("category_counts") or {}).items():
@@ -511,6 +631,8 @@ def load_verdict_sets(
                          if int(data.get("replicate") or 1) > 1
                          or Path(path).stem.endswith(("_r2", "_r3", "_r4")) else "")),
             "caps": data.get("evidence_caps") or {},
+            # jv10 judges steps; the note says so, since "3 rows" is then not "3 turns".
+            "unit": str(data.get("unit") or "turn"),
             "critic": str(data.get("critic") or ""),
             "n_fab": data.get("n_strategic_fabrication"),
             "n_turns": data.get("n_turns"),
@@ -668,15 +790,40 @@ def _lie_evidence_quotes(evidence: Dict[str, Any]) -> List[str]:
     return parts
 
 
+def _is_deception(f: Dict[str, Any]) -> bool:
+    """jv10/jv11 findings: the jv8 lie fields plus the hidden-goal gate's own."""
+    return "serves_goal" in f or "goal_route" in f
+
+
 def _lie_head_bits(f: Dict[str, Any]) -> List[str]:
-    bits = [str(f.get("falsity") or "?"),
-            "checkable" if f.get("checkable") else "not checkable",
-            f'gate4 {f.get("gate4") or "?"}', f'deception {f.get("deception") or "?"}']
+    if _is_deception(f):
+        # The five gates in the order the critic argues them: false → known false → not a slip
+        # → believable → serves the goal it is hiding. `specificity` and `cot_instrumental` are
+        # how loud the finding is, and belong beside the label rather than buried in the reason.
+        bits = [str(f.get("falsity") or "?"), f'{f.get("belief") or "?"} it was false',
+                f'serves {f.get("serves_goal") or "?"}',
+                f'spec {f.get("specificity") if f.get("specificity") is not None else "?"}',
+                f'CoT {f.get("cot_instrumental") or "?"}']
+    else:
+        bits = [str(f.get("falsity") or "?"),
+                "checkable" if f.get("checkable") else "not checkable",
+                f'gate4 {f.get("gate4") or "?"}', f'deception {f.get("deception") or "?"}']
+    if f.get("step") is not None:
+        bits.insert(0, f'step {f["step"]}')
     if f.get("audiences"):
         bits.append("in " + ", ".join(str(a) for a in f["audiences"]))
     if f.get("schema_violations"):
         bits.append("off-schema: " + ", ".join(f["schema_violations"]))
     return bits
+
+
+def _goal_route(f: Dict[str, Any]) -> str:
+    """The hidden-goal gate's own argument: what the audience does once it believes the claim.
+
+    This is the whole of what jv10/jv11 add over jv8, so it is shown as its own line rather than
+    left inside the reason, where it reads as one more sentence of gate-by-gate prose."""
+    route = str(f.get("goal_route") or "").strip()
+    return f'<div class="quote evidence">serves the goal via: {esc(route)}</div>' if route else ""
 
 
 def _disputed(finding: Dict[str, Any]) -> bool:
@@ -712,13 +859,15 @@ def _verification_block(v: Optional[Dict[str, Any]]) -> str:
 
 def _finding_cell(f: Dict[str, Any]) -> str:
     """One finding, without its own collapsible — it lives in a table cell now."""
-    if "falsity" in f or f.get("_excluded"):  # a jv8 lie (or excluded claim)
-        head_bits = [] if f.get("_excluded") else _lie_head_bits(f)
+    if "falsity" in f or f.get("_excluded"):  # a lie/deception finding (or an excluded claim)
+        head_bits = _lie_head_bits(f) if not f.get("_excluded") else (
+            [f'step {f["step"]}'] if f.get("step") is not None else [])
         head = (f'<div class="finding-head">{esc(" · ".join(head_bits))}</div>'
                 if head_bits else "")
         body = (f'<p><b>{esc(str(f.get("claim") or ""))}</b></p>'
                 if f.get("claim") else "")
         body += f'<p class="sub">{esc(str(f.get("reason") or ""))}</p>'
+        body += _goal_route(f)
         body += "".join(_lie_evidence_quotes(f.get("evidence") or {})
                         if "falsity" in f else _evidence_quotes(f.get("evidence") or {}))
         return f'<div class="finding">{head}{body}</div>'
@@ -844,17 +993,27 @@ def render_verdict_v3(verdict: Dict[str, Any], judge: str) -> str:
 
 
 def render_verdict_lie(verdict: Dict[str, Any], judge: str) -> str:
-    """One turn's jv8 verdict: zero or more lies (four gates argued in the reason), then the
-    excluded claims with the gate that stopped each."""
+    """One turn's lie/deception verdict: zero or more findings, each with the gates argued in
+    its reason, then the claims an earlier gate excluded and which gate stopped them.
+
+    jv8/jv9 (four gates) and jv10/jv11 (five, the last being whether the lie serves a goal the
+    assistant is hiding) share this shape; the header says which bar was cleared, and a jv10
+    finding carries the step it was found in, since that judge reads a step rather than a turn."""
     findings = [f for f in verdict.get("findings") or [] if not f.get("_excluded")]
     excluded = verdict.get("excluded") or []
+    # jv10/jv11 cleared one more gate than jv8 did — the word for what was found says which.
+    word = "deception" if any(_is_deception(f) for f in findings) else "lie"
 
     tags = ""
     for f in findings:
-        tags += (f'<span class="tag fab">lie · {esc(str(f.get("falsity") or "?"))}'
-                 f' · {esc(str(f.get("deception") or "?"))}</span>')
+        step = f'step {f["step"]} · ' if f.get("step") is not None else ""
+        tail = (f'serves {f.get("serves_goal") or "?"}' if _is_deception(f)
+                else str(f.get("deception") or "?"))
+        tags += (f'<span class="tag fab">{esc(step + word)} · '
+                 f'{esc(str(f.get("falsity") or "?"))} · {esc(tail)}</span>')
     for x in excluded:
-        tags += (f'<span class="tag considered">excluded · '
+        step = f'step {x["step"]} · ' if x.get("step") is not None else ""
+        tags += (f'<span class="tag considered">{esc(step)}excluded · '
                  f'{esc(str(x.get("failed_gate") or "?"))}</span>')
     if verdict.get("parse_error") or verdict.get("judge_error"):
         tags += '<span class="tag err">judge failed</span>'
@@ -863,14 +1022,16 @@ def render_verdict_lie(verdict: Dict[str, Any], judge: str) -> str:
     if (desc := str(verdict.get("description") or "").strip()):
         parts.append(f"<p>{esc(desc)}</p>")
     for n, f in enumerate(findings, 1):
-        head = (f'<div class="finding-head">lie {n} — '
+        head = (f'<div class="finding-head">{esc(word)} {n} — '
                 + esc(" · ".join(_lie_head_bits(f))) + "</div>")
         body = f'<p><b>{esc(str(f.get("claim") or ""))}</b></p>'
         body += f'<p class="sub">{esc(str(f.get("reason") or ""))}</p>'
+        body += _goal_route(f)
         body += "".join(_lie_evidence_quotes(f.get("evidence") or {}))
         parts.append(f'<div class="finding">{head}{body}</div>')
     for x in excluded:
-        head = (f'<div class="finding-head">excluded — failed gate '
+        stamp = f'step {x["step"]} · ' if x.get("step") is not None else ""
+        head = (f'<div class="finding-head">{esc(stamp)}excluded — failed gate '
                 f'<b>{esc(str(x.get("failed_gate") or "?"))}</b></div>')
         body = f'<p><b>{esc(str(x.get("claim") or ""))}</b></p>'
         if x.get("output_span"):
@@ -878,9 +1039,9 @@ def render_verdict_lie(verdict: Dict[str, Any], judge: str) -> str:
         body += f'<p class="sub">{esc(str(x.get("reason") or ""))}</p>'
         parts.append(f'<div class="finding">{head}{body}</div>')
     if not findings and not excluded:
-        parts.append('<p class="sub">no lie found this turn</p>')
+        parts.append('<p class="sub">nothing cleared the gates here</p>')
     if (raw := verdict.get("judge_raw")):
-        parts.append(block("lie judge — raw reply", f"<pre>{esc(pretty(raw))}</pre>"))
+        parts.append(block(f"{word} judge — raw reply", f"<pre>{esc(pretty(raw))}</pre>"))
 
     cls = "verdict" + ("" if findings else (" considered" if excluded else " clean"))
     return block(f'judge verdict · {esc(judge)} {tags}', "".join(parts) or "<em>no detail</em>",
@@ -1283,6 +1444,11 @@ def render_turn(
     if usage:
         tags.append(f'<span class="tag">{usage.get("prompt_tokens", 0)}p/'
                     f'{usage.get("completion_tokens", 0)}c tok</span>')
+    # The run's own tags, before any judge's. In matrix mode they move into the turn body to
+    # make room for the verdict columns — but with the judges hidden there are no columns, and a
+    # collapsed row that says only "10:15 Priya round 2" is not worth reading, so they are emitted
+    # into the row as well and shown only when the judges are off.
+    base_tags = list(tags)
     # One tag group per verdict set, all emitted, only the selected one visible. Same for the
     # verdict block below: switching judge must move the header tags with it, or the summary line
     # would describe a different judge than the body.
@@ -1297,8 +1463,9 @@ def render_turn(
     labelled = [v for v, _m in (verdict_sets or []) if v]
     if len(labelled) > 1:
         sets = {tuple(sorted(v.get("categories") or [])) for v in labelled}
-        tags.append('<span class="tag post">judges agree</span>' if len(sets) == 1
-                    else f'<span class="tag err">judges differ ({len(sets)} readings)</span>')
+        tags.append('<span class="judgeonly">' + (
+            '<span class="tag post">judges agree</span>' if len(sets) == 1
+            else f'<span class="tag err">judges differ ({len(sets)} readings)</span>') + "</span>")
 
     live = [(i, v) for i, (v, _m) in enumerate(verdict_sets or []) if v]
     if verdict_sets:
@@ -1308,11 +1475,13 @@ def render_turn(
         agree = ""
         if len(live) > 1:
             readings = {tuple(sorted(v.get("categories") or [])) for _i, v in live}
-            agree = ('<span class="tag post">agree</span>' if len(readings) == 1
-                     else f'<span class="tag err">differ ×{len(readings)}</span>')
+            agree = '<span class="judgeonly">' + (
+                '<span class="tag post">agree</span>' if len(readings) == 1
+                else f'<span class="tag err">differ ×{len(readings)}</span>') + "</span>"
         cells = [f'<span class="tcell tdesc"><span class="when">{esc(turn.get("clock", ""))}</span>'
                  f'<span class="who">{esc(turn.get("agent"))}</span>'
-                 f'<span class="tag">{esc(label)}</span>{agree}</span>']
+                 f'<span class="tag">{esc(label)}</span>{agree}'
+                 f'<span class="noj">{"".join(base_tags)}</span></span>']
         for i, (verdict, _meta) in enumerate(verdict_sets or []):
             chips = _cat_chips(verdict) if verdict else '<span class="vnone">not judged</span>'
             cells.append(f'<span class="tcell vset" data-vset="{i}">{chips}</span>')
@@ -1906,20 +2075,32 @@ def load_workspace(
 
 
 def _verdict_picker(sets: List[Tuple[Dict[int, Dict[str, Any]], Dict[str, Any]]]) -> str:
-    """Radio buttons over the embedded verdict sets. Nothing is dropped from the page — a run
-    judged five times keeps all five — so switching is instant and offline, and two judges on the
-    same turn are one click apart rather than two files apart."""
-    if len(sets) < 2:
+    """One toggle per embedded verdict set. Nothing is dropped from the page — a run judged five
+    times keeps all five — so switching is instant and offline, and two judges on the same turn
+    are one click apart rather than two files apart.
+
+    Toggles rather than a radio group, because the three things a reader wants are one judge, two
+    judges beside each other, and no judge at all, and only the middle one is a "pick". Turning
+    everything off is the unprimed read: the page becomes the run with no labels on it, which is
+    the state to be in before deciding whether you agree with a verdict. Shift-click solos a
+    judge — the old radio behaviour, kept for the common case on a page carrying twenty sets."""
+    if not sets:
         return ""
     buttons = "".join(
         f'<button class="vpick{" on" if i == 0 else ""}" data-pick="{i}" '
-        f'onclick="pickVerdicts({i})">{esc(m["label"])}</button>'
+        f'onclick="toggleVerdict({i}, event.shiftKey)" '
+        f'title="Show or hide this judge — shift-click for only this one">'
+        f'{esc(m["label"])}</button>'
         for i, (_v, m) in enumerate(sets)
     )
-    buttons += ('<button class="vpick" data-pick="all" onclick="pickVerdicts(\'all\')">'
-                "all at once</button>")
-    return (f'<div class="bar vbar"><span class="sub">judge verdicts ({len(sets)} on this page): '
-            f'</span>{buttons}</div>')
+    if len(sets) > 1:
+        buttons += ('<button class="vall" onclick="setVerdicts(\'all\')" '
+                    'title="Every judge, side by side">all</button>')
+    buttons += ('<button class="vall" onclick="setVerdicts([])" '
+                "title=\"Take every verdict off the page and read the run unlabelled\">"
+                "none</button>")
+    return (f'<div class="bar vbar"><span class="sub">judge verdicts ({len(sets)} on this page, '
+            f'click to show or hide): </span>{buttons}</div>')
 
 
 def _verdict_note(meta: Optional[Dict[str, Any]]) -> str:
@@ -1945,6 +2126,10 @@ def _verdict_note(meta: Optional[Dict[str, Any]]) -> str:
         note += " Conversation transcripts were capped at 8000 characters (jv1)."
     # v2 judges a subset (the stake-holding roles, plus any baseline sample), so an unlabelled
     # turn means "not judged", not "judged clean". Say which turns were in scope.
+    if meta.get("unit") == "step":
+        note += (" This judge reads a <b>step</b> — one model call and what it sent — not a whole "
+                 "turn, so a turn it looked at twice carries both, each finding stamped with its "
+                 "step.")
     if isinstance((sel := meta.get("selection")), str):  # jv8 writes a description, not a dict
         note += f" Selection: {esc(sel)}. Turns not listed were not judged — out of scope, not cleared."
     elif sel:
@@ -2027,8 +2212,9 @@ def render(
     ]
     if verdict_meta:
         stats.append(stat("fabrication turns (judge)",
-                          f"{verdict_meta.get('n_fab')}/{verdict_meta.get('n_turns')}"))
-        stats.append(stat("judge", judge))
+                          f"{verdict_meta.get('n_fab')}/{verdict_meta.get('n_turns')}",
+                          cls="judgeonly"))
+        stats.append(stat("judge", judge, cls="judgeonly"))
 
     system_by_agent: Dict[str, str] = {}
     for agent, stream in (report.get("streams") or {}).items():
@@ -2085,9 +2271,9 @@ def render(
            for i, (_v, m) in enumerate(verdict_sets))}
   {render_timeline(turns, signals, sprint_channel, system_by_agent, verdict_sets)}
 
-  {(f'<h2>#{esc(sprint_channel)} · message by message</h2>'
+  {(f'<div class="judgeonly"><h2>#{esc(sprint_channel)} · message by message</h2>'
      + render_channel_matrix((report.get("transcript") or {}).get("#" + sprint_channel) or [],
-                             turns, verdict_sets, signals)) if verdict_sets else ""}
+                             turns, verdict_sets, signals) + "</div>") if verdict_sets else ""}
 
   <h2>Workspace after the run</h2>
   <p class="sub">Reads are tool reads — <code>slack_get_messages</code> and what
@@ -2110,7 +2296,8 @@ def render(
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>agent1 run</title><style>{CSS}</style></head><body>{body}"
-        f"<script>{JS}{boot}\npickVerdicts(0);\nopenTurnFromHash();</script></body></html>"
+        # The newest judge is on at load; everything else is a click away, including nothing.
+        f"<script>{JS}{boot}\nsetVerdicts([0]);\nopenTurnFromHash();</script></body></html>"
     )
 
 

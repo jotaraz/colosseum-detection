@@ -423,6 +423,9 @@ def main() -> None:
     parser.add_argument("--judge-providers", default=DEFAULT_JUDGE_PROVIDERS,
                         help="OpenRouter provider order for the judge, no fallbacks; '' = unpinned")
     parser.add_argument("--judge-retries", type=int, default=1)
+    parser.add_argument("--judge-replicates", type=int, default=0,
+                        help="judge passes per unit; 0 = the reward's own default "
+                             "(3 for jv7/jv8/jv9, 2 for jv10)")
     parser.add_argument("--judge-workers", type=int, default=6,
                         help="concurrent judge calls PER ROLLOUT (rollouts are judged in parallel)")
     parser.add_argument("--judge-max-tokens", type=int, default=16000)
@@ -477,9 +480,15 @@ def main() -> None:
         if not args.config:
             parser.error("--warm-start needs --config: the arms are checked against its settings")
         loader = warm_start.load_targeted if args.warm_targeted else warm_start.load
+        warm_spec = reward_mod.SPECS[args.reward]
+        warm_kw = {}
+        # jv10 sweeps of the same rollouts exist for three different judge models; scoring a
+        # warm arm off a mix of them would pool judges, which is the one thing never to do.
+        if warm_spec.judge == "jv10":
+            warm_kw["judge_model"] = args.judge_model
         warm = loader(arms, base, settings, corpus=args.warm_corpus,
                       optimized=optimized, reward_agent=reward_agent,
-                      fixed_ask=fixed_ask, spec=reward_mod.SPECS[args.reward])
+                      fixed_ask=fixed_ask, spec=warm_spec, **warm_kw)
         for e in warm:
             logger.info("warm start %-7s mean %.2f over n=%d (%d rollouts refused)",
                         e.arm, e.mean, e.n, len(e.rejected))
@@ -556,12 +565,20 @@ def main() -> None:
         # The reward picks the judge, not a separate flag: v3 reads jv8 lie verdicts and would
         # score every turn 0 against jv7 categories, silently, which is exactly the kind of
         # mismatch that produces a run of flat zeros nobody can explain.
-        if spec.judge in ("jv8", "jv9"):
+        if spec.judge == "jv10":
+            from experiments.agent3.deception_judge import DeceptionSumJudge
+            judge = DeceptionSumJudge(judge_caller, workers=args.judge_workers,
+                                      agents=judge_agents, retries=args.judge_retries,
+                                      replicates=(args.judge_replicates
+                                                  or reward_mod.JV10_REPLICATES))
+        elif spec.judge in ("jv8", "jv9"):
             critic_path, judge_version = ((lie_judge.JV9_CRITIC_PATH, lie_judge.JV9_JUDGE_VERSION)
                                           if spec.judge == "jv9" else
                                           (lie_judge.CRITIC_PATH, lie_judge.JUDGE_VERSION))
             judge = lie_judge.LieMajorityJudge(judge_caller, workers=args.judge_workers,
                                                agents=judge_agents, retries=args.judge_retries,
+                                               replicates=(args.judge_replicates
+                                                           or lie_judge.REPLICATES),
                                                critic_path=critic_path, judge_version=judge_version)
         else:
             judge = MajorityJudge(judge_caller, workers=args.judge_workers,

@@ -25,8 +25,19 @@ from zoneinfo import ZoneInfo
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "fixtures"))
 import build_w1  # noqa: E402
+import build_w1aug  # noqa: E402
 
 SPRINT = ("Priya", "Nadia", "Matthieu", "Rafael", "Helena")
+#: August swaps Rafael for Tomas (AUG_PLAN §2.1), so the "who could fetch this" set differs.
+SPRINT_AUG = ("Priya", "Nadia", "Matthieu", "Tomas", "Helena")
+
+#: The w1aug cells (AUG_PLAN.md), keyed by world tag exactly as the run names carry it —
+#: that is what `index5.reads_for` looks up. Values are the build kwargs plus the plan label.
+PLAN_AUG = {
+    "w1augPstrongNstrong": ({}, "7.a"),
+    "w1augPstrongNstrong_kick1h": ({"kickoff_hour": True}, "7.b"),
+    "w1augPstrongNstrong_hist_kick1h": ({"kickoff_hour": True, "history": True}, "7.c / 7.d"),
+}
 
 #: plan cells (fixture tag -> plan label); everything else in build_w1.CELLS is skipped
 PLAN = {
@@ -131,8 +142,41 @@ def rows_for(tag: str) -> list[dict]:
     return out
 
 
+def rows_for_aug(tag: str) -> list[dict]:
+    """Same shape as `rows_for`, over a w1aug fixture. Split out rather than parameterised
+    because the two builders take different kwargs and August has a different sprint team."""
+    kwargs, label = PLAN_AUG[tag]
+    d = build_w1aug.build(**kwargs)
+    tz = ZoneInfo(d.get("tz") or "America/New_York")
+    names = {u["id"]: u["name"] for u in d["users"]}
+    conv_of_ts: dict[str, tuple[str, str]] = {}
+    members_of: dict[str, list[str]] = {}
+    for c in d["conversations"]:
+        members = sorted(names[m] for m in c["members"] if m in names)
+        label_c = ("#" + c["name"]) if c.get("is_channel") else "DM " + " ↔ ".join(members)
+        members_of[c["id"]] = members
+        for m in c["messages"]:
+            conv_of_ts[m["ts"]] = (c["id"], label_c)
+    out = []
+    for sec in d["ground_truth"].get("secrets") or []:
+        by_conv: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for ts in sec["ts"]:
+            by_conv[conv_of_ts[ts]].append(ts)
+        for (cid, label_c), tss in by_conv.items():
+            times = sorted(datetime.fromtimestamp(float(t), tz) for t in tss)
+            out.append({"cell": tag, "plan": label, "layer": sec["layer"],
+                        "conversation": label_c, "conv_id": cid, "n": len(tss),
+                        "when": (f"{times[0]:%a %d %H:%M}" if len(times) == 1
+                                 else f"{times[0]:%a %d %H:%M} – {times[-1]:%a %d %H:%M}"),
+                        "subject": list(sec["subject"]), "holders": sorted(sec["holders"]),
+                        "readable_by": [p for p in SPRINT_AUG if p in members_of[cid]],
+                        "ts": sorted(tss, key=float)})
+    return out
+
+
 def main() -> None:
     rows = [r for tag in PLAN for r in rows_for(tag)]
+    rows += [r for tag in PLAN_AUG for r in rows_for_aug(tag)]
     (HERE / "important_dms.json").write_text(json.dumps(rows, indent=1, ensure_ascii=False) + "\n")
     lines = ["# Important conversations per plan cell",
              "",
@@ -153,7 +197,8 @@ def main() -> None:
                      f"{', '.join(r['subject'])} | {', '.join(h for h in r['holders'] if h not in r['subject'])} | "
                      f"{', '.join(r['readable_by'])} |")
     (HERE / "IMPORTANT_DMS.md").write_text("\n".join(lines) + "\n")
-    print(f"wrote IMPORTANT_DMS.md + important_dms.json: {len(rows)} rows over {len(PLAN)} cells")
+    print(f"wrote IMPORTANT_DMS.md + important_dms.json: {len(rows)} rows over "
+          f"{len(PLAN) + len(PLAN_AUG)} cells")
 
 
 if __name__ == "__main__":

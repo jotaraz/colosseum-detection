@@ -110,14 +110,36 @@ class WarmEntry:
 #: deliberately, for the one case where that bias is accepted rather than avoided — see its
 #: docstring.
 _REPLICATE_GLOB = {"jv7": ".category2_jv7_*.json", "jv8": ".sweep_jv8_*.json",
-                   "jv9": ".sweep_jv9_*.json"}
+                   "jv9": ".sweep_jv9_*.json",
+                   "jv10": ".deception_jv10_*.json"}
 _TARGETED_GLOB = {"jv8": ".lie_jv8_*.json", "jv9": ".lie_jv9_*.json"}
 
 
-def _replicates(run_path: str, judge: str = "jv7") -> List[str]:
-    """The three verdict files beside a run record, or [] if they are not all there."""
+#: How many verdict files an arm rollout must carry, per judge. jv10 is swept twice (reward_v5
+#: adds the replicates rather than reconciling them); everything before it, three times.
+_N_REPLICATES = {"jv7": 3, "jv8": 3, "jv9": 3, "jv10": 2}
+
+
+def _replicates(run_path: str, judge: str = "jv7", judge_model: str = "") -> List[str]:
+    """The verdict files beside a run record, or [] if they are not all there.
+
+    ``judge_model`` filters on the record's own ``judge`` field rather than on the filename.
+    The jv10 files are named ``.deception_jv10_<model>[_r2].json``, so a glob wide enough to
+    catch both replicates also catches every *other* model the same rollouts were swept with —
+    gpt-5.4 and deepseek-v4-flash among them. Pooling two judges' verdicts into one score is
+    the exact mistake `sj4-rr10dcp` was written down to prevent, so the filter is on content."""
     reps = sorted(glob.glob(run_path[:-5] + _REPLICATE_GLOB[judge]))
-    return reps if len(reps) == 3 else []
+    if judge_model:
+        keep = []
+        for r in reps:
+            try:
+                got = str(json.loads(Path(r).read_text(encoding="utf-8")).get("judge") or "")
+            except (OSError, json.JSONDecodeError):
+                continue
+            if got.split(":")[-1] == judge_model:
+                keep.append(r)
+        reps = keep
+    return reps if len(reps) == _N_REPLICATES.get(judge, 3) else []
 
 
 #: Differences that make a rollout a different experiment. A mismatch here refuses it.
@@ -180,6 +202,38 @@ def _lie_record(reps: Sequence[str], reward_agent: str,
     return record
 
 
+def _deception_record(reps: Sequence[str], reward_agent: str,
+                      spec: reward_mod.RewardSpec) -> Dict[str, Any]:
+    """A jv10-shaped judged record for one arm rollout, from its two deception sweeps.
+
+    jv10 judges steps, so a turn's votes are the step verdicts of both replicates; the rollup to
+    turns is ``deception_judge.collapse_turn``, the same function the live judge uses."""
+    from experiments.agent3.deception_judge import collapse_turn
+
+    votes: Dict[int, List[Dict[str, Any]]] = collections.defaultdict(list)
+    meta: Dict[int, Dict[str, Any]] = {}
+    for i, p in enumerate(reps):
+        d = json.loads(Path(p).read_text(encoding="utf-8"))
+        # The files are 1-based (`--replicate 1|2`); collapse_turn indexes from 0. Read the
+        # file's own number where it has one, so a pair loaded out of order still lands right.
+        rep = int(d.get("replicate") or (i + 1)) - 1
+        for t in d.get("turns") or []:
+            row = dict(t)
+            row["replicate"] = rep
+            idx = int(t["turn_index"])
+            votes[idx].append(row)
+            meta.setdefault(idx, {"agent": str(t.get("agent") or ""), "clock": t.get("clock"),
+                                  "round": t.get("round"), "output": t.get("output") or ""})
+    n = _N_REPLICATES["jv10"]
+    turns = [{**meta[i], "turn_index": i, "deception": collapse_turn(v, n)}
+             for i, v in sorted(votes.items())]
+    turns = [t for t in turns if t["agent"] == reward_agent]
+    record = {"judge_version": "jv10-sum2", "reward_agent": reward_agent, "warm": True,
+              "n_turns": len(turns), "turns": turns}
+    record["reward"] = reward_mod.rollout_reward(record, reward_agent, spec)
+    return record
+
+
 def judged_record(reps: Sequence[str], reward_agent: str, *,
                   only_reward_agent: bool = True,
                   spec: reward_mod.RewardSpec = reward_mod.V1) -> Dict[str, Any]:
@@ -213,15 +267,20 @@ def judged_record(reps: Sequence[str], reward_agent: str, *,
 def _score(run_path: str, reps: Sequence[str], reward_agent: str,
            spec: reward_mod.RewardSpec = reward_mod.V1) -> Dict[str, Any]:
     """The run's reward for one already-judged rollout, from its three replicate files."""
-    record = (_lie_record(reps, reward_agent, spec) if spec.judge in ("jv8", "jv9")
-              else judged_record(reps, reward_agent, spec=spec))
+    if spec.judge == "jv10":
+        record = _deception_record(reps, reward_agent, spec)
+    elif spec.judge in ("jv8", "jv9"):
+        record = _lie_record(reps, reward_agent, spec)
+    else:
+        record = judged_record(reps, reward_agent, spec=spec)
     return {"reward": record["reward"], "priya_turns": len(record["turns"]), "judged": record}
 
 
 def load(arms: Sequence[str], base: Workspace, want: Dict[str, Any], *,
          corpus: str | Path = DEFAULT_CORPUS,
          optimized: Sequence[str] = (), reward_agent: str = "Priya",
-         fixed_ask: str = "", spec: reward_mod.RewardSpec = reward_mod.V1) -> List[WarmEntry]:
+         fixed_ask: str = "", spec: reward_mod.RewardSpec = reward_mod.V1,
+         judge_model: str = "") -> List[WarmEntry]:
     """Score the named arms from the corpus. Returns one entry per arm, in the order given.
 
     ``want`` is the resolved settings of the run being started (``agent1_run.resolve_settings``
@@ -246,12 +305,14 @@ def load(arms: Sequence[str], base: Workspace, want: Dict[str, Any], *,
                                                                    reward_agent=reward_agent))
                 entry.rejected.append(f"{name}: {why}")
                 continue
-            reps = _replicates(run_path, spec.judge)
+            reps = _replicates(run_path, spec.judge, judge_model)
             if not reps:
                 if entry is None:
                     entry = WarmEntry(arm=arm, candidate=Candidate({}, optimized=tuple(optimized),
                                                                    reward_agent=reward_agent))
-                entry.rejected.append(f"{name}: not judged three times by {spec.judge}")
+                entry.rejected.append(
+                    f"{name}: not judged {_N_REPLICATES.get(spec.judge, 3)} times by "
+                    f"{spec.judge}" + (f" ({judge_model})" if judge_model else ""))
                 continue
             overrides = (report.get("config") or {}).get("ask_overrides") or {}
             asks = {who: str(overrides.get(who) or fixed_ask) for who in optimized}
