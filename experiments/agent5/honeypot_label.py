@@ -51,6 +51,12 @@ pre,.box{white-space:pre-wrap;background:var(--card);border-radius:7px;padding:7
 .row.think{border:1px dashed var(--muted);background:transparent;opacity:.92}
 .row.think .body{font-style:italic;max-height:210px;overflow:auto;color:var(--muted)}
 .row.think .who{color:var(--muted);font-style:normal}
+.wy{font:inherit;font-size:10.5px;padding:0 7px;border:1px dashed var(--muted);border-radius:10px;
+    color:var(--muted);background:transparent;cursor:pointer;margin-left:auto;flex:none}
+.wy.on{border-style:solid;color:var(--accent);border-color:var(--accent)}
+.pre{margin:5px 0 1px;padding:4px 9px;border-left:3px dashed var(--muted);font-size:12px;
+     font-style:italic;color:var(--muted);white-space:pre-wrap}
+.pre .more{font-style:normal;font-size:10.5px;padding:0 6px;margin-left:4px}
 body.nothink .row.think{display:none}
 #tools{position:sticky;top:0;z-index:5;background:Canvas;padding:6px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
 .t{color:var(--muted);font-size:11px;margin-right:6px}
@@ -78,11 +84,12 @@ const KEY = "honeypot_labels_v1";
 let STORAGE_OK = true;
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { STORAGE_OK = false; return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { STORAGE_OK = false; } };
-let THINK_OFF = false;
+let THINK_OFF = false, PRE_ON = false;
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { STORAGE_OK = false; return {}; } };
 const save = o => { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { STORAGE_OK = false; } };
 let L = load(), cur = 0;
 THINK_OFF = lsGet("hp_think") === "0";
+PRE_ON = lsGet("hp_pre") === "1";
 const esc = s => (s ?? "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const hi = s => esc(s).replace(/(16:00|4 ?pm|Callum|unmovable|immovable|can'?t move|prior commitment)/gi, m => `<mark>${m}</mark>`);
 const done = r => { const l = L[r.run]; return l && GATES.every(g => l[g[0]] !== undefined && l[g[0]] !== null); };
@@ -114,13 +121,21 @@ function render(){
     sec("the run, in order",
       `<div id="tools"><button id="tt" class="${THINK_OFF?"":"on"}">
          ${THINK_OFF?"show":"hide"} thinking</button>
+       <button id="pp" class="${PRE_ON?"on":""}">${PRE_ON?"fold":"unfold"} why</button>
        <span class="t" style="margin-left:8px">${r.timeline.filter(e=>e.kind==="think").length} thinking ·
-       ${r.timeline.filter(e=>e.kind!=="think").length} messages &amp; actions</span></div>` +
+       ${r.timeline.filter(e=>e.kind!=="think").length} messages &amp; actions ·
+       ${r.timeline.filter(e=>e.pre).length} carry the reasoning that led to them</span></div>` +
       r.timeline.map(e => {
         const tag = {post:"in #sep-2026-sprint", msg:"in #sep-2026-sprint", dm:"DM", cal:"", think:"private"}[e.kind];
+        const deeper = e.pre_full && e.pre_full.length > e.pre.length + 8;
         return `<div class="row ${e.kind}"><div class="hd"><span class="who">${esc(e.who)}</span>
-          <span class="t">${esc(e.clock)}${tag?" · "+tag:""}</span></div>
-          <div class="body">${hi(e.text)}</div></div>`; }).join("")) +
+          <span class="t">${esc(e.clock)}${tag?" · "+tag:""}</span>
+          ${e.pre?`<button class="wy ${PRE_ON?"on":""}">why ⌄</button>`:""}</div>
+          <div class="body">${hi(e.text)}</div>` +
+          (e.pre?`<div class="pre" ${PRE_ON?"":"hidden"}><span class="tail">${hi(e.pre)}</span>
+             <span class="full" hidden>${hi(e.pre_full)}</span>
+             ${deeper?`<button class="more">whole step</button>`:""}</div>`:"") +
+          `</div>`; }).join("")) +
     sec("debrief to the employee", `<div class="box">${hi(r.debrief)}</div>`) +
     `<div id="gates"><h3 style="font-size:11px;text-transform:uppercase;color:var(--accent);margin:0 0 4px">gates</h3>` +
       GATES.map(([k, q]) => `<div class="gate"><label><span class="k">${k}</span>${esc(q.replace("{seat}", r.seat))}</label>
@@ -140,6 +155,18 @@ function render(){
   document.body.classList.toggle("nothink", THINK_OFF);
   const tt = document.getElementById("tt");
   if (tt) tt.onclick = () => { THINK_OFF = !THINK_OFF; lsSet("hp_think", THINK_OFF ? "0" : "1"); render(); };
+  const pp = document.getElementById("pp");
+  if (pp) pp.onclick = () => { PRE_ON = !PRE_ON; lsSet("hp_pre", PRE_ON ? "1" : "0"); render(); };
+  // one row at a time: the tail of the reasoning in the step that issued this call
+  document.querySelectorAll(".row .wy").forEach(b => b.onclick = () => {
+    const box = b.closest(".row").querySelector(".pre");
+    box.hidden = !box.hidden; b.classList.toggle("on", !box.hidden);
+  });
+  document.querySelectorAll(".pre .more").forEach(b => b.onclick = () => {
+    const p = b.parentElement, full = p.querySelector(".full").hidden;
+    p.querySelector(".tail").hidden = full; p.querySelector(".full").hidden = !full;
+    b.textContent = full ? "last few sentences" : "whole step";
+  });
   document.getElementById("note").oninput = e => { l.note = e.target.value; L[r.run] = l; save(L); };
   document.getElementById("prev").onclick = () => { cur = (cur - 1 + RUNS.length) % RUNS.length; render(); };
   document.getElementById("next").onclick = () => { cur = (cur + 1) % RUNS.length; render(); };
