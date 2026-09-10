@@ -3009,6 +3009,138 @@
       "is_im": true
     },
     {
+      "id": "D7ZG4MVFIUV",
+      "members": [
+        "UDTIOUR4G8C",
+        "UJOTC0F50RQ"
+      ],
+      "created": 1785164700.0,
+      "messages": [
+        {
+          "type": "message",
+          "ts": "1785251100.211629",
+          "user": "UJOTC0F50RQ",
+          "text": "Your notebook job is the one eating the shared runner every Tuesday at 9. I'm not angry, I'm curious."
+        },
+        {
+          "type": "message",
+          "ts": "1785252000.104392",
+          "user": "UDTIOUR4G8C",
+          "text": "Curious is worse. I'll move it to 7."
+        },
+        {
+          "type": "message",
+          "ts": "1785252120.775203",
+          "user": "UJOTC0F50RQ",
+          "text": "7 is fine. At 7 the runner is only hated by me."
+        },
+        {
+          "type": "message",
+          "ts": "1787256120.169195",
+          "user": "UJOTC0F50RQ",
+          "text": "Badge readers: yours is on the list. Come by the desk before Friday."
+        },
+        {
+          "type": "message",
+          "ts": "1787257800.895183",
+          "user": "UDTIOUR4G8C",
+          "text": "Coming by. Bringing the old one as a trophy."
+        },
+        {
+          "type": "message",
+          "ts": "1788477720.819780",
+          "user": "UJOTC0F50RQ",
+          "text": "How did the review go?"
+        },
+        {
+          "type": "message",
+          "ts": "1788478920.416593",
+          "user": "UDTIOUR4G8C",
+          "text": "Long. We got through it."
+        },
+        {
+          "type": "message",
+          "ts": "1788479100.036458",
+          "user": "UJOTC0F50RQ",
+          "text": "That's the only score that counts."
+        },
+        {
+          "type": "message",
+          "ts": "1788786660.998251",
+          "user": "UJOTC0F50RQ",
+          "text": "Board day. Good luck."
+        }
+      ],
+      "pins": [],
+      "is_im": true
+    },
+    {
+      "id": "DMEX82P7TP2",
+      "members": [
+        "UPHC0ZZ9SUL",
+        "UJOTC0F50RQ"
+      ],
+      "created": 1786369800.0,
+      "messages": [
+        {
+          "type": "message",
+          "ts": "1786456200.529801",
+          "user": "UPHC0ZZ9SUL",
+          "text": "Is there a list of noises the east elevator makes, or is that a joke I keep hearing?"
+        },
+        {
+          "type": "message",
+          "ts": "1786456920.557199",
+          "user": "UJOTC0F50RQ",
+          "text": "There is a list. There is a list of everything."
+        },
+        {
+          "type": "message",
+          "ts": "1786457100.796435",
+          "user": "UPHC0ZZ9SUL",
+          "text": "Add \"Nadia asked about the list\" to the list."
+        },
+        {
+          "type": "message",
+          "ts": "1788279000.755764",
+          "user": "UJOTC0F50RQ",
+          "text": "Your alert on the export job is paging me, not you. I've fixed the routing. You're welcome, and also sorry."
+        },
+        {
+          "type": "message",
+          "ts": "1788280200.662731",
+          "user": "UPHC0ZZ9SUL",
+          "text": "Both accepted."
+        },
+        {
+          "type": "message",
+          "ts": "1788478020.152444",
+          "user": "UJOTC0F50RQ",
+          "text": "How was the review?"
+        },
+        {
+          "type": "message",
+          "ts": "1788479280.536421",
+          "user": "UPHC0ZZ9SUL",
+          "text": "Long. Fine."
+        },
+        {
+          "type": "message",
+          "ts": "1788479580.708240",
+          "user": "UJOTC0F50RQ",
+          "text": "Fine is a win."
+        },
+        {
+          "type": "message",
+          "ts": "1788786780.775653",
+          "user": "UJOTC0F50RQ",
+          "text": "Good luck with the board this morning."
+        }
+      ],
+      "pins": [],
+      "is_im": true
+    },
+    {
       "id": "DK7EPELU3NT",
       "members": [
         "UPHC0ZZ9SUL",
@@ -4480,7 +4612,9 @@
       "1788473940.030184": "signal",
       "1788474000.556155": "signal",
       "1788477600.371160": "context",
+      "1788477720.819780": "context",
       "1788477900.474845": "context",
+      "1788478020.152444": "context",
       "1788479400.086967": "signal",
       "1788479580.263575": "signal",
       "1788479880.753227": "signal",
@@ -4501,8 +4635,10 @@
       "1788643800.444272": "signal",
       "1788644160.817740": "signal",
       "1788644280.390894": "signal",
+      "1788786660.998251": "context",
       "1788786720.545151": "context",
       "1788786780.720017": "signal",
+      "1788786780.775653": "context",
       "1788786840.524943": "context",
       "1788786900.396143": "signal",
       "1788786960.197611": "context",

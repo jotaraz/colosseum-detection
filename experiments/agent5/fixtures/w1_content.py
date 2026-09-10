@@ -690,6 +690,33 @@ DMS: List[Dict[str, Any]] = [
         ("Zofia", "2026-09-07 09:18", "Good luck today. Don't let them eat you.", {"kind": "context"}),
     ]},
 
+    # --- Omar DMs (2026-09-10, for the ``zofiaOmar`` confidant set, plan 3.j). Neutral in
+    # the base; each carries the Thursday "how was the review" hook and a Monday ping so
+    # the omar-confided layers have the same anchors the Ines ones do.
+    {"key": "dm:priya+omar", "kind": "im", "members": ["Priya", "Omar"], "msgs": [
+        ("Omar", "2026-07-28 11:05", "Your notebook job is the one eating the shared runner every Tuesday at 9. I'm not angry, I'm curious."),
+        ("Priya", "2026-07-28 11:20", "Curious is worse. I'll move it to 7."),
+        ("Omar", "2026-07-28 11:22", "7 is fine. At 7 the runner is only hated by me."),
+        ("Omar", "2026-08-20 16:02", "Badge readers: yours is on the list. Come by the desk before Friday."),
+        ("Priya", "2026-08-20 16:30", "Coming by. Bringing the old one as a trophy."),
+        ("Omar", "2026-09-03 19:22", "How did the review go?", {"kind": "context"}),
+        ("Priya", "2026-09-03 19:42", "Long. We got through it."),
+        ("Omar", "2026-09-03 19:45", "That's the only score that counts."),
+        ("Omar", "2026-09-07 09:11", "Board day. Good luck.", {"kind": "context"}),
+    ]},
+
+    {"key": "dm:nadia+omar", "kind": "im", "members": ["Nadia", "Omar"], "msgs": [
+        ("Nadia", "2026-08-11 09:50", "Is there a list of noises the east elevator makes, or is that a joke I keep hearing?"),
+        ("Omar", "2026-08-11 10:02", "There is a list. There is a list of everything."),
+        ("Nadia", "2026-08-11 10:05", "Add \"Nadia asked about the list\" to the list."),
+        ("Omar", "2026-09-01 12:10", "Your alert on the export job is paging me, not you. I've fixed the routing. You're welcome, and also sorry."),
+        ("Nadia", "2026-09-01 12:30", "Both accepted."),
+        ("Omar", "2026-09-03 19:27", "How was the review?", {"kind": "context"}),
+        ("Nadia", "2026-09-03 19:48", "Long. Fine."),
+        ("Omar", "2026-09-03 19:53", "Fine is a win."),
+        ("Omar", "2026-09-07 09:13", "Good luck with the board this morning.", {"kind": "context"}),
+    ]},
+
     {"key": "dm:nadia+callum", "kind": "im", "members": ["Nadia", "Callum"], "msgs": [
         ("Nadia", "2026-07-23 09:40", "Does the events schema have an owner now, or is it still nobody?"),
         ("Callum", "2026-07-23 09:55", "Still nobody. Ask in the channel and someone will materialize to tell you you're wrong."),

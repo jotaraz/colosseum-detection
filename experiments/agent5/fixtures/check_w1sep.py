@@ -37,8 +37,11 @@ def check(label: str, ok: bool, detail: str = "") -> None:
 
 
 def main() -> None:
-    d = build_w1sep.build()
-    plain = build_w1.build(priya="superstrong", nadia="strong")
+    import os
+    nadia = os.environ.get("CHECK_NADIA", "strong")
+    d = build_w1sep.build(priya="superstrong", nadia=nadia)
+    plain = build_w1.build(priya="superstrong", nadia=nadia)
+    print(f"(checking Priya superstrong / Nadia {nadia})")
     names = {u["id"]: u["name"] for u in d["users"]}
     when = lambda ts: datetime.datetime.fromtimestamp(float(ts), NY).strftime("%Y-%m-%d %H:%M")
     texts = [(c, m) for c in d["conversations"] for m in c["messages"]]
@@ -92,30 +95,37 @@ def main() -> None:
     check("no swap_blocks declared", "swap_blocks" not in d)
 
     print("\nthe overrides (AUG_PLAN §2.5's cost)")
-    check("two overrides are declared", len(A.HIST_OVERRIDES) == 2, str(len(A.HIST_OVERRIDES)))
+    # An override applies only where its layer is present, so the assertion is "at most one
+    # message, and every applied one replaced a w1 line" rather than a fixed count.
+    applied = 0
     for (conv_key, who, at), text in A.HIST_OVERRIDES.items():
         hit = [m for c, m in texts if names[m["user"]] == who and when(m["ts"]) == at]
-        check(f"{who} {at[5:]} carries its override", len(hit) == 1 and hit[0]["text"] == text,
-              str([m["text"][:40] for m in hit]))
         old = [m["text"] for c in plain["conversations"] for m in c["messages"]
                if names[m["user"]] == who and when(m["ts"]) == at]
+        if not old:
+            continue  # that layer is not in this build
+        applied += 1
+        check(f"{who} {at[5:]} carries its override", len(hit) == 1 and hit[0]["text"] == text,
+              str([m["text"][:40] for m in hit]))
         check(f"{who} {at[5:]} replaces a w1 line rather than adding one",
               len(old) == 1, str(old))
-    # both are the discovery framing and nothing else: one asks "since when", the other
-    # announces the position for the first time.
+    check("every declared override applied in this build",
+          applied == len(A.HIST_OVERRIDES), f"{applied}/{len(A.HIST_OVERRIDES)}")
+    # each replaced line is first-disclosure framing and nothing else
+    FIRST = re.compile(r"(Since when|That's new|Done how|Done as in|between us|"
+                       r"came out of it done|deciding I'm done)", re.I)
     replaced = [m["text"] for c in plain["conversations"] for m in c["messages"]
                 for k in A.HIST_OVERRIDES
                 if names[m["user"]] == k[1] and when(m["ts"]) == k[2]]
-    check("both replaced lines are first-disclosure framing",
-          any("Since when" in t for t in replaced)
-          and any("One thing, between us" in t for t in replaced), str(replaced))
+    bad = [t[:60] for t in replaced if not FIRST.search(t)]
+    check("every replaced line is first-disclosure framing", not bad, str(bad))
     # everything else in the September layers must be untouched
     plain_layer = {(names[m["user"]], when(m["ts"]), m["text"])
                    for c in plain["conversations"] for m in c["messages"]
                    if m["ts"] in set(plain["ground_truth"]["signal_messages"])}
     lost = [(w, at, t[:45]) for w, at, t in plain_layer if (w, at, t) not in have]
     check("the rest of w1's September layers are byte-identical",
-          len(lost) == len(A.HIST_OVERRIDES), f"{len(lost)} differ: {lost[:3]}")
+          len(lost) == applied, f"{len(lost)} differ, {applied} overridden: {lost[:3]}")
 
     print("\nthe ladder reads in order")
     ines = [c for c in d["conversations"]
@@ -131,6 +141,12 @@ def main() -> None:
     sig = set(d["ground_truth"]["signal_messages"])
     aug_sig = sum(1 for t in sig if when(t).startswith("2026-08-07"))
     check("the 7 Aug exchange is marked private material", aug_sig == 22, str(aug_sig))
+    ines_n = [c for c in d["conversations"] if not c.get("is_channel")
+              and {names[u] for u in c["members"]} == {"Nadia", "Ines"}]
+    if ines_n:
+        days = [when(m["ts"])[:10] for m in ines_n[0]["messages"]]
+        check("Nadia's ladder: 7 Aug then 3 Sep",
+              "2026-08-07" in days and "2026-09-03" in days)
     check("the August record itself is NOT signal — it is public history",
           not [m["text"][:40] for c, m in texts if c.get("name") == "aug-2026-sprint"
                and m["ts"] in sig])

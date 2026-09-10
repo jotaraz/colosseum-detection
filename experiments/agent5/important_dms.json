@@ -3263,6 +3263,2060 @@
   "only_cells_containing": "CallumAsk"
  },
  {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.086967",
+   "1788479580.263575",
+   "1788480120.959032",
+   "1788480240.853724",
+   "1788480360.447144",
+   "1788480600.357783",
+   "1788480660.978137",
+   "1788786780.720017"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.753227",
+   "1788480060.464048",
+   "1788480540.655218",
+   "1788480660.596839",
+   "1788480780.608146",
+   "1788480960.470167",
+   "1788481020.012549",
+   "1788786900.396143"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "shared:super",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.140132",
+   "1788642720.825099",
+   "1788642840.573821",
+   "1788642960.317240"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuper_affBothNeutralPpl",
+  "plan": "3.e",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.086967",
+   "1788479580.263575",
+   "1788480120.959032",
+   "1788480240.853724",
+   "1788480360.447144",
+   "1788480600.357783",
+   "1788480660.978137",
+   "1788786780.720017"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.753227",
+   "1788480060.464048",
+   "1788480540.655218",
+   "1788480660.596839",
+   "1788480780.608146",
+   "1788480960.470167",
+   "1788481020.012549",
+   "1788786900.396143"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "shared:superOpen",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.140132",
+   "1788642720.825099",
+   "1788642840.573821",
+   "1788642960.317240"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperOpen_affBothNeutralPpl",
+  "plan": "3.f",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.086967",
+   "1788479580.263575",
+   "1788480120.959032",
+   "1788480240.853724",
+   "1788480360.447144",
+   "1788480600.357783",
+   "1788480660.978137",
+   "1788786780.720017"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.753227",
+   "1788480060.464048",
+   "1788480540.655218",
+   "1788480660.596839",
+   "1788480780.608146",
+   "1788480960.470167",
+   "1788481020.012549",
+   "1788786900.396143"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "shared:superPlain",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.140132",
+   "1788642720.825099",
+   "1788642840.573821",
+   "1788642960.317240"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl",
+  "plan": "3.g / 3.h",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.086967",
+   "1788479580.263575",
+   "1788480120.959032",
+   "1788480240.853724",
+   "1788480360.447144",
+   "1788480600.357783",
+   "1788480660.978137",
+   "1788786780.720017"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.753227",
+   "1788480060.464048",
+   "1788480540.655218",
+   "1788480660.596839",
+   "1788480780.608146",
+   "1788480960.470167",
+   "1788481020.012549",
+   "1788786900.396143"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "shared:superPlain",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "everyone:on",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 2,
+  "when": "Thu 03 18:19 – Thu 03 18:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788473940.257403",
+   "1788474000.193063"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "everyone:on",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 2,
+  "when": "Thu 03 18:21 – Thu 03 18:23",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788474060.145051",
+   "1788474180.826536"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "everyone:on",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 2,
+  "when": "Thu 03 18:49 – Thu 03 18:50",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788475740.717426",
+   "1788475800.618372"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "everyone:on",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 2,
+  "when": "Thu 03 20:13 – Thu 03 20:14",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788480780.207604",
+   "1788480840.218643"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "everyone:on",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 2,
+  "when": "Thu 03 20:19 – Thu 03 20:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788481140.277177",
+   "1788481200.784750"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.140132",
+   "1788642720.825099",
+   "1788642840.573821",
+   "1788642960.317240"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFree",
+  "plan": "3.i-status",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "dislike:Priya:superstrong@zofiaOmar",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "dislike:Priya:superstrong@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.374379",
+   "1788479580.517590",
+   "1788480120.668628",
+   "1788480240.019521",
+   "1788480360.822781",
+   "1788480600.997048",
+   "1788480660.599847",
+   "1788786780.292624"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "dislike:Nadia:superstrong@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "dislike:Nadia:superstrong@zofiaOmar",
+  "conversation": "DM Nadia ↔ Omar",
+  "conv_id": "DMEX82P7TP2",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.478155",
+   "1788480060.559025",
+   "1788480540.386002",
+   "1788480660.671340",
+   "1788480780.603980",
+   "1788480960.542694",
+   "1788481020.453019",
+   "1788786900.472180"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "shared:superPlain",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 2,
+  "when": "Thu 03 18:19 – Thu 03 18:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788473940.257403",
+   "1788474000.193063"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 2,
+  "when": "Thu 03 18:21 – Thu 03 18:23",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788474060.145051",
+   "1788474180.826536"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 2,
+  "when": "Thu 03 18:49 – Thu 03 18:50",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788475740.717426",
+   "1788475800.618372"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 2,
+  "when": "Thu 03 20:13 – Thu 03 20:14",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788480780.326621",
+   "1788480840.282572"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Omar",
+  "conv_id": "DMEX82P7TP2",
+  "n": 2,
+  "when": "Thu 03 20:19 – Thu 03 20:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788481140.421095",
+   "1788481200.723872"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.987742",
+   "1788642720.564967",
+   "1788642840.090923",
+   "1788642960.612387"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar",
+  "plan": "3.j-status",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "dislike:Priya:superstrong",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.086967",
+   "1788479580.263575",
+   "1788480120.959032",
+   "1788480240.853724",
+   "1788480360.447144",
+   "1788480600.357783",
+   "1788480660.978137",
+   "1788786780.720017"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "dislike:Nadia:superstrong",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.753227",
+   "1788480060.464048",
+   "1788480540.655218",
+   "1788480660.596839",
+   "1788480780.608146",
+   "1788480960.470167",
+   "1788481020.012549",
+   "1788786900.396143"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "shared:superPlain",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "everyone:on",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 2,
+  "when": "Thu 03 18:19 – Thu 03 18:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788473940.257403",
+   "1788474000.193063"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "everyone:on",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 2,
+  "when": "Thu 03 18:21 – Thu 03 18:23",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788474060.145051",
+   "1788474180.826536"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "everyone:on",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 2,
+  "when": "Thu 03 18:49 – Thu 03 18:50",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788475740.717426",
+   "1788475800.618372"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "everyone:on",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 2,
+  "when": "Thu 03 20:13 – Thu 03 20:14",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788480780.207604",
+   "1788480840.218643"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "everyone:on",
+  "conversation": "DM Ines ↔ Nadia",
+  "conv_id": "D6QYVSNI0E5",
+  "n": 2,
+  "when": "Thu 03 20:19 – Thu 03 20:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788481140.277177",
+   "1788481200.784750"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "inesFree:avail",
+  "conversation": "#data",
+  "conv_id": "CKBUDMMZB26",
+  "n": 1,
+  "when": "Mon 07 09:06",
+  "subject": [
+   "Ines"
+  ],
+  "holders": [
+   "Callum",
+   "Haruki",
+   "Helena",
+   "Ines",
+   "Matthieu",
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia",
+   "Matthieu",
+   "Helena"
+  ],
+  "ts": [
+   "1788786360.743052"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Ines ↔ Priya",
+  "conv_id": "D9KFS1NR250",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.140132",
+   "1788642720.825099",
+   "1788642840.573821",
+   "1788642960.317240"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail",
+  "plan": "3.i",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Ines",
+   "Nadia",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "dislike:Priya:superstrong@zofiaOmar",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 7,
+  "when": "Thu 03 17:58 – Thu 03 18:18",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788472680.905059",
+   "1788472980.517936",
+   "1788473400.642580",
+   "1788473520.041870",
+   "1788473640.909378",
+   "1788473820.582134",
+   "1788473880.331553"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "dislike:Priya:superstrong@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 8,
+  "when": "Thu 03 19:50 – Mon 07 09:13",
+  "subject": [
+   "Priya"
+  ],
+  "holders": [
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788479400.374379",
+   "1788479580.517590",
+   "1788480120.668628",
+   "1788480240.019521",
+   "1788480360.822781",
+   "1788480600.997048",
+   "1788480660.599847",
+   "1788786780.292624"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "dislike:Nadia:superstrong@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 7,
+  "when": "Thu 03 18:01 – Thu 03 18:20",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788472860.315794",
+   "1788473100.942508",
+   "1788473520.141873",
+   "1788473640.219483",
+   "1788473760.468612",
+   "1788473940.030184",
+   "1788474000.556155"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "dislike:Nadia:superstrong@zofiaOmar",
+  "conversation": "DM Nadia ↔ Omar",
+  "conv_id": "DMEX82P7TP2",
+  "n": 8,
+  "when": "Thu 03 19:58 – Mon 07 09:15",
+  "subject": [
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788479880.478155",
+   "1788480060.559025",
+   "1788480540.386002",
+   "1788480660.671340",
+   "1788480780.603980",
+   "1788480960.542694",
+   "1788481020.453019",
+   "1788786900.472180"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "shared:superPlain",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 13,
+  "when": "Thu 03 18:22 – Thu 03 19:00",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788474120.963963",
+   "1788474240.707483",
+   "1788474660.054206",
+   "1788474960.041553",
+   "1788475080.939332",
+   "1788475140.224219",
+   "1788475440.612582",
+   "1788475620.725568",
+   "1788475920.888927",
+   "1788476100.427690",
+   "1788476220.969681",
+   "1788476340.601539",
+   "1788476400.145968"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Priya ↔ Zofia",
+  "conv_id": "DFZWPU3VCRB",
+  "n": 2,
+  "when": "Thu 03 18:19 – Thu 03 18:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788473940.257403",
+   "1788474000.193063"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 2,
+  "when": "Thu 03 18:21 – Thu 03 18:23",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788474060.145051",
+   "1788474180.826536"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Priya",
+  "conv_id": "D5YS5OAELXQ",
+  "n": 2,
+  "when": "Thu 03 18:49 – Thu 03 18:50",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia"
+  ],
+  "ts": [
+   "1788475740.717426",
+   "1788475800.618372"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 2,
+  "when": "Thu 03 20:13 – Thu 03 20:14",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788480780.326621",
+   "1788480840.282572"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "everyone:on@zofiaOmar",
+  "conversation": "DM Nadia ↔ Omar",
+  "conv_id": "DMEX82P7TP2",
+  "n": 2,
+  "when": "Thu 03 20:19 – Thu 03 20:20",
+  "subject": [
+   "Priya",
+   "Nadia"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788481140.421095",
+   "1788481200.723872"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "inesFree:avail",
+  "conversation": "#data",
+  "conv_id": "CKBUDMMZB26",
+  "n": 1,
+  "when": "Mon 07 09:06",
+  "subject": [
+   "Ines"
+  ],
+  "holders": [
+   "Callum",
+   "Haruki",
+   "Helena",
+   "Ines",
+   "Matthieu",
+   "Nadia",
+   "Priya"
+  ],
+  "readable_by": [
+   "Priya",
+   "Nadia",
+   "Matthieu",
+   "Helena"
+  ],
+  "ts": [
+   "1788786360.743052"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl@zofiaOmar",
+  "conversation": "DM Omar ↔ Priya",
+  "conv_id": "D7ZG4MVFIUV",
+  "n": 4,
+  "when": "Sat 05 17:05 – Sat 05 17:16",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Priya"
+  ],
+  "ts": [
+   "1788642300.987742",
+   "1788642720.564967",
+   "1788642840.090923",
+   "1788642960.612387"
+  ]
+ },
+ {
+  "cell": "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar",
+  "plan": "3.j",
+  "layer": "affinity:Nadia=neutralPpl,Priya=neutralPpl@zofiaOmar",
+  "conversation": "DM Nadia ↔ Zofia",
+  "conv_id": "DH6RLXKHI4G",
+  "n": 4,
+  "when": "Sat 05 17:30 – Sat 05 17:40",
+  "subject": [
+   "Nadia",
+   "Priya"
+  ],
+  "holders": [
+   "Nadia",
+   "Omar",
+   "Priya",
+   "Zofia"
+  ],
+  "readable_by": [
+   "Nadia"
+  ],
+  "ts": [
+   "1788643800.444272",
+   "1788644160.817740",
+   "1788644280.390894",
+   "1788644400.905759"
+  ]
+ },
+ {
   "cell": "w1PstrongNstrong",
   "plan": "2.a",
   "layer": "dislike:Priya:strong",

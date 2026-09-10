@@ -310,6 +310,19 @@ def main() -> None:
         cell = build_w1.build(**kw)
         layers = build_w1.layers_for(**kw)
         got = msgs_by_conv(cell)
+        cset = kw.get("confidants", L.DEFAULT_CSET)
+        raw = msgs_by_conv(build_w1.build(callum=None, confidants=cset,
+                                          ines_free="base" if kw.get("ines_free") is True else False))
+        if kw.get("ines_free") is True:
+            full = msgs_by_conv(build_w1.build(callum=None, confidants=cset))
+            n_edit = sum(1 for k in full for a, b in zip(full[k], raw[k]) if a != b)
+            check(f"{cname}: inesAvail rewrites exactly its declared base lines",
+                  n_edit == len(build_w1.BASE_EDITS["ines_free"]), f"rewrote {n_edit}")
+        if cset != L.DEFAULT_CSET:
+            full = msgs_by_conv(build_w1.build(callum=None))
+            n_drop = sum(len(full[k]) - len(raw[k]) for k in full)
+            check(f"{cname}: confidant set {cset} drops exactly its declared base lines",
+                  n_drop == len(build_w1.BASE_DROPS[cset]), f"dropped {n_drop}")
         if kw.get("kickoff_hour"):
             # plan 1.e.iv/v: the only base message a cell may rewrite is the kickoff's
             # first-meeting sentence ("one hour"). Undo it before the purity comparison, so
@@ -322,8 +335,9 @@ def main() -> None:
         n_layer = sum(len(l.inserts) for l in layers)
         homes = set()
         for l in layers:
+            # a home is "dm:a+b" (keyed a|b by msgs_by_conv) or a channel key (keyed by name)
             homes |= {"|".join(sorted(n.capitalize() for n in h.split(":")[1].split("+")))
-                      for h in l.homes}
+                      if h.startswith("dm:") else h for h in l.homes}
         touched = {k for k, v in added.items() if v}
         n_callum = sum(len(l.inserts) for l in layers if l.id.startswith("callum:"))
         check(f"{cname}: base survives, {n_added - n_callum} inserted beyond callum, all inside "
@@ -382,7 +396,8 @@ def main() -> None:
     # checked is that each layer stays inside what it declares.
     conv_keys = {c["key"] for c in C.CONVERSATIONS}
     declared = set().union(*L.DISLIKE_HOMES.values(), L.SHARED_HOMES,
-                           *L.CONFIDE_HOMES.values())
+                           *L.CONFIDE_HOMES.values(),
+                           *(h for cs in L.CONFIDANT_SETS.values() for h in cs.values()))
     check("every declared layer home is a base conversation",
           declared <= conv_keys, str(sorted(declared - conv_keys)))
     check("confided P and N homes are disjoint",
@@ -408,7 +423,15 @@ def main() -> None:
 
     for (person, case), homes in L.DISLIKE_HOMES.items():
         authored_or_refuses(f"{person} {case}", lambda: L.dislike_layer(person, case), homes)
-    authored_or_refuses("shared", lambda: L.shared_layer(True), L.SHARED_HOMES)
+    for sc in L.SHARED_CASES:
+        authored_or_refuses(f"shared {sc}", lambda: L.shared_layer(sc), L.SHARED_HOMES)
+    authored_or_refuses("everyone", lambda: L.everyone_layer(True), L.EVERYONE_HOMES)
+    for person in ("Priya", "Nadia"):
+        authored_or_refuses(f"{person} superstrong@zofiaOmar",
+                            lambda: L.dislike_layer(person, "superstrong", "zofiaOmar"),
+                            L.CONFIDANT_SETS["zofiaOmar"][person])
+    authored_or_refuses("everyone@zofiaOmar", lambda: L.everyone_layer(True, "zofiaOmar"),
+                        L.EVERYONE_HOMES_BY["zofiaOmar"])
     for n in (1, 2, 3):
         authored_or_refuses(f"confide{n}", lambda: L.confide_layer(n), L.CONFIDE_HOMES[n])
 

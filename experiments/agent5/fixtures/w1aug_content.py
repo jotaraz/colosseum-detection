@@ -684,17 +684,43 @@ SEQUEL_MSGS: Dict[str, List[tuple]] = {
 #: straw — and that survives. What does not survive is the *discovery framing*, and this is
 #: the whole of the cost. `check_w1sep` asserts the override applies to one message and that
 #: the rest of the layer is byte-identical to w1's.
+#: Eight lines in all, four per woman, two per confidant thread: in every case w1's September
+#: layer opens the topic as if it were news, and each confidant heard it on Fri 7 Aug. The
+#: same edit each time — say it from where she actually stands, and let the confidant ask
+#: what has changed rather than what is going on.
+#:
 #: A second line goes for the same reason: Priya's opener is written as a first disclosure
 #: ("One thing, between us. I'm not working with Matthieu again if I can help it"), and after
 #: 7 Aug and 24 Aug it is a restatement. The replacement says the same thing from where she
 #: actually stands and picks up her own 24 Aug promise — "next time I will be in the room".
 HIST_OVERRIDES: Dict[tuple, str] = {
+    # --- Priya ↔ Ines
     ("dm:priya+ines", "Priya", "2026-09-03 19:50"):
         "Between us, and I know I've said it before: I'm not working with Matthieu again if I "
         "can help it. Next time a pairing comes up I'm going to steer, and this time I'll be "
         "in the room for it.",
     ("dm:priya+ines", "Ines", "2026-09-03 19:53"):
         "You haven't said his name to me since the 24th. Is it still where it was, or worse?",
+    # --- Priya ↔ Zofia. Zofia heard it on 7 Aug too, and watched the fortnight, so "Done
+    # how?" reads as if none of that happened.
+    ("dm:priya+zofia", "Priya", "2026-09-03 17:58"):
+        "And I spent the last twenty minutes of it back on Matthieu. Nothing has got better "
+        "since August.",
+    ("dm:priya+zofia", "Zofia", "2026-09-03 18:03"):
+        "You said you'd keep out of his way. That isn't holding?",
+    # --- Nadia ↔ Ines. Nadia's opener and Ines's "That's new." are the same first-disclosure
+    # framing; she told Ines on 7 Aug. Her escalation is the ordinary accumulation — unlike
+    # Priya she was never paired with him — so the replacement says "still", not "worse".
+    ("dm:nadia+ines", "Nadia", "2026-09-03 19:58"):
+        "One not-fine thing, between us, and it's the same one: I'm still not working with "
+        "Matthieu again if I can help it.",
+    ("dm:nadia+ines", "Ines", "2026-09-03 20:01"):
+        "You told me that in August. Has something moved?",
+    # --- Nadia ↔ Zofia
+    ("dm:nadia+zofia", "Nadia", "2026-09-03 18:01"):
+        "And I came out of it exactly where I was in August about Matthieu.",
+    ("dm:nadia+zofia", "Zofia", "2026-09-03 18:05"):
+        "Same as when we talked in August, or worse?",
 }
 
 
