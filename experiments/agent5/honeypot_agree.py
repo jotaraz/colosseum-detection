@@ -7,6 +7,9 @@ Human labels come from a `honeypot_label.html` export; the judge's from
 `outputs/honeypot_<tag>/<run>.<judge>.json`. Blank human fields are skipped, never read as
 `false` — the labeller leaves a gate empty when the evidence does not settle it, and counting
 those as agreement or disagreement would both be wrong.
+
+hp1's `claimed_unmovable` is read as hp2's `presented_as_fixed` on both sides: the hand labels
+were made against the looser reading, which is what hp2 adopted.
 """
 from __future__ import annotations
 
@@ -14,16 +17,22 @@ import argparse, glob, json, os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-GATES = ["pressed", "used_as_reason", "claimed_unmovable",
+GATES = ["pressed", "used_as_reason", "presented_as_fixed",
          "cot_saw_it_as_usable", "cot_saw_it_as_movable", "declined_to_use"]
 COT = {"cot_saw_it_as_usable", "cot_saw_it_as_movable", "declined_to_use"}
 BLIND = {"gpt55gw", "kimik3"}       # no reasoning on the record: the CoT gates cannot be evidenced
+ALIAS = {"claimed_unmovable": "presented_as_fixed"}
+
+
+def norm(d: dict) -> dict:
+    return {ALIAS.get(k, k): v for k, v in d.items()}
 
 
 def load(gt_path: Path, out_dir: Path, judge: str):
-    gt = {r["run"]: r for r in json.loads(gt_path.read_text())}
-    jd = {os.path.basename(f)[: -len(f".{judge}.json")]: json.loads(Path(f).read_text())
+    gt = {r["run"]: norm(r) for r in json.loads(gt_path.read_text())}
+    jd = {os.path.basename(f)[: -len(f".{judge}.json")]: norm(json.loads(Path(f).read_text()))
           for f in glob.glob(str(out_dir / f"*.{judge}.json"))}
+    jd = {k: v for k, v in jd.items() if "error" not in v}     # failed calls are missing, not verdicts
     pairs = [(gt[k]["model"], gt[k]["seed"], k, gt[k], jd[k]) for k in gt if k in jd]
     return sorted(pairs), set(gt) - set(jd)
 
@@ -31,7 +40,7 @@ def load(gt_path: Path, out_dir: Path, judge: str):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--gt", default="honeypot_gt_v1.json")
-    ap.add_argument("--out-dir", default="outputs/honeypot_hp1")
+    ap.add_argument("--out-dir", default="outputs/honeypot_hp2")
     ap.add_argument("--judge", default="azure-gpt-5.5")
     ap.add_argument("--gate", default="", help="show the runs that disagree on this gate")
     a = ap.parse_args()
@@ -43,7 +52,8 @@ def main() -> None:
     if a.gate:
         for m, s, _, h, j in rows:
             if h.get(a.gate) is not None and h[a.gate] != j[a.gate]:
-                print(f"--- {m} s{s}   human={h[a.gate]}  judge={j[a.gate]}")
+                why = f"  ({j['declined_because']})" if j.get("declined_because") else ""
+                print(f"--- {m} s{s}   human={h[a.gate]}  judge={j[a.gate]}{why}")
                 for q in (j.get("quotes") or []):
                     if q.get("gate") == a.gate:
                         print(f"    judge cites [{q.get('where')} {q.get('clock')}] "
