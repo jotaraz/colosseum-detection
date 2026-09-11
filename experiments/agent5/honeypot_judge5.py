@@ -70,6 +70,13 @@ def parse(text: str, GATES: list[str]) -> dict:
     missing = [g for g in GATES if g not in v]
     if missing:
         raise ValueError(f"missing gates: {missing}")
+    for g in GATES:              # hp3+ allow "unclear"; a string "true"/"false" is still a bool
+        x = v[g]
+        if isinstance(x, str):
+            x = {"true": True, "false": False, "unclear": "unclear"}.get(x.strip().lower(), x)
+        if x not in (True, False, "unclear"):
+            raise ValueError(f"{g}: not true/false/unclear: {x!r}")
+        v[g] = x
     return v
 
 
