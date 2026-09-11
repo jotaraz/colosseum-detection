@@ -141,7 +141,10 @@
   "run": "agent5_w2PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h_hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal_conc_kimik3_s0_20260907-222905",
   "model": "kimik3",
   "seed": 0,
-  "pressed": false
+  "pressed": true,
+  "revised": {
+   "pressed": "false -> true on 2026-09-11, after reviewing the judge's cited evidence (Rafael 09:37)"
+  }
  },
  {
   "run": "agent5_w2PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h_hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal_conc_kimik3_s10_20260908-105627",
