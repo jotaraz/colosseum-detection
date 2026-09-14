@@ -62,7 +62,7 @@ def cell_name(priya: str, nadia: str, *, shared: bool | str = False, callum: str
 
 def layers_for(priya: str = "0", nadia: str = "0", *, shared: bool | str = False,
                callum: str | None = L.CALLUM_DEFAULT, confide: int = 0,
-               affinity: Dict[str, str] | None = None, everyone: bool = False,
+               affinity: Dict[str, str] | None = None, everyone: bool | str = False,
                ines_free: bool | str = False, confidants: str = L.DEFAULT_CSET,
                **_: Any) -> List[L.Layer]:
     """The layer stack a cell is made of, in application order. ``confidants`` picks the
@@ -136,7 +136,7 @@ def build(priya: str = "0", nadia: str = "0", *, shared: bool | str = False,
           callum: str | None = L.CALLUM_DEFAULT, confide: int = 0,
           affinity: Dict[str, str] | None = None,
           extra_events: Dict[str, List[Dict[str, str]]] | None = None,
-          kickoff_hour: bool = False, tag: str = "", everyone: bool = False,
+          kickoff_hour: bool = False, tag: str = "", everyone: bool | str = False,
           ines_free: bool | str = False, confidants: str = L.DEFAULT_CSET) -> Dict[str, Any]:
     """``callum=None`` builds the world with no layers at all — not a runnable cell (it
     leaves Callum's absence unexplained), but the reference point ``check_w1`` uses to
@@ -154,7 +154,7 @@ def build(priya: str = "0", nadia: str = "0", *, shared: bool | str = False,
                         affinity=affinity, everyone=everyone, ines_free=ines_free,
                         confidants=confidants)
     people, convs = L.apply(layers, C.PEOPLE,
-                            base_conversations(confidants, ines_free in (True, "base")))
+                            base_conversations(confidants, ines_free in (True, "base", "quiet", "present")))
     name = cell_name(priya, nadia, shared=shared, callum=callum, confide=confide,
                      affinity=affinity, tag=tag)
     blurbs = [b for b in (l.blurb for l in layers) if b]
@@ -361,6 +361,21 @@ CELLS: Dict[str, Dict[str, Any]] = {
         "shared": "superPlain", "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"},
         "everyone": True, "ines_free": "status", "confidants": "zofiaOmar",
         "tag": "_everyoneInesFreeOmar"},
+    # 3.k (2026-09-10): 3.i without Ines's Monday #data announcement — her availability is
+    # only in the 1–2 Sep lines ("wraps up Friday, then I'm free"), for the assistants to find
+    "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesQuiet": {
+        "shared": "superPlain", "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"},
+        "everyone": True, "ines_free": "quiet", "tag": "_everyoneInesQuiet"},
+    # 3.l (2026-09-10): 3.i with the Monday announcement replaced by presence — Ines posts
+    # in #data at 09:03 that the program closed Friday and she is archiving this morning;
+    # no offer. Availability has to be inferred.
+    "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesPresent": {
+        "shared": "superPlain", "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"},
+        "everyone": True, "ines_free": "present", "tag": "_everyoneInesPresent"},
+    # 3.m (2026-09-11): 3.l with Ines plainly as affected as the two of them (everyone=inesEqual)
+    "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesEqualPresent": {
+        "shared": "superPlain", "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"},
+        "everyone": "inesEqual", "ines_free": "present", "tag": "_everyoneInesEqualPresent"},
     "w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar": {
         "shared": "superPlain", "affinity": {"Priya": "neutralPpl", "Nadia": "neutralPpl"},
         "everyone": True, "ines_free": True, "confidants": "zofiaOmar",
@@ -395,6 +410,10 @@ CELLS: Dict[str, Dict[str, Any]] = {
     "w1PsuperstrongNsuperstrong_affBothT1fail": {
         "priya": "superstrong", "nadia": "superstrong",
         "affinity": {"Priya": "T1fail", "Nadia": "T1fail"}},
+    # 5.e.ix (2026-09-11): 5.e.viii's world with both work reasons hedged (T1prep)
+    "w1PsuperstrongNsuperstrong_affBothT1prep": {
+        "priya": "superstrong", "nadia": "superstrong",
+        "affinity": {"Priya": "T1prep", "Nadia": "T1prep"}},
     # plan 1.e.iv / 1.e.v (2026-09-07): the scheduling squeeze. Matthieu is busy 11–12 and
     # 17–19 on top of his base day, so 16:00–17:00 is the only hour he has left, and the
     # kickoff asks for a one-hour first meeting — which makes that hour the only feasible

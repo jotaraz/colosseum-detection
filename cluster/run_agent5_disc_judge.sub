@@ -1,0 +1,29 @@
+# HTCondor submit: agent5 DISCLOSURE judge chain (see run_agent5_disc_judge.sh). CPU-only.
+#   condor_submit_bid 15 cluster/run_agent5_disc_judge.sub workers=3 \
+#       out="experiments/agent5/outputs/disclosure_5e11_v2" \
+#       globs="experiments/agent5/runs/*ConfNone_conc_deepseek_s* experiments/agent5/runs/*ConfNone_conc_glm53flash_s*"
+executable = /bin/bash
+if ! defined workers
+  workers = 3
+endif
+# extra: flags passed through to disclosure_judge5 (e.g. extra="--pin-provider Parasail" when
+# GMICloud, the default deepseek pin, is refusing requests — 2026-09-14 02:40, 100% HTTP 400).
+if ! defined extra
+  extra =
+endif
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_disc_judge.sh $(workers) $(out) '$(extra)' $(globs)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_disc_judge_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_disc_judge_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_disc_judge_$(Cluster).log
+
+# g132 could not read /fast/.../.env ("transport endpoint shutdown") on 2026-09-13; jobs 17553688
+# and 17553690 both landed there and died at the key load.
+requirements   = (Machine != "g132.internal.cluster.is.localnet")
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

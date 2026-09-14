@@ -1,0 +1,22 @@
+# HTCondor submit: agent5 DISTRUST / DETECTION judge chain (see run_agent5_dd_judge.sh). CPU-only.
+#   condor_submit_bid 15 cluster/run_agent5_dd_judge.sub judge=distrust
+#   condor_submit_bid 15 cluster/run_agent5_dd_judge.sub judge=detection
+executable = /bin/bash
+if ! defined judge
+  judge = distrust
+endif
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_dd_judge.sh $(judge)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_$(judge)_judge_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_$(judge)_judge_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_$(judge)_judge_$(Cluster).log
+
+# g132 could not read /fast/.../.env ("transport endpoint shutdown") on 2026-09-13.
+requirements   = (Machine != "g132.internal.cluster.is.localnet")
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

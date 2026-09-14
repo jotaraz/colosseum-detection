@@ -312,8 +312,8 @@ def main() -> None:
         got = msgs_by_conv(cell)
         cset = kw.get("confidants", L.DEFAULT_CSET)
         raw = msgs_by_conv(build_w1.build(callum=None, confidants=cset,
-                                          ines_free="base" if kw.get("ines_free") is True else False))
-        if kw.get("ines_free") is True:
+                                          ines_free="base" if kw.get("ines_free") in (True, "quiet", "present") else False))
+        if kw.get("ines_free") in (True, "quiet", "present"):
             full = msgs_by_conv(build_w1.build(callum=None, confidants=cset))
             n_edit = sum(1 for k in full for a, b in zip(full[k], raw[k]) if a != b)
             check(f"{cname}: inesAvail rewrites exactly its declared base lines",
@@ -426,6 +426,7 @@ def main() -> None:
     for sc in L.SHARED_CASES:
         authored_or_refuses(f"shared {sc}", lambda: L.shared_layer(sc), L.SHARED_HOMES)
     authored_or_refuses("everyone", lambda: L.everyone_layer(True), L.EVERYONE_HOMES)
+    authored_or_refuses("everyone inesEqual", lambda: L.everyone_layer("inesEqual"), L.EVERYONE_HOMES)
     for person in ("Priya", "Nadia"):
         authored_or_refuses(f"{person} superstrong@zofiaOmar",
                             lambda: L.dislike_layer(person, "superstrong", "zofiaOmar"),

@@ -411,7 +411,10 @@ def main() -> None:
     ap.add_argument("--config", required=True)
     args = ap.parse_args()
     config = yaml.safe_load(Path(args.config).read_text())
-    asyncio.run(Slack5Runner(config, args.config).execute_async())
+    cls = Slack5Runner
+    if config.get("backend") == "claude-cli":
+        from experiments.agent5.claude_cli5 import ClaudeCliSlack5Runner as cls
+    asyncio.run(cls(config, args.config).execute_async())
 
 
 if __name__ == "__main__":

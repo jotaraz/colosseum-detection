@@ -239,8 +239,10 @@ def judge_item(item: Dict[str, Any], caller, template: str) -> Dict[str, Any]:
 # ---- summary --------------------------------------------------------------------------------
 
 
-def summarize(rows: List[Dict[str, Any]], skipped: List[Dict[str, Any]]) -> str:
-    out = ["# disclosure judge — summary", ""]
+def summarize(rows: List[Dict[str, Any]], skipped: List[Dict[str, Any]],
+              relays: bool = True) -> str:
+    """``relays=False`` lists only direct/indirect verdicts (no relay-only messages)."""
+    out = ["# disclosure judge — summary" + ("" if relays else " (no relays)"), ""]
     for sk in skipped:
         out.append(f"- SKIP {sk['run']} — {sk['skipped']}")
     if skipped:
@@ -261,18 +263,30 @@ def summarize(rows: List[Dict[str, Any]], skipped: List[Dict[str, Any]]) -> str:
                        f"{sum(1 for r in s if r.get('relay') == 'relays-other')} |")
         out.append("")
         flagged = [r for r in sub if r.get("verdict") in ("direct", "indirect")
-                   or r.get("relay") == "relays-other"]
+                   or (relays and r.get("relay") == "relays-other")]
         if flagged:
             out.append("### flagged messages")
             out.append("")
+            by_run: Dict[str, List[Dict[str, Any]]] = {}
             for r in flagged:
-                tag = r.get("verdict") if r.get("verdict") != "none" else "relay"
-                out.append(f"- **{tag}** [{r.get('about')}] {r['run'][:50]} · {r['speaker']} → "
-                           f"{r['audience']} @ {r['clock']} ({r.get('confidence')})  ")
-                out.append(f"  > {r['message'][:300]}")
-                if r.get("span"):
-                    out.append(f"  span: “{r['span'][:200]}”")
-                out.append(f"  {r.get('reason', '')[:400]}")
+                by_run.setdefault(r["run"], []).append(r)
+            for run, rs in sorted(by_run.items()):
+                out.append(f"#### {run}")
+                out.append("")
+                for r in sorted(rs, key=lambda r: r["clock"]):  # "Mon HH:MM" sorts by time
+                    tag = r.get("verdict") if r.get("verdict") != "none" else "relay"
+                    out.append(f"- **{tag}** [{r.get('about')}] {r['speaker']} → "
+                               f"{r['audience']} @ {r['clock']} ({r.get('confidence')})  ")
+                    msg, span = r['message'], r.get("span") or ""
+                    if span and span in msg:
+                        msg = msg.replace(span, f"**{span}**", 1)
+                    out.extend("  > " + ln for ln in msg.splitlines() or [""])
+                    out.append("")  # a bare indented line after a quote would continue the quote
+                    if r.get("span"):
+                        out.append(f"  span: “{r['span'][:200]}”  ")
+                    out.append(f"  {r.get('reason', '')[:400]}")
+                    out.append("")
+                out.append("")
             out.append("")
     return "\n".join(out)
 
@@ -362,13 +376,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             if n % 10 == 0 or n == len(jobs) + len(done):
                 print(f"  {n}/{len(jobs) + len(done)}", flush=True)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        list(ex.map(work, jobs))
+    # One pool per judge, run side by side: the job list is judge-major, so a single pool
+    # would keep every worker on the gateway until its half is done and only then turn to
+    # OpenRouter — the two endpoints were never busy at once (observed 2026-09-13, cluster
+    # 17553702: each slice ran as a gpt-5.5 pass followed by a deepseek pass). ``--workers``
+    # stays the per-endpoint concurrency, which is what the rate limits are about.
+    by_judge = {j: [job for job in jobs if job[0] == j] for j in judges}
+
+    def run_pool(judge: str) -> None:
+        with ThreadPoolExecutor(max_workers=args.workers) as ex:
+            list(ex.map(work, by_judge[judge]))
+
+    with ThreadPoolExecutor(max_workers=len(judges)) as outer:
+        list(outer.map(run_pool, judges))
     (out_dir / "rows.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
     (out_dir / "summary.md").write_text(summarize(rows, skipped))
+    (out_dir / "summary_no_relays.md").write_text(summarize(rows, skipped, relays=False))
     for j in judges:
         print(f"{j}: {callers[j].snapshot() if hasattr(callers[j], 'snapshot') else ''}")
-    print(f"wrote {out_dir}/rows.jsonl and summary.md")
+    print(f"wrote {out_dir}/rows.jsonl, summary.md and summary_no_relays.md")
     return 0
 
 

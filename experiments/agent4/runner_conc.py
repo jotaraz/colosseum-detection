@@ -253,6 +253,31 @@ class ConcRunner:
                          proxy_port=self.proxy_port, world_port=self.world_port,
                          system_prompt=system_prompt, temperature=self.temperature)
 
+    async def start_agents(self, procs: Procs) -> None:
+        """One opencode server + session per assistant."""
+        for i, p in enumerate(self.roster):
+            home = self.build_home(p, self.system_prompt(p))
+            port = self.opencode_base + i
+            self.oc_ports[p] = port
+            xdg = {f"XDG_{kind}_HOME": str(home / ".xdg" / kind.lower())
+                   for kind in ("DATA", "CONFIG", "STATE", "CACHE")}
+            procs.spawn(f"opencode_{p.lower()}",
+                        ["opencode", "serve", "--port", str(port)], cwd=home, extra_env=xdg)
+        for p in self.roster:
+            base = f"http://127.0.0.1:{self.oc_ports[p]}"
+            wait_http(base + "/agent", f"opencode({p})", procs=procs)
+            agents = (await self._request("GET", base + "/agent", timeout=10)).json()
+            if "assistant" not in [a.get("name") for a in agents]:
+                raise RuntimeError(f"opencode({p}): agent 'assistant' missing")
+            self.sessions[p] = (await self._request(
+                "POST", base + "/session", json={"title": f"{p} assistant"},
+                timeout=10)).json()["id"]
+
+    def enrich_record(self, out_path: Path) -> None:
+        """Per-step reasoning and tool-call steps, reconstructed from the proxy dump."""
+        from experiments.agent4.reasoning_extract import enrich
+        enrich(out_path)
+
     # ------------------------------------------------------------------ worker
     async def _worker(self, agent: str) -> None:
         while True:
@@ -498,33 +523,19 @@ class ConcRunner:
         outcome = "error"
         try:
             procs.spawn("world", self.world_cmd())
-            procs.spawn("proxy", self.proxy_cmd())
+            proxy_cmd = self.proxy_cmd()
+            if proxy_cmd:
+                procs.spawn("proxy", proxy_cmd)
             wait_http(self.world + "/control/state", "world server", procs=procs)
-            wait_http(f"http://127.0.0.1:{self.proxy_port}/", "proxy", procs=procs)
+            if proxy_cmd:
+                wait_http(f"http://127.0.0.1:{self.proxy_port}/", "proxy", procs=procs)
 
             self.http = httpx.AsyncClient()
             pending = (await self._control("GET", "/control/replay"))["messages"]
             self.pending_deliveries = sorted(parse_dt(e["at"]) for e in pending)
 
-            sysprompts = {}
-            for i, p in enumerate(self.roster):
-                sysprompts[p] = self.system_prompt(p)
-                home = self.build_home(p, sysprompts[p])
-                port = self.opencode_base + i
-                self.oc_ports[p] = port
-                xdg = {f"XDG_{kind}_HOME": str(home / ".xdg" / kind.lower())
-                       for kind in ("DATA", "CONFIG", "STATE", "CACHE")}
-                procs.spawn(f"opencode_{p.lower()}",
-                            ["opencode", "serve", "--port", str(port)], cwd=home, extra_env=xdg)
+            await self.start_agents(procs)
             for p in self.roster:
-                base = f"http://127.0.0.1:{self.oc_ports[p]}"
-                wait_http(base + "/agent", f"opencode({p})", procs=procs)
-                agents = (await self._request("GET", base + "/agent", timeout=10)).json()
-                if "assistant" not in [a.get("name") for a in agents]:
-                    raise RuntimeError(f"opencode({p}): agent 'assistant' missing")
-                self.sessions[p] = (await self._request(
-                    "POST", base + "/session", json={"title": f"{p} assistant"},
-                    timeout=10)).json()["id"]
                 self.inbox[p] = asyncio.Queue()
 
             workers = [asyncio.create_task(self._worker(p)) for p in self.roster]
@@ -580,9 +591,8 @@ class ConcRunner:
         out_path = self.out / "run.json"
         out_path.write_text(json.dumps(record, indent=2, ensure_ascii=False))
         try:
-            from experiments.agent4.reasoning_extract import enrich
             from experiments.agent4.viewer import render
-            enrich(out_path)
+            self.enrich_record(out_path)
             render(out_path)
         except Exception as exc:
             print(f"viewer failed: {exc}")

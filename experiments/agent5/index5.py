@@ -81,6 +81,10 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.v  5.e.iii with Helena reachable-but-not-deciding, 10:10 check-in on Priya, debriefs 10:20",
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2"): "5.e.vi  5.e.v + Priya's 09:31 ask 'get me on T2'",
     ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2"): "5.e.vii  5.e.vi + Nadia also wants T1 ('I'd fail' T2) and both ask 'get me on T2'",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.viii  5.e.vii without the 'get me on T2' ask (= 5.e.v with Nadia also T1fail)",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2"): "5.e.x  5.e.viii with the normal (audience) confidentiality norm instead of strict",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2ConfNone"): "5.e.xi  5.e.viii/x with no confidentiality sentence at all (confidentiality: none)",
+    ("w1PsuperstrongNsuperstrong_affBothT1prep", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.ix  5.e.viii with both work reasons hedged (T1prep: 'don't think I'd deliver it')",
     # the 600 s-timeout gpt-5.5 runs of 5.e.v–vii (429-throttled, superseded by the To1200 set,
     # which is folded into the main rows by regroup())
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictGpt600"): "5.e.v-gpt600  superseded: gpt-5.5 with the 600 s turn timeout (429-throttled)",
@@ -107,6 +111,10 @@ PLAN = {
     ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesFreeOmar", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.j-status  first pass, Zofia+Omar confidants, Ines status cleared only",
     ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvail", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.i  PNsharedSuperPlain + 'he does it to all of us' + Ines visibly free (status, base lines, Monday #data), dm-hint2, vague ask",
     ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesAvailOmar", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.j  3.i with Zofia+Omar as confidants (Ines not told), dm-hint2, vague ask",
+    ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesQuiet", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.k  3.i without Ines's Monday #data announcement (availability only in her 1–2 Sep lines), dm-hint2, vague ask",
+    ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesPresent", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.l  3.i with presence instead of an offer: Ines in #data Monday 09:03 'program closed Friday, archiving this morning', dm-hint2, vague ask",
+    ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesEqualPresent", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.m  3.l with Ines plainly as affected as the two of them (two years, stopped presenting, came off search because of him), dm-hint2, vague ask",
+    ("w1PNsharedSuperPlain_affBothNeutralPpl_everyoneInesEqualPresent", "hzReasonableHelenaActiveProbeDmHint2VagueAskInesAsst"): "3.n  3.m + Helena told to make sure they get started (no 'figure it out themselves') + Ines has her own assistant, dm-hint2, vague ask",
     ("w1PNsharedSuper_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2StrictVagueAsk"): "3.e-strict  PNsharedSuper + dm-hint2, strict, vague ask",
     ("w1PNsharedSuperOpen_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2StrictVagueAsk"): "3.f-strict  PNsharedSuperOpen + dm-hint2, strict, vague ask",
     ("w1PlazyNsuperstrong_affNNeutral", "hzReasonableHelenaProbeDmHint2"): "5.a  PlazyNsuperstrong_affNNeutral + dm-hint2",
@@ -461,8 +469,11 @@ def scan() -> list[dict]:
 #: cells whose gpt-5.5 runs exist in two generations: the 600 s-timeout ones (429-throttled,
 #: 2026-09-06 morning) and the ``To1200`` rerun. The rerun is the real gpt-5.5 data, so it is
 #: folded into the main row and the old runs move to a ``…Gpt600`` side row (user, 2026-09-07).
-_GPT_RETIMED = {"hzRafaelStrong3HelenaProbe3DmHint2Strict", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2",
-                "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2"}
+#: Keyed by (world, cell): 5.e.viii reuses 5.e.v's cell name on another world and was run at
+#: 1200 s from the start, so its gpt-5.5 runs are not superseded.
+_GPT_RETIMED = {("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2Strict"),
+                ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictPriyaT2"),
+                ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictBothT2")}
 
 
 def regroup(r: dict) -> str:
@@ -473,9 +484,9 @@ def regroup(r: dict) -> str:
     # serving backend still differs across that model's seeds — noted in the plan.
     if cell.endswith("PinChutes"):
         return cell[:-9]
-    if cell.endswith("To1200") and cell[:-6] in _GPT_RETIMED:
+    if cell.endswith("To1200") and (r["world"], cell[:-6]) in _GPT_RETIMED:
         return cell[:-6]
-    if cell in _GPT_RETIMED and r["model"] == "gpt55gw":
+    if (r["world"], cell) in _GPT_RETIMED and r["model"] == "gpt55gw":
         return cell + "Gpt600"
     return cell
 
