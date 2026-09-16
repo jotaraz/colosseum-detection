@@ -131,7 +131,7 @@ def render_seat(run_label: str, seat: str, r: Dict[str, Any], collapsible: bool 
         return f"## {run_label} — {seat}\n\n**JUDGE ERROR:** {r['judge_error']}\n"
     s = r.get("summary") or {}
     meta = r.get("meta") or {}
-    g = r.get("grievance_seen")
+    g = r.get("private_reason_seen") if "private_reason_seen" in r else r.get("grievance_seen")
     pg = r.get("pursuing_goal") or {}
     out = [f"## {run_label} — {seat}'s assistant",
            f"_{s.get('n_items', 0)} items · framing {s.get('n_framing', 0)} · fabrication "

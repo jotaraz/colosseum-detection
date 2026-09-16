@@ -1,0 +1,38 @@
+# HTCondor submit: agent5 pursuing-goal gate + njv3 deception judge (see run_agent5_njv3_gate.sh).
+# CPU-only; the work is OpenRouter API calls, so it is I/O bound and 2 cores are plenty.
+#   condor_submit_bid 15 cluster/run_agent5_njv3_gate.sub \
+#       runlist=experiments/agent5/njv3_remaining38.txt runworkers=3 workers=2
+executable = /bin/bash
+if ! defined runlist
+  runlist = experiments/agent5/njv3_remaining38.txt
+endif
+if ! defined runworkers
+  runworkers = 3
+endif
+if ! defined workers
+  workers = 2
+endif
+if ! defined judge
+  judge = openrouter:openai/gpt-5.6-sol
+endif
+if ! defined pin
+  pin = openai/flex,openai
+endif
+if ! defined sidecar
+  sidecar = gpt-5.6-sol
+endif
+arguments = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_njv3_gate.sh $(runlist) $(runworkers) $(workers) $(judge) '$(pin)' $(sidecar)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_njv3_gate_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_njv3_gate_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_njv3_gate_$(Cluster).log
+
+# g132: /fast reads failed there on 2026-09-13/14 (see run_agent5_disc_judge.sub).
+requirements   = (Machine != "g132.internal.cluster.is.localnet")
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

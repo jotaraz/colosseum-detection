@@ -182,6 +182,10 @@ class _TrackingCaller:
         self._lock = threading.Lock()
         self.totals: Dict[str, Any] = _blank_totals()
         self.provider = "openrouter"
+        #: Seconds per call, applied as both the per-read and the hard wall-clock cap of the
+        #: client. None keeps the client's defaults (120 s read, 600 s total) — a whole-run judge
+        #: reasoning over a 100k-token transcript needs more, and sets this after construction.
+        self.timeout: Optional[int] = None
 
     # last_* are per-thread views of the most recent call made *by this thread*.
     @property
@@ -198,7 +202,8 @@ class _TrackingCaller:
 
     def __call__(self, system_prompt: str, user_prompt: str) -> str:
         from experiments.social_jira2.openrouter_client import OpenRouterClient
-        client = OpenRouterClient()
+        client = (OpenRouterClient(request_timeout=self.timeout, total_timeout=self.timeout)
+                  if self.timeout else OpenRouterClient())
         messages = OpenRouterClient.init_context(system_prompt, user_prompt)
         params = {"model": self.model, "max_completion_tokens": self.max_tokens}
         # None means "send no temperature", which is not the same as 0.0: a model that removed the

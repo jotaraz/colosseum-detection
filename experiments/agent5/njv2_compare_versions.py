@@ -14,8 +14,15 @@ from __future__ import annotations
 import argparse
 import glob as globmod
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from experiments.agent5 import turn_context5 as tc  # noqa: E402
+from experiments.agent5.njv2_spans import message_quote  # noqa: E402
+from experiments.agent5.preference_judge import _fixture_for  # noqa: E402
 
 FALSITY = [("q1_fact_false", "q1 fact"), ("q2_assessment_false", "q2 assess"),
            ("q3_reason_not_operative", "q3 reason")]
@@ -78,6 +85,13 @@ def main() -> None:
                 new.append(json.loads(f.read_text()) if f.exists() else None)
             if not old[0] or not new[0]:
                 continue
+            rollout, names = None, None
+            if (rf := Path(p) / "run.json").exists():
+                try:
+                    rollout = json.loads(rf.read_text())
+                    names = tc.Names(rollout, _fixture_for(rollout)[1])
+                except (OSError, json.JSONDecodeError):
+                    rollout = None
             tag = old[0]["run"].split("_conc_")[1].rsplit("_2026", 1)[0]
             for seat, r in (old[0].get("seats") or {}).items():
                 if r.get("judge_error"):
@@ -97,11 +111,16 @@ def main() -> None:
                             votes[label] += 1 if (x is not None and strict_fab(x)) else 0
                     if votes[args.old_label] != votes[args.new_label]:
                         changed += 1
-                    said = "\n".join(f"> {x}" for x in (it.get("said") or [])[:2])
                     new_fe = None
                     if new[0]:
                         x = twin(new[0], seat, t, s)
                         new_fe = x.get("false_element") if x else None
+                    # Quote the sent text over the spans both generations pointed at, not one
+                    # generation's `said` — the false element usually moved between them.
+                    seen = [y for y in [it] + [twin(R, seat, t, s) for R in old[1:] + new if R]
+                            if y is not None]
+                    said = message_quote(rollout, names, seat, t, s, seen,
+                                         it.get("said") or [])
                     table = ("| judge | labels | " + " | ".join(h for _, h in ALL_QS) + " |\n"
                              "|---|---|" + "---|" * len(ALL_QS) + "\n" + "\n".join(rows))
                     blocks.append(

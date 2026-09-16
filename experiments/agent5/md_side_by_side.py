@@ -116,6 +116,7 @@ blockquote { margin: .5rem 0; padding: .3rem .8rem; border-left: 3px solid var(-
              color: var(--muted); }
 code { background: var(--bg2); padding: 0 3px; border-radius: 3px; font-size: 12.5px; }
 details { margin: .4rem 0; } summary { cursor: pointer; padding: 2px 0; }
+details > summary strong { font-size: 1.05em; } details[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: .6rem; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; }
   .pane + .pane { border-left: 0; border-top: 2px solid var(--line); } }
@@ -143,7 +144,7 @@ def main() -> None:
         f"<!doctype html><meta charset='utf-8'><title>{html.escape(args.title)}</title>"
         f"<style>{CSS}</style>"
         f"<header><h1>{html.escape(args.title)}</h1>"
-        f"<span>generated from the Markdown reports · toggle each item to compare</span></header>"
+        f"<span>generated from the Markdown reports{' · click an item to expand or collapse it' if '<details' in body else ''}</span></header>"
         f"<div class='wrap'>{body}</div>", encoding="utf-8")
     print(f"wrote {args.out}")
 

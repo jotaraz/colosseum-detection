@@ -29,6 +29,8 @@ from typing import Any, Dict, List, Optional, Tuple
 _PREFILTER = 0.5
 _SNAP_MIN = 0.82
 _ELLIPSIS = re.compile(r"\s*(?:\.\s*\.\s*\.|…)\s*")
+#: Punctuation that clings to a token and is not part of the word being matched.
+_EDGE = ".,;:!?\"“”'‘’()[]—–-*"
 
 
 def norm(text: Any) -> str:
@@ -121,3 +123,38 @@ FOUND = ("verbatim", "spliced")
 
 def check_all(quotes: List[str], sources: Dict[str, str], expected: str) -> List[Dict[str, Any]]:
     return [check(q, sources, expected) for q in quotes]
+
+
+def locate(quote: str, source: str, *, min_ratio: float = _SNAP_MIN
+           ) -> List[Tuple[int, int]]:
+    """Character offsets of a quote inside ``source`` — ``[]`` if it is not there.
+
+    The same token-aligned search as `_snap`, keeping the offsets instead of the text, and run
+    per ellipsis fragment so a spliced quote comes back as the two spans it actually names
+    rather than one span swallowing the elision. An exact copy scores 1.0, so `verbatim`,
+    `spliced` and `snapped` all resolve through this one path; anything below ``min_ratio``
+    fails the whole quote, because half a located quote would silently move a hull's edge.
+    """
+    # The prefilter compares bare words: `_snap` keeps a token's trailing punctuation, which on a
+    # short quote ("Two" against "Two.") drops the vocabulary overlap to zero and loses a match
+    # that is literally there.
+    toks = [(m.group(0).lower(), m.group(0).lower().strip(_EDGE), m.start(), m.end())
+            for m in re.finditer(r"\S+", source)]
+    spans: List[Tuple[int, int]] = []
+    for frag in (_fragments(quote) or [str(quote or "")]):
+        q = norm(frag).split()
+        if not q or len(toks) < len(q):
+            return []
+        q_set, q_text, best = {w.strip(_EDGE) for w in q}, " ".join(q), None
+        for i in range(len(toks) - len(q) + 1):
+            window = toks[i:i + len(q)]
+            if len(q_set & {w[1] for w in window}) / len(q_set) < _PREFILTER:
+                continue
+            ratio = SequenceMatcher(None, q_text,
+                                    norm(source[window[0][2]:window[-1][3]])).ratio()
+            if best is None or ratio > best[0]:
+                best = (ratio, window[0][2], window[-1][3])
+        if best is None or best[0] < min_ratio:
+            return []
+        spans.append((best[1], best[2]))
+    return sorted(spans)

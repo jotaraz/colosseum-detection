@@ -642,13 +642,62 @@ class BifrostCaller:
 #: rate on the longer four-question critic is what that cost.
 DEFAULT_PINS = {"deepseek/deepseek-v4-flash-0731": "GMICloud"}
 
+#: OpenRouter models that reject ``temperature`` rather than ignoring it — OpenAI's gpt-5 line
+#: lists no ``temperature`` among its supported parameters, so "deterministic judging" is not on
+#: offer there and the knob must be left off entirely (same situation as Claude Sonnet 5, see
+#: ``social_jira4.llm.make_judge_caller``).
+_NO_TEMPERATURE_PREFIXES = ("openai/gpt-5", "anthropic/claude-sonnet-5")
+
+
+def _read_openrouter_key(path: Path) -> str:
+    """The OpenRouter key in a key file that may hold more than the key: comments, blank lines,
+    ``OPENROUTER_API_KEY=…``, other services' keys. The file started life as one bare line and
+    ``read_text().strip()`` was the whole parser — which would have sent the entire file as the
+    bearer token once a second key was added beneath it."""
+    for line in path.read_text().splitlines():
+        line = line.strip().strip('"').strip("'")
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("OPENROUTER_API_KEY="):
+            line = line.split("=", 1)[1].strip().strip('"').strip("'")
+        if line.startswith("sk-or-"):
+            return line
+    return ""
+
+
+def _openrouter_key_override() -> None:
+    """Honour ``OPENROUTER_API_KEY_FILE``: use *that* key, not the repo-root ``.env`` one.
+
+    ``OpenRouterClient.__init__`` calls ``load_dotenv(override=True)``, which re-reads the
+    repo-root ``.env`` and clobbers an exported ``OPENROUTER_API_KEY``. So pointing a judge at a
+    second key (a live-credit account in ``experiments/agent5/.env3``, say) needs the env var
+    set *and* that reload neutralised. Both happen here, only when the var is set.
+    """
+    key_file = os.getenv("OPENROUTER_API_KEY_FILE")
+    if not key_file:
+        return
+    key = _read_openrouter_key(Path(key_file))
+    if not key:
+        raise RuntimeError(f"OPENROUTER_API_KEY_FILE={key_file} holds no OpenRouter key "
+                           f"(a bare sk-or-… line or OPENROUTER_API_KEY=sk-or-…)")
+    from dotenv import load_dotenv  # noqa: PLC0415 - optional dep, only needed on this path
+
+    load_dotenv()  # repo-root .env first, for everything that is not the OpenRouter key
+    os.environ["OPENROUTER_API_KEY"] = key
+    import experiments.social_jira2.openrouter_client as orc  # noqa: PLC0415
+
+    orc.load_dotenv = lambda *a, **k: None
+    print(f"openrouter key: {key_file} (…{key[-6:]}), repo-root .env reload disabled")
+
 
 def make_caller(spec: str, *, max_tokens: int = 6000, pin: Optional[str] = None):
     """``provider:model`` -> a ``(system, user) -> str`` caller with usage tracking.
 
-    ``pin`` names a single OpenRouter backend; pass ``"none"`` to route freely. Fallbacks are
-    disabled with the pin, so a backend that is down is a loud 404 rather than a silent
-    re-route to a different quantization mid-sweep.
+    ``pin`` names the OpenRouter backend(s) allowed — one slug, or a comma-separated ordered
+    list such as ``"openai/flex,openai"`` (try the flex tier, fall back to standard, nothing
+    else); pass ``"none"`` to route freely. Fallbacks outside the list are disabled, so a
+    backend that is down is a loud 404 rather than a silent re-route to a different
+    quantization or price tier mid-sweep.
     """
     provider, _, model = spec.partition(":")
     if not model:
@@ -660,10 +709,13 @@ def make_caller(spec: str, *, max_tokens: int = 6000, pin: Optional[str] = None)
     if provider == "azure":
         return make_judge_caller(provider="azure", model=model, max_tokens=max_tokens)
     if provider == "openrouter":
+        _openrouter_key_override()
         chosen = DEFAULT_PINS.get(model) if pin is None else (None if pin == "none" else pin)
-        routing = {"order": [chosen], "allow_fallbacks": False} if chosen else None
+        order = [x.strip() for x in str(chosen).split(",") if x.strip()] if chosen else []
+        routing = {"order": order, "allow_fallbacks": False} if order else None
+        temp = None if model.startswith(_NO_TEMPERATURE_PREFIXES) else 0.0
         return make_judge_caller(provider="openrouter", model=model, max_tokens=max_tokens,
-                                 temperature=0.0, reasoning_effort="medium",
+                                 temperature=temp, reasoning_effort="medium",
                                  provider_routing=routing)
     raise ValueError(f"unknown judge provider {provider!r}")
 
