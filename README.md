@@ -106,6 +106,8 @@ python experiments/agent5/index5.py
 
 Cluster submission scripts (HTCondor) for rollouts and judges are in [`cluster/`](cluster/) (`run_agent5_conc.sub`, `run_agent5_*_judge.sub`). API costs scale linearly with the number of agents per run; track usage.
 
+Rollouts can also run on a Claude subscription instead of a metered key (`backend: claude-cli`, each assistant a resumed `claude -p` session): see [`experiments/agent5/SUBSCRIPTION_RUNS.md`](experiments/agent5/SUBSCRIPTION_RUNS.md).
+
 ## Layout
 
 ```
