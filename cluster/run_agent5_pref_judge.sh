@@ -25,8 +25,10 @@ CLUSTER_ID="${4:-$$}"
 JUDGES="${5:-bifrost:azure/gpt-5.5 openrouter:deepseek/deepseek-v4-flash-0731}"
 shift 5 2>/dev/null || true
 
-# OPENROUTER_API_KEY from .env; BIFROST_API_KEY is a bare token in .env2 (not KEY=VALUE).
-set -a; source "$PROJECT/.env"; set +a
+# OPENROUTER_API_KEY from .env3's sk-or- line; BIFROST_API_KEY is a bare token in .env2.
+# OpenRouter key (user decision 2026-09-17): the ``sk-or-`` line of experiments/agent5/.env3.
+# The repo .env is no longer read by any agent5/agent4 path.
+export OPENROUTER_API_KEY="$(grep -m1 '^sk-or-' "$PROJECT/experiments/agent5/.env3" 2>/dev/null | tr -d '[:space:]')"
 export BIFROST_API_KEY="$(tr -d ' \r\n' < "$PROJECT/.env2")"
 [ -n "${OPENROUTER_API_KEY:-}" ] || { echo "FATAL: OPENROUTER_API_KEY unset" >&2; exit 1; }
 [ -n "${BIFROST_API_KEY:-}" ]    || { echo "FATAL: BIFROST_API_KEY unset (.env2)" >&2; exit 1; }

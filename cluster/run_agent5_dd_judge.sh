@@ -7,6 +7,9 @@
 #   condor_submit_bid 15 cluster/run_agent5_dd_judge.sub judge=distrust
 #   condor_submit_bid 15 cluster/run_agent5_dd_judge.sub judge=detection
 #   condor_submit_bid 15 cluster/run_agent5_dd_judge.sub judge=distrust_v2|distrust_v3   (message-level critic, one pass)
+#
+# Everything here runs on bifrost gpt-5.5. The DETECTION v2 critic on OpenRouter gpt-5.6-luna is a
+# separate driver, cluster/run_agent5_det_luna.sh -> outputs/detection_5e8_v2.
 export HOME="${HOME:-/home/jtaraz}"
 set -uo pipefail
 export PYTHONUNBUFFERED=1
@@ -53,7 +56,11 @@ for v in reasoning no_reasoning; do
     "$PROJECT/.venv/bin/python" -m experiments.agent5.distrust_judge5 --runs "${RUNS[@]}" \
       --critic v1 --out experiments/agent5/outputs/distrust_5e8_v1 --variant "$v" --workers 3 --resume
   else
+    # Pinned to the judge and critic these rows were produced with: detection_judge5's own
+    # defaults moved to OpenRouter gpt-5.6-luna + critic v2 on 2026-09-21 (run_agent5_det_luna.sh),
+    # and v1 rows must not be topped up with a different judge.
     "$PROJECT/.venv/bin/python" -m experiments.agent5.detection_judge5 --runs "${RUNS[@]}" \
+      --judge bifrost:azure/gpt-5.5 --critic v1 \
       --out experiments/agent5/outputs/detection_5e8_v1 --variant "$v" --run-workers 2 --workers 1
   fi
   rc=$?; echo "[$(date +%H:%M:%S)] $JUDGE $v rc=$rc"; [ $rc -eq 0 ] || rc_all=$rc

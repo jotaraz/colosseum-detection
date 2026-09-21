@@ -39,14 +39,14 @@ WAKE = (
 
 def load_env() -> dict:
     env = dict(os.environ)
-    env_file = REPO / ".env"
-    for line in env_file.read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            env.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    key3 = REPO / "experiments" / "agent5" / ".env3"   # sk-or- line; the repo .env is not read
+    if "OPENROUTER_API_KEY" not in env and key3.exists():
+        for raw in key3.read_text().splitlines():
+            if raw.strip().startswith("sk-or-"):
+                env["OPENROUTER_API_KEY"] = raw.strip()
+                break
     if "OPENROUTER_API_KEY" not in env:
-        sys.exit("OPENROUTER_API_KEY not found in environment or .env")
+        sys.exit("OPENROUTER_API_KEY not found in environment or experiments/agent5/.env3")
     return env
 
 

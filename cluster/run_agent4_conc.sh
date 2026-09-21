@@ -24,8 +24,9 @@ CLUSTER_ID="${3:-$$}"
 export PATH="$OPENCODE_DIR/bin:$PATH"
 opencode --version >/dev/null || { echo "FATAL: opencode missing — run setup_agent4.sub first" >&2; exit 1; }
 
-# OpenRouter creds only (same rationale as run_agent1_openrouter.sh).
-set -a; source "$PROJECT/.env"; set +a
+# OpenRouter key (user decision 2026-09-17): the ``sk-or-`` line of experiments/agent5/.env3.
+# The repo .env is no longer read by any agent5/agent4 path.
+export OPENROUTER_API_KEY="$(grep -m1 '^sk-or-' "$PROJECT/experiments/agent5/.env3" 2>/dev/null | tr -d '[:space:]')"
 [ -n "${OPENROUTER_API_KEY:-}" ] || { echo "FATAL: OPENROUTER_API_KEY unset" >&2; exit 1; }
 
 # Compute nodes reach the internet only through the HTTP(S) proxy that condor's env

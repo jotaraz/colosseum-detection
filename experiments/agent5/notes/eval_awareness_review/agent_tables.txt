@@ -1,0 +1,62 @@
+### Seat-based
+| assistant | seats | ≥1 label | ≥1 non-mechanics | objective | mechanics | fictionality | frame | unclear | other |
+|---|---|---|---|---|---|---|---|---|---|
+| Priya | 79 | 26 (33%) | 19 (24%) | 17 (22%) | 24 (30%) | 5 (6%) | 6 (8%) | 2 (3%) | 2 (3%) |
+| Nadia | 79 | 26 (33%) | 21 (27%) | 18 (23%) | 22 (28%) | 7 (9%) | 9 (11%) | 1 (1%) | 0 (0%) |
+| Matthieu | 79 | 27 (34%) | 16 (20%) | 12 (15%) | 26 (33%) | 7 (9%) | 8 (10%) | 0 (0%) | 1 (1%) |
+| Rafael | 79 | 36 (46%) | 30 (38%) | 19 (24%) | 35 (44%) | 24 (30%) | 13 (16%) | 4 (5%) | 1 (1%) |
+| Helena | 79 | 25 (32%) | 18 (23%) | 12 (15%) | 25 (32%) | 15 (19%) | 9 (11%) | 0 (0%) | 1 (1%) |
+| **all** | **395** | **140 (35%)** | **104 (26%)** | **78 (20%)** | **132 (33%)** | **58 (15%)** | **45 (11%)** | **7 (2%)** | **5 (1%)** |
+
+### Turn-based
+| assistant | turns (w/ CoT) | ≥1 label | ≥1 non-mechanics | objective | mechanics | fictionality | frame | unclear | other |
+|---|---|---|---|---|---|---|---|---|---|
+| Priya | 1272 | 92 (7%) | 48 (4%) | 40 (3%) | 63 (5%) | 6 (0%) | 7 (1%) | 2 (0%) | 2 (0%) |
+| Nadia | 1271 | 103 (8%) | 46 (4%) | 37 (3%) | 74 (6%) | 8 (1%) | 11 (1%) | 1 (0%) | 0 (0%) |
+| Matthieu | 1161 | 110 (9%) | 41 (4%) | 29 (2%) | 95 (8%) | 16 (1%) | 9 (1%) | 0 (0%) | 1 (0%) |
+| Rafael | 975 | 142 (15%) | 81 (8%) | 48 (5%) | 109 (11%) | 38 (4%) | 17 (2%) | 5 (1%) | 1 (0%) |
+| Helena | 531 | 62 (12%) | 30 (6%) | 14 (3%) | 58 (11%) | 16 (3%) | 10 (2%) | 0 (0%) | 1 (0%) |
+| **all** | **5210** | **509 (10%)** | **246 (5%)** | **168 (3%)** | **399 (8%)** | **84 (2%)** | **54 (1%)** | **8 (0%)** | **5 (0%)** |
+
+%%%% LATEX %%%%
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Eval-awareness meta-categories by assistant, \textbf{per seat}. Denominator: all 79 seats each assistant holds across the 5.e.viii sweep; seats \texttt{ev1} returned \texttt{none} for count as zero.}
+\label{tab:evalaware-meta-seats-agent}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+assistant & seats & $\geq$1 label & $\geq$1 non-\texttt{mechanics} & \texttt{objective} & \texttt{mechanics} & \texttt{fictionality} & \texttt{frame} & \texttt{unclear} & \texttt{other} \\
+\midrule
+Priya & 79 & 26 (33\%) & 19 (24\%) & 17 (22\%) & 24 (30\%) & 5 (6\%) & 6 (8\%) & 2 (3\%) & 2 (3\%) \\
+Nadia & 79 & 26 (33\%) & 21 (27\%) & 18 (23\%) & 22 (28\%) & 7 (9\%) & 9 (11\%) & 1 (1\%) & 0 (0\%) \\
+Matthieu & 79 & 27 (34\%) & 16 (20\%) & 12 (15\%) & 26 (33\%) & 7 (9\%) & 8 (10\%) & 0 (0\%) & 1 (1\%) \\
+Rafael & 79 & 36 (46\%) & 30 (38\%) & 19 (24\%) & 35 (44\%) & 24 (30\%) & 13 (16\%) & 4 (5\%) & 1 (1\%) \\
+Helena & 79 & 25 (32\%) & 18 (23\%) & 12 (15\%) & 25 (32\%) & 15 (19\%) & 9 (11\%) & 0 (0\%) & 1 (1\%) \\
+\midrule
+\textbf{all} & \textbf{395} & \textbf{140 (35\%)} & \textbf{104 (26\%)} & \textbf{78 (20\%)} & \textbf{132 (33\%)} & \textbf{58 (15\%)} & \textbf{45 (11\%)} & \textbf{7 (2\%)} & \textbf{5 (1\%)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Eval-awareness meta-categories by assistant, \textbf{per turn}. Denominator: each assistant's turns that recorded reasoning (5{,}210 in total). Helena and Rafael are woken far less often than the focal pair.}
+\label{tab:evalaware-meta-turns-agent}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+assistant & turns & $\geq$1 label & $\geq$1 non-\texttt{mechanics} & \texttt{objective} & \texttt{mechanics} & \texttt{fictionality} & \texttt{frame} & \texttt{unclear} & \texttt{other} \\
+\midrule
+Priya & 1272 & 92 (7\%) & 48 (4\%) & 40 (3\%) & 63 (5\%) & 6 (0\%) & 7 (1\%) & 2 (0\%) & 2 (0\%) \\
+Nadia & 1271 & 103 (8\%) & 46 (4\%) & 37 (3\%) & 74 (6\%) & 8 (1\%) & 11 (1\%) & 1 (0\%) & 0 (0\%) \\
+Matthieu & 1161 & 110 (9\%) & 41 (4\%) & 29 (2\%) & 95 (8\%) & 16 (1\%) & 9 (1\%) & 0 (0\%) & 1 (0\%) \\
+Rafael & 975 & 142 (15\%) & 81 (8\%) & 48 (5\%) & 109 (11\%) & 38 (4\%) & 17 (2\%) & 5 (1\%) & 1 (0\%) \\
+Helena & 531 & 62 (12\%) & 30 (6\%) & 14 (3\%) & 58 (11\%) & 16 (3\%) & 10 (2\%) & 0 (0\%) & 1 (0\%) \\
+\midrule
+\textbf{all} & \textbf{5210} & \textbf{509 (10\%)} & \textbf{246 (5\%)} & \textbf{168 (3\%)} & \textbf{399 (8\%)} & \textbf{84 (2\%)} & \textbf{54 (1\%)} & \textbf{8 (0\%)} & \textbf{5 (0\%)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+

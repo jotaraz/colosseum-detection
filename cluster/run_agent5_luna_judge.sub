@@ -1,0 +1,26 @@
+# HTCondor submit: agent5 DISCLOSURE judge, gpt-5.6-luna + critic v4 (see run_agent5_luna_judge.sh). CPU-only.
+#   condor_submit_bid 15 cluster/run_agent5_luna_judge.sub workers=2 \
+#       out="experiments/agent5/outputs/disclosure_gpt55gw_luna_v4" \
+#       globs="experiments/agent5/runs/*ConfNone_conc_gpt55gw_s* ..."
+executable = /bin/bash
+if ! defined workers
+  workers = 2
+endif
+if ! defined extra
+  extra =
+endif
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_luna_judge.sh $(workers) $(out) '$(extra)' $(globs)"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_luna_judge_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_luna_judge_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_luna_judge_$(Cluster).log
+
+# g132: /fast reads failed there on 2026-09-13/14 (see run_agent5_disc_judge.sub).
+requirements   = (Machine != "g132.internal.cluster.is.localnet")
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

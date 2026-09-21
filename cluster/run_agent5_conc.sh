@@ -18,6 +18,8 @@ cd "$PROJECT"
 
 CONFIGS="${1:?config path(s) required (space-separated)}"
 REPEATS="${2:-1}"
+# guard against a shifted $(Cluster) id landing here (see run_agent5_conc.sub)
+[[ "$REPEATS" =~ ^[0-9]{1,2}$ ]] || { echo "FATAL: repeats='$REPEATS' is not a small integer — submit with repeats=1" >&2; exit 2; }
 CLUSTER_ID="${3:-$$}"
 
 # opencode binary (installed by cluster/setup_agent4.sh)
@@ -25,15 +27,25 @@ export PATH="$OPENCODE_DIR/bin:$PATH"
 opencode --version >/dev/null || { echo "FATAL: opencode missing — run setup_agent4.sub first" >&2; exit 1; }
 
 # Model creds. OpenRouter by default; a config carrying `provider: azure` (the gpt-5.4
-# cells) needs the Azure pair instead — same source as the sj3/sj4 judges, with the repo
-# .env as a fallback. proxy.py --upstream azure reads them from the environment.
-set -a; source "$PROJECT/.env"; set +a
+# cells) needs the Azure pair instead — from /fast/jtaraz/syco-bench/.env only (the repo
+# .env is not read any more). proxy.py --upstream azure reads them from the environment.
+# OpenRouter key (user decision 2026-09-17): the ``sk-or-`` line of experiments/agent5/.env3.
+# The repo .env is no longer read by any agent5/agent4 path.
+export OPENROUTER_API_KEY="$(grep -m1 '^sk-or-' "$PROJECT/experiments/agent5/.env3" 2>/dev/null | tr -d '[:space:]')"
 # Bifrost (institute AI Gateway) key: a bare key in the repo's .env2 (synced with the tree).
 if grep -lq "^provider: bifrost" $CONFIGS 2>/dev/null; then
   [ -f "$PROJECT/.env2" ] && export BIFROST_API_KEY="$(tr -d '[:space:]' < "$PROJECT/.env2")"
   [ -n "${BIFROST_API_KEY:-}" ] || { echo "FATAL: BIFROST_API_KEY unset (.env2 missing?)" >&2; exit 1; }
   # internal host: bypass the compute nodes' web proxy (it 503s for *.is.localnet)
   export NO_PROXY="${NO_PROXY:+$NO_PROXY,}bifrost.is.localnet,.is.localnet" no_proxy="${no_proxy:+$no_proxy,}bifrost.is.localnet,.is.localnet"
+fi
+# abliteration.ai key: the bare ``ak_…`` line in experiments/agent5/.env3 (synced with the
+# tree; its ``sk-or-`` line is the OpenRouter key every run uses, see above).
+if grep -lq "^provider: abliteration" $CONFIGS 2>/dev/null; then
+  ENV3="$PROJECT/experiments/agent5/.env3"
+  [ -f "$ENV3" ] && export ABLITERATION_API_KEY="$(grep -m1 '^ak_' "$ENV3" | tr -d '[:space:]')"
+  [ -n "${ABLITERATION_API_KEY:-}" ] || { echo "FATAL: ABLITERATION_API_KEY unset (no ak_ line in $ENV3?)" >&2; exit 1; }
+  echo "abliteration cell: api.abliteration.ai (reasoning recorded OpenRouter-style)"
 fi
 if grep -lq "^provider: azure" $CONFIGS 2>/dev/null; then
   [ -f /fast/jtaraz/syco-bench/.env ] && { set -a; source /fast/jtaraz/syco-bench/.env; set +a; }

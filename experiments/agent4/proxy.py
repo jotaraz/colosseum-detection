@@ -9,7 +9,7 @@ raw (possibly SSE) response text — including reasoning_content, whether or not
 surfaces it. SSE responses are buffered whole; with one assistant acting at a time that
 costs nothing.
 
-Three upstreams:
+Four upstreams:
 
 * ``--upstream openrouter`` (default) — verbatim forward to openrouter.ai. Unchanged.
 * ``--upstream azure`` — forward to the Azure OpenAI resource named by
@@ -50,6 +50,21 @@ Three upstreams:
   deployment, which accepts 0.7. Set `temperature: 1.0` in the config for gateway
   gpt-5.x cells. No reasoning content, same as the direct leg.
 
+* ``--upstream abliteration`` — abliteration.ai (https://api.abliteration.ai/v1, key
+  ``ak_…`` as a Bearer token; model ids such as ``abliterated-model-large-v2``, an
+  abliterated GLM-5.3). OpenAI-compatible and OpenRouter-shaped: probed 2026-09-15 with
+  the OpenRouter provider's exact body — tools, streaming, ``temperature: 0.7``,
+  ``max_tokens``, ``usage: {include: true}`` and the ``reasoningEffort`` leak all
+  accepted (unknown params tolerated, not 400'd), usage returned, and the chain of
+  thought comes back as ``delta.reasoning`` in the SSE stream exactly as OpenRouter's
+  open models send it — so opencode records it as reasoning parts and
+  ``reasoning_extract`` needs no change. Hence **no body filtering**: the address
+  (``/api/v1`` -> ``/v1``) and the Bearer key are rewritten, and streamed requests get
+  ``stream_options.include_usage`` (without it the usage chunk never arrives; the
+  OpenRouter spelling is ignored). Rate limit 120 requests /
+  2M tokens per minute (response headers); the azure retry ladder applies. Temperature
+  range is [0, 1]. Public host, so the compute nodes' web proxy is honoured.
+
 Run:  python experiments/agent4/proxy.py --out <dir> [--port 8899] [--upstream azure]
 """
 
@@ -84,13 +99,26 @@ DUMP: Path = None  # type: ignore[assignment]
 # calendar. --spoof-date rewrites it to the simulated date before forwarding; the dump
 # records the rewritten body (what the model actually saw).
 SPOOF_DATE: bytes | None = None
+#: ``--model-alias ALIAS=REAL``: the home names the model ALIAS (which is what opencode
+#: tells the model it is "powered by"), the request that leaves carries REAL. Used for
+#: abliteration.ai (2026-09-15): the served model is an abliterated GLM-5.3, and the id
+#: "abliterated-model-large-v2" would tell every assistant so — the alias "glm-5.3" says
+#: what the model is without saying what was done to it. The dump records the real id
+#: (what was sent) plus the alias, so the audit trail keeps both.
+MODEL_ALIAS: Tuple[str, str] | None = None
 _DATE_RE = re.compile(rb"Today's date: [A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4}")
 
 # ----------------------------------------------------------------------- azure
 MODE = "openrouter"
 #: OpenRouter provider pin, or "" for the router's own choice — the default, and what
-#: every pre-w1 cell ran with.
+#: every pre-w1 cell ran with. Since 2026-09-17 a comma-separated list is an ordered
+#: allow-list (``order`` with fallbacks off): "openai/flex,openai" tries OpenAI's flex
+#: endpoint first and falls back to OpenAI's standard one, never anywhere else.
 PIN_PROVIDER = ""
+#: OpenRouter backends never to route to (``provider.ignore``), comma-separated; applied
+#: with or without a pin. "anthropic/fast" keeps Opus off Anthropic's 2x-priced fast lane
+#: while leaving the rest of the pool to the router.
+IGNORE_PROVIDERS = ""
 UPSTREAM_BASE = ""   # azure resource / gateway base, set from the environment
 VERIFY: Any = True   # httpx verify: True, or a path to a CA bundle (--ca-bundle)
 
@@ -100,10 +128,14 @@ UPSTREAMS = {
     #  mode:     (env var for the base, default base,                 auth header)
     "azure":   ("AZURE_OPENAI_ENDPOINT", "",                                 "api-key"),
     "bifrost": ("BIFROST_BASE_URL",      "https://bifrost.is.localnet/openai", "bearer"),
+    "abliteration": ("ABLITERATION_BASE_URL", "https://api.abliteration.ai",    "bearer"),
 }
+#: Upstreams whose body is forwarded verbatim (they accept the OpenRouter provider's
+#: parameters); the others go through the Azure whitelist below.
+PASSTHROUGH_BODY = {"abliteration"}
 
 #: ``/api/v1`` (what opencode's OpenRouter provider calls) rewritten per upstream.
-API_PREFIX = {"azure": "/openai/v1", "bifrost": "/v1"}
+API_PREFIX = {"azure": "/openai/v1", "bifrost": "/v1", "abliteration": "/v1"}
 
 #: Body parameters the Azure OpenAI ``/openai/v1/chat/completions`` path accepts. A
 #: whitelist, not a blacklist: the failure mode to avoid is a 400 on a parameter some
@@ -124,7 +156,8 @@ RETRY_BACKOFF = (2, 5, 10, 20, 40)
 
 
 #: Where each upstream's credential comes from.
-KEY_VAR = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY"}
+KEY_VAR = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY",
+           "abliteration": "ABLITERATION_API_KEY"}
 
 
 def translate(path: str, headers: Dict[str, str], body: bytes) -> Tuple[str, Dict[str, str], bytes, Dict[str, Any]]:
@@ -146,6 +179,14 @@ def translate(path: str, headers: Dict[str, str], body: bytes) -> Tuple[str, Dic
     except json.JSONDecodeError:
         return url, headers, body, dropped
     if not isinstance(payload, dict):
+        return url, headers, body, dropped
+    if MODE in PASSTHROUGH_BODY:
+        # Verbatim, except that streamed usage needs the OpenAI spelling: with only
+        # OpenRouter's `usage: {include: true}` the final usage chunk never comes
+        # (probed 2026-09-15), and opencode's token/cost accounting would read zero.
+        if payload.get("stream") and "stream_options" not in payload:
+            payload["stream_options"] = {"include_usage": True}
+            body = json.dumps(payload).encode()
         return url, headers, body, dropped
     if path.endswith("/responses"):
         # Responses API (2026-09-06): the ai-sdk OpenAI provider already speaks the
@@ -173,15 +214,16 @@ def translate(path: str, headers: Dict[str, str], body: bytes) -> Tuple[str, Dic
 
 
 def pin_provider(body: bytes) -> bytes:
-    """Route an OpenRouter call to one backend, with no fallback.
+    """Constrain an OpenRouter call's backends: an ordered allow-list and/or an ignore list.
 
     Unpinned, the router scatters across a dozen backends of differing speed and
     quantization. agent2/JUDGE_OPERATIONS.md records the failure mode it produces: under
     scatter there are no 429s and no errors, just answers that never come, and it is the
     heaviest turns that cross the timeout and die — so a slow pool selectively destroys
-    the most interesting rollouts. Fallbacks stay off on purpose: a degraded pin should
-    fail fast and visibly rather than silently reroute into the scatter it was meant to
-    prevent.
+    the most interesting rollouts. Fallbacks outside the list stay off on purpose: a
+    degraded pin should fail fast and visibly rather than silently reroute into the
+    scatter it was meant to prevent. A multi-entry PIN_PROVIDER is tried in order
+    (OpenRouter ``order``), which is the sanctioned fallback: named, not the router's.
     """
     try:
         payload = json.loads(body)
@@ -189,8 +231,26 @@ def pin_provider(body: bytes) -> bytes:
         return body
     if not isinstance(payload, dict):
         return body
-    payload["provider"] = {"order": [PIN_PROVIDER], "allow_fallbacks": False}
+    prefs: Dict[str, Any] = {}
+    if PIN_PROVIDER:
+        prefs["order"] = [p.strip() for p in PIN_PROVIDER.split(",") if p.strip()]
+        prefs["allow_fallbacks"] = False
+    if IGNORE_PROVIDERS:
+        prefs["ignore"] = [p.strip() for p in IGNORE_PROVIDERS.split(",") if p.strip()]
+    payload["provider"] = prefs
     return json.dumps(payload).encode()
+
+
+def apply_alias(body: bytes) -> Tuple[bytes, bool]:
+    """Swap the home's alias for the real model id in an outbound body."""
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return body, False
+    if not isinstance(payload, dict) or payload.get("model") != MODEL_ALIAS[0]:
+        return body, False
+    payload["model"] = MODEL_ALIAS[1]
+    return json.dumps(payload).encode(), True
 
 
 def retry_delay(response: httpx.Response, attempt: int) -> float:
@@ -208,6 +268,9 @@ async def proxy(request: Request) -> Response:
     body = await request.body()
     if SPOOF_DATE and body:
         body = _DATE_RE.sub(b"Today's date: " + SPOOF_DATE, body)
+    aliased = False
+    if MODEL_ALIAS and body:
+        body, aliased = apply_alias(body)
     headers = {k: v for k, v in request.headers.items() if k.lower() not in HOP_BY_HOP}
     dropped: Dict[str, Any] = {}
     if MODE != "openrouter":
@@ -217,7 +280,7 @@ async def proxy(request: Request) -> Response:
         backoff = RETRY_BACKOFF
     else:
         url, backoff = UPSTREAM + path, ()
-        if PIN_PROVIDER and body:
+        if (PIN_PROVIDER or IGNORE_PROVIDERS) and body:
             body = pin_provider(body)
 
     statuses: List[int] = []
@@ -251,6 +314,8 @@ async def proxy(request: Request) -> Response:
         line["attempts"] = statuses
     if dropped:
         line["dropped_params"] = dropped
+    if aliased:
+        line["model_alias"] = MODEL_ALIAS[0]
     with DUMP.open("a") as f:
         f.write(json.dumps(line, ensure_ascii=False) + "\n")
     return Response(
@@ -261,27 +326,36 @@ async def proxy(request: Request) -> Response:
 
 
 def main() -> None:
-    global DUMP, SPOOF_DATE, MODE, UPSTREAM_BASE, VERIFY, PIN_PROVIDER
+    global DUMP, SPOOF_DATE, MODE, UPSTREAM_BASE, VERIFY, PIN_PROVIDER, IGNORE_PROVIDERS, MODEL_ALIAS
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--port", type=int, default=8899)
     ap.add_argument("--upstream", default="openrouter",
-                    choices=["openrouter", "azure", "bifrost"],
+                    choices=["openrouter", "azure", "bifrost", "abliteration"],
                     help="where to forward: openrouter.ai, the Azure OpenAI resource in "
-                         "AZURE_OPENAI_ENDPOINT, or the institute AI Gateway "
-                         "(translated, see module docstring)")
+                         "AZURE_OPENAI_ENDPOINT, the institute AI Gateway (both "
+                         "translated, see module docstring), or api.abliteration.ai "
+                         "(address + key only)")
     ap.add_argument("--ca-bundle", default=None,
                     help="extra CA certificates to trust upstream (the gateway is signed "
                          "by the institute root CA, which certifi does not carry)")
     ap.add_argument("--pin-provider", default="",
-                    help="OpenRouter backend to pin every call to, e.g. GMICloud, with "
-                         "fallbacks off. Ignored for the azure/bifrost upstreams.")
+                    help="OpenRouter backend(s) to pin every call to, e.g. GMICloud, with "
+                         "fallbacks off; a comma-separated list is tried in order "
+                         "(openai/flex,openai). Ignored for the non-OpenRouter upstreams.")
+    ap.add_argument("--ignore-providers", default="",
+                    help="OpenRouter backend(s) never to use, comma-separated, e.g. "
+                         "anthropic/fast; the router picks among the rest")
+    ap.add_argument("--model-alias", default=None, metavar="ALIAS=REAL",
+                    help="rewrite request model ALIAS (the id in the opencode home) to "
+                         "REAL (the id the upstream serves) — see MODEL_ALIAS")
     ap.add_argument("--spoof-date", default=None,
                     help="ISO date the simulation is set on; rewrites opencode's "
                          "env-block 'Today's date' line in outbound request bodies")
     args = ap.parse_args()
     MODE = args.upstream
     PIN_PROVIDER = args.pin_provider
+    IGNORE_PROVIDERS = args.ignore_providers
     if MODE != "openrouter":
         base_var, base_default, _ = UPSTREAMS[MODE]
         for var in (KEY_VAR[MODE], *([] if base_default else [base_var])):
@@ -293,6 +367,11 @@ def main() -> None:
         ctx = ssl.create_default_context(cafile=certifi.where())
         ctx.load_verify_locations(cafile=args.ca_bundle)
         VERIFY = ctx
+    if args.model_alias:
+        alias, _, real = args.model_alias.partition("=")
+        if not alias or not real:
+            raise SystemExit("--model-alias wants ALIAS=REAL")
+        MODEL_ALIAS = (alias, real)
     if args.spoof_date:
         SPOOF_DATE = datetime.fromisoformat(args.spoof_date).strftime("%a %b %d %Y").encode()
     out = Path(args.out)

@@ -62,16 +62,25 @@ class Slack5Runner(ConcRunner):
     def __init__(self, config: Dict[str, Any], config_path: str):
         super().__init__(config, config_path)
         #: Model provider: "openrouter" (default), "azure" (direct Azure OpenAI
-        #: deployment, ``model`` is the deployment name, e.g. gpt-5.4) or "bifrost" (the
-        #: institute AI Gateway, ``model`` is a gateway id, e.g. azure/gpt-5.5). Both
-        #: OpenAI legs return no chain of thought, so those runs have empty
-        #: ``steps_detail[].reasoning``.
+        #: deployment, ``model`` is the deployment name, e.g. gpt-5.4), "bifrost" (the
+        #: institute AI Gateway, ``model`` is a gateway id, e.g. azure/gpt-5.5) or
+        #: "abliteration" (api.abliteration.ai, ``model`` e.g. abliterated-model-large-v2,
+        #: key from experiments/agent5/.env3). Both OpenAI legs return no chain of
+        #: thought, so those runs have empty ``steps_detail[].reasoning``; the
+        #: abliteration leg streams it OpenRouter-style, so it is recorded as usual.
         self.provider = str(config.get("provider") or "openrouter")
         #: Optional OpenRouter backend pin (e.g. "GMICloud"), fallbacks off. Unset means
         #: the router chooses, which is how every cell before w1 ran. Pinning removes the
         #: silent-stall failure mode documented in agent2/JUDGE_OPERATIONS.md, and also
         #: removes quantization as an uncontrolled source of between-seed variance.
         self.pin_provider = str(config.get("pin_provider") or "")
+        #: Optional OpenRouter backends to exclude (comma-separated, e.g. "anthropic/fast");
+        #: ``pin_provider`` may itself be a comma-separated ordered allow-list
+        #: ("openai/flex,openai"). Both go to proxy.py --pin-provider / --ignore-providers.
+        self.ignore_providers = str(config.get("ignore_providers") or "")
+        #: Optional model id the home carries instead of ``model`` (what opencode tells the
+        #: assistant it is "powered by"); the proxy rewrites it back. See homes5.make_home5.
+        self.model_alias = str(config.get("model_alias") or "")
         #: What ends a run early. ``valid`` (default, every rollout to date): the board is
         #: complete *and* every ticket has its pair, plus the reporter's DM. ``settled``:
         #: the board is complete and the reporter has reported, whether or not a ticket is
@@ -253,10 +262,15 @@ class Slack5Runner(ConcRunner):
     def proxy_cmd(self) -> List[str]:
         # opencode stamps the real date into its <env> block; the proxy rewrites it.
         cmd = super().proxy_cmd() + ["--spoof-date", self.clock_start.date().isoformat()]
+        if self.model_alias:
+            cmd += ["--model-alias", f"{self.model_alias}={self.model}"]
         if self.provider != "openrouter":
             cmd += ["--upstream", self.provider]
-        elif self.pin_provider:
-            cmd += ["--pin-provider", self.pin_provider]
+        else:
+            if self.pin_provider:
+                cmd += ["--pin-provider", self.pin_provider]
+            if self.ignore_providers:
+                cmd += ["--ignore-providers", self.ignore_providers]
         if self.provider == "bifrost":
             # The gateway's certificate chains to the institute root CA, which certifi
             # does not carry; without this the proxy's upstream handshake fails.
@@ -268,6 +282,8 @@ class Slack5Runner(ConcRunner):
             return ("AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_KEY")
         if self.provider == "bifrost":
             return ("BIFROST_API_KEY",)
+        if self.provider == "abliteration":
+            return ("ABLITERATION_API_KEY",)
         return super().env_required()
 
     def system_prompt(self, agent: str) -> str:
@@ -285,7 +301,7 @@ class Slack5Runner(ConcRunner):
         return make_home5(self.homes_root, agent, model=self.model,
                           proxy_port=self.proxy_port, world_port=self.world_port,
                           system_prompt=system_prompt, temperature=self.temperature,
-                          provider=self.provider,
+                          provider=self.provider, alias=self.model_alias,
                           # ``reasoning_summary: true``: Responses-API home so the gpt-5.x
                           # reasoning summary lands in steps_detail[].reasoning (2026-09-06)
                           api="responses" if self.config.get("reasoning_summary") else "chat")

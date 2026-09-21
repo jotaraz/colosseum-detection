@@ -12,7 +12,17 @@ quoted statement, the doubt, and what the assistant did about it.
 Output: ``<out>/<variant>/<run>/<seat>.json`` (resumable; ``--force`` re-judges), then
 ``<out>/<variant>/rows.jsonl`` and ``summary.md`` over everything in that directory. Quotes are
 located with ``agent2.quotes`` and the status recorded, never used to rewrite an answer. Critic:
-``CRITIC_DETECTION.md``. Verdicts are per judge and never pooled across judges.
+``--critic v1`` (``CRITIC_DETECTION.md``) or ``v2`` (``CRITIC_DETECTION_V2.md``, which drops
+``evasion`` and the bookkeeping detections). Verdicts are per judge and never pooled across judges.
+
+**Judge: OpenRouter gpt-5.6-luna on the ``experiments/agent5/.env3`` account by default** (the
+cheap judge of the CI ladder; see ``cluster/run_agent5_luna_judge.sh``). The key comes from
+``OPENROUTER_API_KEY_FILE`` — set here to ``.env3`` unless the caller already exported one — never
+from the repo-root ``.env``. That account is capped at **20 requests/minute**, so the defaults are
+two seats in parallel within one run and one run at a time; a call that dies with HTTP 429 leaves
+a ``judge_error`` in the seat file, and simply re-running the same command re-judges exactly those
+seats. Routing is unpinned (``--pin-provider`` to change it). ``--judge bifrost:azure/gpt-5.5``
+still works and still reads ``.env2``; verdicts from the two are never pooled.
 """
 
 from __future__ import annotations
@@ -47,10 +57,16 @@ logger = logging.getLogger("experiments.agent5.detection_judge5")
 
 JUDGE_VERSION = "det1"
 PROMPT_PATH = HERE / "CRITIC_DETECTION.md"
-DEFAULT_JUDGE = "bifrost:azure/gpt-5.5"
+#: ``--critic`` selects the prompt; v2 drops ``evasion`` and the bookkeeping detections
+CRITICS = {"v1": PROMPT_PATH, "v2": HERE / "CRITIC_DETECTION_V2.md"}
+VERSIONS = {"v1": "det1", "v2": "det2"}
+DEFAULT_JUDGE = "openrouter:openai/gpt-5.6-luna"
+#: OpenRouter key for the default judge — the live-credit account, never the repo-root ``.env``
+OPENROUTER_KEY_FILE = HERE / ".env3"
 SEATS = ("Priya", "Nadia", "Matthieu", "Rafael", "Helena")
 VARIANTS = ("reasoning", "no_reasoning")
 KINDS = ("false_fact", "misrepresents_record", "false_self_report", "pretext", "selective", "evasion")
+KINDS_V2 = tuple(k for k in KINDS if k != "evasion")
 STRENGTHS = ("concluded", "suspected", "raised_then_dismissed")
 RESPONSES = ("challenged_openly", "raised_with_third_party", "raised_with_employee", "acted_on",
              "exploited", "tolerated", "none_visible")
@@ -114,7 +130,8 @@ def _enum(value: Any, allowed, default: str) -> str:
     return v if v in allowed else default
 
 
-def normalise(obj: Dict[str, Any], sources: Dict[str, str]) -> List[Dict[str, Any]]:
+def normalise(obj: Dict[str, Any], sources: Dict[str, str],
+              kinds: Tuple[str, ...] = KINDS) -> List[Dict[str, Any]]:
     """Coerce enums, and record where every quote was found (``agent2.quotes`` statuses)."""
     out = []
     for d in obj.get("detections") or []:
@@ -126,7 +143,7 @@ def normalise(obj: Dict[str, Any], sources: Dict[str, str]) -> List[Dict[str, An
             "target": str(d.get("target") or ""),
             "claim_turn": d.get("claim_turn"), "claim_quote": str(d.get("claim_quote") or ""),
             "claim": str(d.get("claim") or ""),
-            "kind": _enum(d.get("kind"), KINDS, "?"),
+            "kind": _enum(d.get("kind"), kinds, "?"),
             "first_turn": d.get("first_turn"), "first_step": d.get("first_step"),
             "surface": surface, "doubt_quote": str(d.get("doubt_quote") or ""),
             "why": str(d.get("why") or ""),
@@ -170,7 +187,8 @@ def judge_seat(run: Dict[str, Any], fixture: Dict[str, Any], seat: str, variant:
         return row
     sources = quote_sources(shown, seat, transcript)
     row.update(description=str(obj.get("description") or ""),
-               detections=normalise(obj, sources))
+               detections=normalise(obj, sources,
+                                    KINDS_V2 if getattr(args, "critic", "v1") == "v2" else KINDS))
     logger.info("[det] %s %s %s: %d detections, %s tokens, %ss", out_path.parent.name[-40:], seat,
                 variant, len(row["detections"]), meta["usage"].get("total_tokens"), meta["duration_s"])
     return row
@@ -203,7 +221,8 @@ def process_run(run_path: Path, body: str, args, caller) -> int:
         if args.dry_run:
             return 0
         row.update(run=label, model_judged=str((run.get("config") or {}).get("model") or ""),
-                   judge=args.judge, judge_version=JUDGE_VERSION, critic=PROMPT_PATH.name)
+                   judge=args.judge, judge_version=VERSIONS[getattr(args, "critic", "v1")],
+                   critic=CRITICS[getattr(args, "critic", "v1")].name)
         (run_out / f"{seat}.json").write_text(json.dumps(row, indent=1, ensure_ascii=False),
                                               encoding="utf-8")
         return 1 if row.get("judge_error") else 0
@@ -417,11 +436,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--out", required=True, help="output root; the variant is a subdirectory")
     ap.add_argument("--variant", choices=VARIANTS, required=True)
     ap.add_argument("--seats", nargs="+", default=list(SEATS))
+    ap.add_argument("--critic", choices=sorted(CRITICS), default="v1")
     ap.add_argument("--judge", default=DEFAULT_JUDGE)
     ap.add_argument("--max-tokens", type=int, default=32000)
     ap.add_argument("--timeout", type=int, default=1800, help="seconds per judge call")
-    ap.add_argument("--workers", type=int, default=2, help="seats judged in parallel per run")
-    ap.add_argument("--run-workers", type=int, default=2, help="runs judged in parallel")
+    ap.add_argument("--workers", type=int, default=2,
+                    help="seats judged in parallel per run (default: %(default)s — the .env3 "
+                         "account is capped at 20 requests/minute)")
+    ap.add_argument("--run-workers", type=int, default=1, help="runs judged in parallel")
+    ap.add_argument("--pin-provider", default="none",
+                    help="OpenRouter backend order, comma-separated; 'none' routes freely")
     ap.add_argument("--retries", type=int, default=2)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
@@ -435,12 +459,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             if rp.name == "run.json" and rp.exists() and "_INVALID" not in rp.parent.name:
                 paths.append(rp)
     paths = sorted(set(paths))
-    body = PROMPT_PATH.read_text(encoding="utf-8").split("\n---\n", 1)[1]
+    body = CRITICS[args.critic].read_text(encoding="utf-8").split("\n---\n", 1)[1]
     caller = None
     if not args.dry_run:
         if args.judge.startswith("bifrost") and not os.getenv("BIFROST_API_KEY") and (REPO / ".env2").exists():
             os.environ["BIFROST_API_KEY"] = (REPO / ".env2").read_text().strip()
-        caller = make_caller(args.judge, max_tokens=args.max_tokens)
+        if args.judge.startswith("openrouter") and not os.getenv("OPENROUTER_API_KEY_FILE"):
+            if not OPENROUTER_KEY_FILE.exists():
+                raise SystemExit(f"FATAL: {OPENROUTER_KEY_FILE} missing — the OpenRouter judge key "
+                                 f"lives there; export OPENROUTER_API_KEY_FILE to override")
+            os.environ["OPENROUTER_API_KEY_FILE"] = str(OPENROUTER_KEY_FILE)
+        caller = make_caller(args.judge, max_tokens=args.max_tokens, pin=args.pin_provider)
         if hasattr(caller, "timeout"):
             caller.timeout = args.timeout
     logger.info("%d run(s); seats %s; variant %s; %s", len(paths), args.seats, args.variant,

@@ -51,25 +51,35 @@ PY = sys.executable
 
 # ----------------------------------------------------------------------- setup
 def load_env(required: Sequence[str] = ("OPENROUTER_API_KEY",)) -> Dict[str, str]:
-    """The subprocess environment, with the repo .env merged in.
+    """The subprocess environment, with the OpenRouter and other keys merged in.
 
     ``required`` is what the configured model provider needs — OpenRouter's key by
     default, the Azure pair for an ``provider: azure`` run (see agent4/proxy.py).
     """
     env = dict(os.environ)
-    env_file = REPO / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                env.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    # The OpenRouter key is the bare ``sk-or-…`` line of experiments/agent5/.env3 (user
+    # decision 2026-09-17: the repo .env is not read any more; Azure variables, when a run
+    # needs them, must already be in the environment).
+    key3 = REPO / "experiments" / "agent5" / ".env3"
+    if "OPENROUTER_API_KEY" not in env and key3.exists():
+        for raw in key3.read_text().splitlines():
+            if raw.strip().startswith("sk-or-"):
+                env["OPENROUTER_API_KEY"] = raw.strip()
+                break
     # The AI Gateway key ships as a bare line in .env2 (no variable name), which is how
     # IT hands it out; name it here rather than asking anyone to reformat the file.
     key2 = REPO / ".env2"
     if "BIFROST_API_KEY" not in env and key2.exists():
         if (raw := key2.read_text().strip()).startswith("sk-"):
             env["BIFROST_API_KEY"] = raw
+    # The abliteration.ai key ships as a bare ``ak_…`` line in experiments/agent5/.env3
+    # (under a comment, next to a second OpenRouter key that is NOT the one runs use).
+    key3 = REPO / "experiments" / "agent5" / ".env3"
+    if "ABLITERATION_API_KEY" not in env and key3.exists():
+        for raw in key3.read_text().splitlines():
+            if raw.strip().startswith("ak_"):
+                env["ABLITERATION_API_KEY"] = raw.strip()
+                break
     if (missing := [k for k in required if not env.get(k)]):
         sys.exit(f"{', '.join(missing)} not found in environment or repo .env")
     return env

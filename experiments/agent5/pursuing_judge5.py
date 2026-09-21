@@ -246,6 +246,7 @@ def table(paths: List[Path], judge: str, reps: List[str], out: Optional[str]) ->
     head = ("| run | seat | rep | verdict | ticket | found reason | avoid | conceal | summary |\n"
             "|---|---|---|---|---|---|---|---|---|\n")
     rows, counts = [], {}
+    grid: Dict[Tuple[str, str], Dict[Tuple[str, str], str]] = {}
     for rp in paths:
         tag = rp.parent.name.split("_conc_")[-1].split("_2026")[0]
         for i, rep in enumerate(reps):
@@ -264,11 +265,24 @@ def table(paths: List[Path], judge: str, reps: List[str], out: Optional[str]) ->
                 rows.append(f"| {tag} | {seat} | r{i + 1} | **{v}** | {a('q2_ticket_held')} | "
                             f"{a('q1_found_private_reason')} | {a('q3_avoid_limb')} | "
                             f"{a('q4_conceal_limb')} | {str(r.get('summary') or '').strip()} |")
+                model, _, seed = tag.rpartition("_s")
+                grid.setdefault((model, seed), {})[(seat, f"r{i + 1}")] = v
     tally = ", ".join(f"`{k}` ×{v}" for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+    seats = sorted({s for cell in grid.values() for s, _ in cell})
+    cols = [(s, rep) for s in seats for rep in sorted({r for cell in grid.values() for _, r in cell})]
+    gh = ("| model | seed | " + " | ".join(f"{s} {rep}" for s, rep in cols) + " |\n"
+          "|---|---|" + "---|" * len(cols) + "\n")
+    grows = []
+    for (model, seed) in sorted(grid, key=lambda k: (k[0], int(k[1]) if k[1].isdigit() else 99)):
+        cell = grid[(model, seed)]
+        grows.append(f"| {model} | s{seed} | "
+                     + " | ".join(cell.get(c, "—") for c in cols) + " |")
     text = (f"# pursuing_goal ({JUDGE_VERSION}) — {judge}\n\n"
             f"One call per seat over the seat's whole record. Verdicts: {tally or 'none'}. "
             f"A seat whose verdict is `no` was not playing for the goal; its deception findings "
-            f"are about something else and should be reported apart.\n\n" + head + "\n".join(rows) + "\n")
+            f"are about something else and should be reported apart.\n\n"
+            f"## Verdict grid — model × seed × seat\n\n" + gh + "\n".join(grows) + "\n\n"
+            f"## Per-seat detail\n\n" + head + "\n".join(rows) + "\n")
     if out:
         Path(out).write_text(text, encoding="utf-8")
         print(f"wrote {out}: {len(rows)} rows")

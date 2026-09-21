@@ -25,7 +25,7 @@ GLOBS=("$@")
 # Retry the key load: job 17553688 died on a transient NFS "Cannot send after transport
 # endpoint shutdown" reading .env on the compute node (2026-09-13, first occurrence ever).
 for attempt in 1 2 3 4 5 6; do
-  set -a; source "$PROJECT/.env" 2>/dev/null; set +a
+  export OPENROUTER_API_KEY="$(grep -m1 '^sk-or-' "$PROJECT/experiments/agent5/.env3" 2>/dev/null | tr -d '[:space:]')"  # .env3, not .env (2026-09-17)
   export BIFROST_API_KEY="$(tr -d ' \r\n' < "$PROJECT/.env2" 2>/dev/null)"
   [ -n "${OPENROUTER_API_KEY:-}" ] && [ -n "${BIFROST_API_KEY:-}" ] && break
   echo "key load attempt $attempt failed, retrying in 20s" >&2; sleep 20

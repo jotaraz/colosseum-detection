@@ -1,0 +1,162 @@
+[
+  {
+    "seed": "0",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s0",
+    "transcript": "notes/eval_awareness_review/Nadia_s0/transcript.txt",
+    "n_steps": 32,
+    "n_chars": 520068
+  },
+  {
+    "seed": "0",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s0",
+    "transcript": "notes/eval_awareness_review/Priya_s0/transcript.txt",
+    "n_steps": 35,
+    "n_chars": 330599
+  },
+  {
+    "seed": "1",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s1",
+    "transcript": "notes/eval_awareness_review/Nadia_s1/transcript.txt",
+    "n_steps": 34,
+    "n_chars": 453359
+  },
+  {
+    "seed": "1",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s1",
+    "transcript": "notes/eval_awareness_review/Priya_s1/transcript.txt",
+    "n_steps": 40,
+    "n_chars": 464411
+  },
+  {
+    "seed": "2",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s2",
+    "transcript": "notes/eval_awareness_review/Nadia_s2/transcript.txt",
+    "n_steps": 29,
+    "n_chars": 467222
+  },
+  {
+    "seed": "2",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s2",
+    "transcript": "notes/eval_awareness_review/Priya_s2/transcript.txt",
+    "n_steps": 31,
+    "n_chars": 243020
+  },
+  {
+    "seed": "3",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s3",
+    "transcript": "notes/eval_awareness_review/Nadia_s3/transcript.txt",
+    "n_steps": 37,
+    "n_chars": 337953
+  },
+  {
+    "seed": "3",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s3",
+    "transcript": "notes/eval_awareness_review/Priya_s3/transcript.txt",
+    "n_steps": 36,
+    "n_chars": 403943
+  },
+  {
+    "seed": "4",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s4",
+    "transcript": "notes/eval_awareness_review/Nadia_s4/transcript.txt",
+    "n_steps": 43,
+    "n_chars": 398023
+  },
+  {
+    "seed": "4",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s4",
+    "transcript": "notes/eval_awareness_review/Priya_s4/transcript.txt",
+    "n_steps": 46,
+    "n_chars": 400248
+  },
+  {
+    "seed": "5",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s5",
+    "transcript": "notes/eval_awareness_review/Nadia_s5/transcript.txt",
+    "n_steps": 34,
+    "n_chars": 338629
+  },
+  {
+    "seed": "5",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s5",
+    "transcript": "notes/eval_awareness_review/Priya_s5/transcript.txt",
+    "n_steps": 51,
+    "n_chars": 324767
+  },
+  {
+    "seed": "6",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s6",
+    "transcript": "notes/eval_awareness_review/Nadia_s6/transcript.txt",
+    "n_steps": 36,
+    "n_chars": 218662
+  },
+  {
+    "seed": "6",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s6",
+    "transcript": "notes/eval_awareness_review/Priya_s6/transcript.txt",
+    "n_steps": 29,
+    "n_chars": 324427
+  },
+  {
+    "seed": "7",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s7",
+    "transcript": "notes/eval_awareness_review/Nadia_s7/transcript.txt",
+    "n_steps": 47,
+    "n_chars": 279518
+  },
+  {
+    "seed": "7",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s7",
+    "transcript": "notes/eval_awareness_review/Priya_s7/transcript.txt",
+    "n_steps": 37,
+    "n_chars": 365214
+  },
+  {
+    "seed": "8",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s8",
+    "transcript": "notes/eval_awareness_review/Nadia_s8/transcript.txt",
+    "n_steps": 38,
+    "n_chars": 334478
+  },
+  {
+    "seed": "8",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s8",
+    "transcript": "notes/eval_awareness_review/Priya_s8/transcript.txt",
+    "n_steps": 31,
+    "n_chars": 321750
+  },
+  {
+    "seed": "9",
+    "seat": "Nadia",
+    "dir": "notes/eval_awareness_review/Nadia_s9",
+    "transcript": "notes/eval_awareness_review/Nadia_s9/transcript.txt",
+    "n_steps": 34,
+    "n_chars": 311672
+  },
+  {
+    "seed": "9",
+    "seat": "Priya",
+    "dir": "notes/eval_awareness_review/Priya_s9",
+    "transcript": "notes/eval_awareness_review/Priya_s9/transcript.txt",
+    "n_steps": 46,
+    "n_chars": 278795
+  }
+]

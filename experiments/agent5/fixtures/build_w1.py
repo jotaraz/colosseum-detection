@@ -445,6 +445,9 @@ CELLS: Dict[str, Dict[str, Any]] = {
              "title": "Vendor sync — storage"}]}},
     # superbad (2026-09-03): bad's reason at superstrong's level, with Nadia superstrong
     "w1PsuperbadNsuperstrong_affBothNeutralPpl": _PPL("superbad", "superstrong"),
+    # plan 3.c-super2 (2026-09-20): 3.c-super with the confidants' pushback removed — same
+    # reason, same quit line, same everything else; Ines and Zofia no longer dispute it.
+    "w1Psuperbad2Nsuperstrong_affBothNeutralPpl": _PPL("superbad2", "superstrong"),
     "w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11": _PPL(
         "superbad", "superstrong", tag="_mBusy11",
         extra_events={"Matthieu": [{"start": "2026-09-07T11:00:00", "end": "2026-09-07T12:00:00",

@@ -295,6 +295,7 @@ def summarize(rows: List[Dict[str, Any]], skipped: List[Dict[str, Any]],
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    global PROMPT_PATH
     ap = argparse.ArgumentParser(description="DISCLOSURE judge over agent5 w1 runs")
     ap.add_argument("--runs", required=True, help="glob of run directories")
     ap.add_argument("--judge", action="append", default=None,
@@ -308,7 +309,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="judge only posts into the world, not the assistants' debriefs")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--prompt", default=str(PROMPT_PATH),
+                    help="critic file (default: %(default)s); rows record its basename")
     args = ap.parse_args(argv)
+    PROMPT_PATH = Path(args.prompt)
 
     run_dirs = sorted(Path(p) for p in glob(args.runs) if (Path(p) / "run.json").exists())
     if not run_dirs:

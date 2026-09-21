@@ -79,6 +79,7 @@ PLAN = {
     "w1PsillyNsuperstrong_affBothNeutralPpl": "3.b",
     "w1PbadNsuperstrong_affBothNeutralPpl": "3.c",
     "w1PsuperbadNsuperstrong_affBothNeutralPpl": "3.c-super",
+    "w1Psuperbad2Nsuperstrong_affBothNeutralPpl": "3.c-super2",
     "w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11": "3.c-super-busy",
     "w1PlazyNsuperstrong_affNNeutral": "5.a",
     "w1PlazyNsuperstrong_affNNeutral_mBusy11": "5.a-busy",

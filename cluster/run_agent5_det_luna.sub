@@ -1,0 +1,42 @@
+# HTCondor submit: agent5 DETECTION judge, gpt-5.6-luna (.env3) + critic v2, both variants
+# (see run_agent5_det_luna.sh). CPU-only. Writes detection_5e8_v2 — never pooled with the
+# bifrost gpt-5.5 / critic v1 rows in detection_5e8_v1.
+#
+#   condor_submit_bid 15 cluster/run_agent5_det_luna.sub
+#   condor_submit_bid 15 cluster/run_agent5_det_luna.sub variants=reasoning
+#   condor_submit_bid 15 cluster/run_agent5_det_luna.sub models="deepseek glm53" seeds="0 1 2"
+executable = /bin/bash
+if ! defined critic
+  critic = v2
+endif
+if ! defined out
+  out = experiments/agent5/outputs/detection_5e8_v2
+endif
+if ! defined variants
+  variants = reasoning no_reasoning
+endif
+if ! defined workers
+  workers = 2
+endif
+# the 8 open-weight models of 5.e.viii, s0 + s1 = 16 runs
+if ! defined models
+  models = deepseek dspro glm glm53 glm53flash kimi kimik3 qwen38flash
+endif
+if ! defined seeds
+  seeds = 0 1
+endif
+arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_det_luna.sh $(critic) $(out) '$(variants)' $(workers) '$(models)' '$(seeds)'"
+
+error  = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_det_luna_$(Cluster).err
+output = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_det_luna_$(Cluster).out
+log    = /fast/jtaraz/LIARS/colosseum-detection/cluster/agent5_det_luna_$(Cluster).log
+
+# g132: /fast reads failed there on 2026-09-13/14 (see run_agent5_disc_judge.sub).
+requirements   = (Machine != "g132.internal.cluster.is.localnet")
+request_gpus   = 0
+request_cpus   = 2
+request_memory = 8192
+request_disk   = 4G
++BypassLXCfs   = "true"
+
+queue 1

@@ -44,13 +44,39 @@ BIFROST_MODELS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-MODEL_TABLES = {"azure": AZURE_MODELS, "bifrost": BIFROST_MODELS}
-KEY_ENV = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY"}
+#: abliteration.ai models (proxy.py --upstream abliteration), keyed by their model id.
+#: Values from ``GET /v1/models`` on 2026-09-15: abliterated-model-large-v2 is an
+#: abliterated GLM-5.3, fp8, 1M context, temperature range [0, 1], $3 / $5 per 1M
+#: input / output tokens, cache read $0.30. ``reasoning: true`` is honest here: the chain
+#: of thought streams back as ``delta.reasoning`` (OpenRouter's shape), so opencode records
+#: it like any open model's. Output limit kept at 128k like the other tables — the server
+#: advertises 999,990 but nothing here needs it and opencode reads max_tokens off this.
+ABLITERATION_MODELS: Dict[str, Dict[str, Any]] = {
+    "abliterated-model-large-v2": {
+        "name": "Abliterated Large v2 (GLM-5.3)",
+        "tool_call": True,
+        "reasoning": True,
+        "temperature": True,
+        "cost": {"input": 3.0, "output": 5.0, "cache_read": 0.30},
+        "limit": {"context": 1_000_000, "output": 128_000},
+    },
+}
+
+MODEL_TABLES = {"azure": AZURE_MODELS, "bifrost": BIFROST_MODELS,
+                "abliteration": ABLITERATION_MODELS}
+TABLE_NAMES = {"azure": "AZURE_MODELS", "bifrost": "BIFROST_MODELS",
+               "abliteration": "ABLITERATION_MODELS"}
+KEY_ENV = {"azure": "AZURE_OPENAI_API_KEY", "bifrost": "BIFROST_API_KEY",
+           "abliteration": "ABLITERATION_API_KEY"}
 
 
 def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_port: int,
                system_prompt: str, temperature: float = 0.7,
-               provider: str = "openrouter", api: str = "chat") -> Path:
+               provider: str = "openrouter", api: str = "chat", alias: str = "") -> Path:
+    """``alias``: the model id written into the home instead of ``model``. opencode tells
+    the assistant "You are powered by the model named <id>", so this is what the model
+    hears about itself; the proxy (``--model-alias``) puts ``model`` back before the call
+    leaves. ``model`` still selects the MODEL_TABLES entry."""
     home = root / agent.lower()
     agents_dir = home / ".opencode" / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
@@ -72,10 +98,12 @@ def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_por
         options["apiKey"] = "{env:%s}" % KEY_ENV[provider]
         if model not in table:
             raise ValueError(f"unknown {provider} model {model!r}; add it to "
-                             f"homes5.{'AZURE_MODELS' if provider == 'azure' else 'BIFROST_MODELS'}")
-        openrouter["models"] = {model: table[model]}
+                             f"homes5.{TABLE_NAMES[provider]}")
+        openrouter["models"] = {alias or model: table[model]}
     elif provider != "openrouter":
         raise ValueError(f"unknown provider {provider!r}")
+    if alias:
+        model = alias
 
     # ``api="responses"`` (2026-09-06): the gpt-5.x deployments return a reasoning summary
     # only on the Responses API, never on chat completions (probed on the gateway: chat
@@ -90,6 +118,8 @@ def make_home5(root: Path, agent: str, *, model: str, proxy_port: int, world_por
     if api == "responses":
         if provider not in MODEL_TABLES:
             raise ValueError("api='responses' needs provider azure or bifrost")
+        if provider == "abliteration":
+            raise ValueError("api='responses' is untested on the abliteration upstream")
         provider_id = "openai"
         options["baseURL"] = f"http://127.0.0.1:{proxy_port}/a/{agent}/v1"
         table_entry = dict(openrouter["models"][model])

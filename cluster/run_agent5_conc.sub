@@ -6,6 +6,11 @@
 # Prereq (once): condor_submit_bid 50 cluster/setup_agent4.sub
 # Memory sized for 5 opencode instances + world server + logging proxy + runner.
 
+# Default: one rollout per job. Without this line a submit that omits repeats=1 leaves
+# $(repeats) empty, the shell shifts $(Cluster) into the REPEATS slot, and the job loops
+# rollouts until removed (2026-09-17, batch_5e12: 8 unrequested rollouts before the kill).
+repeats = 1
+
 executable = /bin/bash
 arguments  = "/fast/jtaraz/LIARS/colosseum-detection/cluster/run_agent5_conc.sh '$(config)' $(repeats) $(Cluster)"
 

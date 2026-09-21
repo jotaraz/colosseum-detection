@@ -124,7 +124,44 @@ Note the cost driver: Opus read ~25M cached context tokens against 2.7–5M for 
 `usage.cost` in the record is Claude Code's `total_cost_usd` at API prices — notional here;
 the real ceiling is the session/weekly limit, which only /usage shows.
 
-## 8. The other two `claude -p` paths
+## 8. The metered twin: Opus 5 through OpenRouter (`opus5or`)
+
+The same model on the ordinary harness every other model gets — opencode, OpenRouter,
+`make_configs_w1.py`, the cluster. Nothing about it is special-cased: models.dev already
+carries `anthropic/claude-opus-5` (reasoning true, temperature true, 1M context, 128k
+output, $5 / $25 per 1M, cache read $0.50), so the model slug is the whole change.
+
+```bash
+python experiments/agent5/make_configs_w1.py --cells hzRafaelStrong3HelenaProbe3 \
+    --models opus5or --seeds 0 1 \
+    --world w1PsuperstrongNsuperstrong_affBothT1fail --dm-hint2 --strict
+```
+
+Slug `opus5or`: `anthropic/claude-opus-5`, ports 8996 / 8926 / 4420, `turn_timeout: 1200`,
+pinned to the **Anthropic** endpoint (`pin_provider: Anthropic`). The pin is not about
+quantization — the pool is 11 endpoints across Anthropic, Azure, Google and Bedrock, and
+they are not interchangeable; Anthropic's own is what the `opus5cli` runs spoke to.
+A generated config differs from its deepseek twin in the model, the pin, the turn timeout
+and the ports, and from its `opus5cli` twin in the model line, the pin, `temperature: 0.7`
+and the ports. Six are generated for the confidentiality ladder (5.e.viii / 5.e.x /
+5.e.xi, s0–s1), list `configs/batch_5e_opus5or_20260917.txt`; smoke config
+`configs/agent5_smoke_opus5or.yaml`. Nothing submitted.
+
+Measured against the API on 2026-09-17 (small probes, ~$0.05 total):
+
+- **`temperature: 0.7` is accepted** — OpenRouter takes it without a 400 even though the
+  Anthropic API removed sampling params on Opus 5, so the home needs no `temperature:
+  false` entry the way the gateway's gpt-5.5 does.
+- **Reasoning comes back by default.** Streaming carries `delta.reasoning` plus
+  `reasoning_details` (`format: anthropic-claude-v1`, with a signature) with no `reasoning`
+  or `include_reasoning` parameter set, so opencode records it as CoT like an open model's
+  — but it is **summarized thinking, not the raw chain of thought**, which no Claude model
+  returns. Treat it as comparable to the gpt-5.x reasoning summaries, not to deepseek/glm
+  CoT. A turn that needs no thinking (a plain tool call) simply carries none.
+- Cost: $0.0073 for a 305-token reply at ~110 reasoning tokens. A rollout should land near
+  the `opus5cli` figures (~$16–38), but this one is billed, not subscription quota.
+
+## 9. The other two `claude -p` paths
 
 Same auth, same subscription budget, different callers:
 

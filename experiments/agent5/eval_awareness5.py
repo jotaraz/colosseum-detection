@@ -2,7 +2,8 @@
 
     .venv/bin/python -m experiments.agent5.eval_awareness5 \
         --runs 'experiments/agent5/runs/agent5_v16*_askReasonable_conc_*_2026*/run.json' \
-        --workers 6
+        --api-judge openrouter:openai/gpt-5.6-terra --pin-provider "openai/flex,openai" \
+        --sidecar-judge gpt-5.6-terra --workers 6
 
 Reuses ``experiments.agent1.eval_awareness_judge`` wholesale (same CRITIC_EVALAWARE.md
 prompt — the world is the same tanager sprint morning — same chunking, parsing, span
@@ -13,8 +14,8 @@ verification and collapse). What is adapted is only the record shape:
 - Judged text is the chain-of-thought ONLY — the ``text_to_principal`` private log is
   not judged, matching agent1's cot_evalaware scope.
 - Identity comes from the run-dir name (``agent5_<fixture>_<arm>_conc_<model>_s<seed>``)
-  plus the config; ``fixture_tag`` (v16c/v16z) is recorded since every Slack fixture
-  reports version "slack_v1".
+  plus the config; ``fixture_tag`` (v16c/v16z, w1PsuperstrongNstrong, w2PNshared...) is
+  recorded since every Slack fixture reports version "slack_v1".
 
 Sidecar: ``<run_dir>/run.cot_evalaware_<jv>_<model>[_rN].json`` (same resume semantics).
 """
@@ -37,14 +38,22 @@ if str(REPO) not in sys.path:
 from concurrent.futures import ThreadPoolExecutor
 
 from experiments.agent1 import eval_awareness_judge as ej
+from experiments.agent5.preference_judge import make_caller
 from experiments.social_jira3.judge import load_prompt_template
-from experiments.social_jira4.llm import make_judge_caller
 
 logger = logging.getLogger("experiments.agent5.eval_awareness5")
 
+DEFAULT_JUDGE = "openrouter:deepseek/deepseek-v4-flash-0731"
+
+# ``agent5_<fixture>_<arm>_conc_<model>[_s<seed>]_<ts>[_<tag>]``. The fixture is the
+# first token (v16c, w1P0N0, w1augPstrongNstrong, w2PsuperstrongNsuperstrong); the arm
+# is everything up to the ``_conc_`` anchor, which on w1/w2 spans several blocks
+# (affBoth.../mBusy11Eve/kick1h/hzRafaelStrong3...). A trailing tag such as
+# ``_INVALID`` is kept out of the identity.
 _DIR_RE = re.compile(
-    r"^agent5_(?P<fixture>v\d+[a-z]?)_(?P<arm>[A-Za-z]+)_conc_(?P<model>[a-z0-9]+?)"
-    r"(?:_s(?P<seed>\d+))?_\d{8}-\d{6}$")
+    r"^agent5_(?P<fixture>[A-Za-z0-9]+)(?:_(?P<arm>.+?))?"
+    r"_conc_(?P<model>[A-Za-z0-9]+)(?:_s(?P<seed>\d+))?"
+    r"_\d{8}-\d{6}(?:_(?P<tag>[A-Za-z0-9]+))?$")
 
 
 def reasoning_rows(run: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -68,7 +77,7 @@ def identity(path: Path, run: Dict[str, Any]) -> Dict[str, Any]:
         "run": path.parent.name,
         "path": str(path),
         "fixture_tag": (m.group("fixture") if m else ""),
-        "arm": (m.group("arm") if m else ""),
+        "arm": (m.group("arm") or "" if m else ""),
         "model_short": (m.group("model") if m else ""),
         "model": str(cfg.get("model") or ""),
         "seed": cfg.get("seed"),
@@ -77,10 +86,12 @@ def identity(path: Path, run: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def judge_run(run_path: Path, *, caller, template, model, replicate, workers,
-              force, chunk_chars, fallback=None) -> Dict[str, Any]:
+              force, chunk_chars, fallback=None, slug=None) -> Dict[str, Any]:
+    """``slug`` names the sidecar when it should be shorter than the model id
+    (``--sidecar-judge gpt-5.6-terra`` -> ``run.cot_evalaware_ev1_gpt56terra.json``)."""
     run = json.loads(run_path.read_text(encoding="utf-8"))
     units = ej.chunks({"reasoning": reasoning_rows(run)}, chunk_chars=chunk_chars)
-    out_path = ej.sidecar_path(run_path, model, replicate)
+    out_path = ej.sidecar_path(run_path, slug or model, replicate)
     existing: Dict[Any, Dict[str, Any]] = {}
     if out_path.exists() and not force:
         try:
@@ -118,13 +129,20 @@ def judge_run(run_path: Path, *, caller, template, model, replicate, workers,
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--runs", nargs="+", required=True)
-    ap.add_argument("--judge-model", default="deepseek/deepseek-v4-flash-0731")
-    ap.add_argument("--provider", default="openrouter")
-    ap.add_argument("--pin-provider", default="")
-    ap.add_argument("--reasoning-effort", default="medium")
-    ap.add_argument("--max-tokens", type=int, default=6000)
+    ap.add_argument("--api-judge", default=DEFAULT_JUDGE, help="provider:model")
+    ap.add_argument("--pin-provider", default=None,
+                    help="OpenRouter backend(s), comma-separated and ordered, e.g. "
+                         "'openai/flex,openai'; 'none' routes freely (default: the model's "
+                         "entry in preference_judge.DEFAULT_PINS)")
+    ap.add_argument("--sidecar-judge", default="",
+                    help="short name for the sidecar file (default: the model id)")
+    ap.add_argument("--max-tokens", type=int, default=6000,
+                    help="a reasoning model's CoT counts against this, so a thinking judge "
+                         "that hits the cap returns 200 OK with EMPTY content")
+    ap.add_argument("--timeout", type=int, default=0, help="seconds per API call (0 = client default)")
     ap.add_argument("--chunk-chars", type=int, default=60000)
-    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--workers", type=int, default=4, help="chunks judged in parallel per run")
+    ap.add_argument("--run-workers", type=int, default=1, help="runs judged in parallel")
     ap.add_argument("--replicate", type=int, default=1)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
@@ -146,22 +164,39 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"=== {len(paths)} runs, {total} chunks ===")
         return 0
 
-    routing = ({"order": [args.pin_provider], "allow_fallbacks": False}
-               if args.pin_provider else None)
-    kw = dict(provider=args.provider, model=args.judge_model, temperature=0.0,
-              reasoning_effort=args.reasoning_effort, provider_routing=routing)
-    caller = make_judge_caller(max_tokens=args.max_tokens, **kw)
-    fallback = make_judge_caller(max_tokens=args.max_tokens * 2, **kw)
+    # make_caller carries what this judge used to get wrong on its own: the
+    # OPENROUTER_API_KEY_FILE override, the ordered multi-backend pin, and leaving
+    # temperature off entirely for OpenAI's gpt-5 line, which rejects it.
+    model = args.api_judge.partition(":")[2]
+    caller = make_caller(args.api_judge, max_tokens=args.max_tokens, pin=args.pin_provider)
+    fallback = make_caller(args.api_judge, max_tokens=args.max_tokens * 2, pin=args.pin_provider)
+    if args.timeout:
+        for c in (caller, fallback):
+            if hasattr(c, "timeout"):
+                c.timeout = args.timeout
+    logger.info("%d run(s); judge %s; pin %s; sidecar %s", len(paths), args.api_judge,
+                getattr(caller, "provider_routing", None) or args.pin_provider or "default",
+                ej.sidecar_path(paths[0], args.sidecar_judge or model, args.replicate).name
+                if paths else "-")
 
-    done = 0
-    for path in paths:
+    def _do(path: Path) -> Optional[Dict[str, Any]]:
         try:
-            rec = judge_run(path, caller=caller, template=template,
-                            model=args.judge_model, replicate=args.replicate,
-                            workers=args.workers, force=args.force,
-                            chunk_chars=args.chunk_chars, fallback=fallback)
-        except Exception as exc:
+            return judge_run(path, caller=caller, template=template, model=model,
+                             replicate=args.replicate, workers=args.workers,
+                             force=args.force, chunk_chars=args.chunk_chars,
+                             fallback=fallback, slug=args.sidecar_judge or None)
+        except Exception as exc:  # one dead run must not kill the sweep
             logger.error("FAILED %s: %s", path.parent.name, exc)
+            return None
+
+    if args.run_workers > 1 and len(paths) > 1:
+        with ThreadPoolExecutor(max_workers=args.run_workers) as pool:
+            recs = list(pool.map(_do, paths))
+    else:
+        recs = [_do(p) for p in paths]
+    done = 0
+    for path, rec in zip(paths, recs):
+        if rec is None:
             continue
         done += 1
         logger.info("%s  chunks=%d new=%d errors=%d  run=%s aware=%d ambiguous=%d",
@@ -170,7 +205,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     rec["n_agents_ambiguous"])
     logger.info("%d/%d runs judged; usage=%s", done, len(paths),
                 dict(getattr(caller, "totals", {}) or {}))
-    return 0
+    return 0 if done == len(paths) else 1
 
 
 if __name__ == "__main__":

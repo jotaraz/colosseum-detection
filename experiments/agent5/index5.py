@@ -85,6 +85,8 @@ PLAN = {
     ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2"): "5.e.x  5.e.viii with the normal (audience) confidentiality norm instead of strict",
     ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3DmHint2ConfNone"): "5.e.xi  5.e.viii/x with no confidentiality sentence at all (confidentiality: none)",
     ("w1PsuperstrongNsuperstrong_affBothT1prep", "hzRafaelStrong3HelenaProbe3DmHint2Strict"): "5.e.ix  5.e.viii with both work reasons hedged (T1prep: 'don't think I'd deliver it')",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3PushDefDmHint2Strict"): "5.e.xii  5.e.viii with both chairs pushing and opposing reasonless defaults (Rafael: Priya+M / Helena: Nadia+M)",
+    ("w1PsuperstrongNsuperstrong_affBothT1fail", "hzRafaelStrong3HelenaProbe3PushDefTaskFitDmHint2Strict"): "5.e.xiii  5.e.xii with Rafael inviting task-fit arguments for the other split",
     # the 600 s-timeout gpt-5.5 runs of 5.e.v–vii (429-throttled, superseded by the To1200 set,
     # which is folded into the main rows by regroup())
     ("w1PsuperstrongNsuperstrong_affNNeutralPplPT1fail", "hzRafaelStrong3HelenaProbe3DmHint2StrictGpt600"): "5.e.v-gpt600  superseded: gpt-5.5 with the 600 s turn timeout (429-throttled)",
@@ -101,6 +103,7 @@ PLAN = {
     ("w1PsillyNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.b  PsillyNsuperstrong + dm-hint2",
     ("w1PbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c  PbadNsuperstrong + dm-hint2",
     ("w1PsuperbadNsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c-super  PsuperbadNsuperstrong + dm-hint2",
+    ("w1Psuperbad2Nsuperstrong_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.c-super2  Psuperbad2Nsuperstrong (confidants do not push back) + dm-hint2",
     ("w1PsuperbadNsuperstrong_affBothNeutralPpl_mBusy11", "hzReasonableHelenaProbeDmHint2"): "3.c-super-busy  PsuperbadNsuperstrong, busy, dm-hint2",
     ("w1PNshared_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2"): "3.d  PNshared + dm-hint2",
     ("w1PNsharedSuper_affBothNeutralPpl", "hzReasonableHelenaProbeDmHint2VagueAsk"): "3.e  PNsharedSuper + dm-hint2, vague ask",
@@ -362,9 +365,13 @@ def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str,
                 seen_txt[a] += body
     except Exception:
         pass
+    # search_messages matches and pins_list items carry the full message text too, so they
+    # are reads exactly like a history page (the transcript viewer already counts them;
+    # skipping them here showed "0/8" for a message the assistant had found via search).
+    fetch_tools = ('"conversations_history"', '"conversations_replies"', '"search_messages"', '"pins_list"')
     with wc.open() as fh:
         for line in fh:
-            if '"conversations_history"' not in line and '"conversations_replies"' not in line:
+            if not any(t in line for t in fetch_tools):
                 continue
             try:
                 c = json.loads(line)
@@ -373,7 +380,16 @@ def reads_for(run_dir: Path, rows: list[dict], cell: str) -> dict[str, dict[str,
             a = c.get("agent")
             if a not in seen_ts:
                 continue
-            for m in (c.get("result") or {}).get("messages") or []:
+            res = c.get("result") or {}
+            if c.get("tool") == "search_messages":
+                msgs = (res.get("messages") or {}).get("matches") or [] if isinstance(res.get("messages"), dict) else []
+            elif c.get("tool") == "pins_list":
+                msgs = [it.get("message") for it in res.get("items") or [] if isinstance(it, dict)]
+            else:
+                msgs = res.get("messages") or []
+            for m in msgs:
+                if not isinstance(m, dict):
+                    continue
                 ts = str(m.get("ts", ""))
                 if ts in want_ts:
                     seen_ts[a].add(ts)
@@ -405,6 +421,20 @@ GEN_RE = re.compile(r"^(w\d)")
 #: w2-harness runs on the August / remembered-August fixtures, and matching ``w1`` on the
 #: name files them as an old generation and prefixes the label with "w1 ".
 AUG_PREFIX = ("w1aug", "w1sep")
+
+
+def _with_rep(rs: list[dict]) -> list[dict]:
+    """`rep` = 1, 2, … for the run dirs that share a model and seed in one cell, in timestamp
+    order (a kept repeat rollout is a second dir per seed, see 5.e.xii). Shown as `s2 r2` in the
+    seed column only when a seed has more than one dir, so the analysis files
+    (`njv4_fab_list`, `njv4_stats`) can name a run the way the index shows it."""
+    groups: dict[tuple, list[dict]] = {}
+    for r in rs:
+        groups.setdefault((r["model"], r["seed"]), []).append(r)
+    for g in groups.values():
+        for i, r in enumerate(g, 1):
+            r["rep"] = i if len(g) > 1 else 0
+    return rs
 
 
 def scan() -> list[dict]:
@@ -527,7 +557,7 @@ def build(runs: list[dict]) -> str:
                      "tickets": tickets,
                      "section": section, "cols": cols,
                      "fixture": f"fixtures/w1_html/{key[0]}.html" if fixture.exists() else "",
-                     "runs": sorted(rs, key=lambda r: (r["model"], int(r["seed"]), r["stamp"]))})
+                     "runs": _with_rep(sorted(rs, key=lambda r: (r["model"], int(r["seed"]), r["stamp"])))})
     order = {"plan": 0, "old": 1, "other": 2}
     exps.sort(key=lambda e: (order[e["section"]], e["label"]))
     data = json.dumps(exps, ensure_ascii=False)
@@ -592,7 +622,7 @@ function render() {{
   list.innerHTML = html + (sec ? '</div>' : '');
   if (!cur) return;
   const rows = cur.runs.map((r, i) => `<tr id="r${{i}}" class="${{r.invalid ? 'invalid' : ''}}" title="${{r.invalid ? esc(r.invalid_note) : ''}}">
-    <td>${{esc(r.model)}}${{r.invalid ? ' <b class="badge">INVALID</b>' : ''}}</td><td>s${{r.seed}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
+    <td>${{esc(r.model)}}${{r.invalid ? ' <b class="badge">INVALID</b>' : ''}}</td><td>s${{r.seed}}${{r.rep ? ' r'+r.rep : ''}}</td><td>${{esc(r.outcome)}}</td><td>${{r.turns}}</td><td>${{esc(r.last)}}</td>
     <td class="${{r.shape==='valid'?'':'unstaffed'}}">${{esc(r.shape)}}${{r.unstaffed ? ' ('+esc(r.unstaffed)+')' : ''}}</td>
     <td>${{esc(r.T1)}}</td><td>${{esc(r.T2)}}</td><td title="scheduled debriefs (total reports to principals)">${{r.debriefs}} <small>(${{r.reports}})</small></td>
     <td class="pn" title="live messages the assistants sent in the Priya ↔ Nadia DM during the run (Priya's / Nadia's)">${{r.pn && ('Priya' in r.pn) ? `${{r.pn.Priya + r.pn.Nadia}} <small>(P${{r.pn.Priya}} N${{r.pn.Nadia}})</small>` : ''}}</td>

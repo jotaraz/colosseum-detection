@@ -95,6 +95,7 @@ def main() -> None:
     shapes_all: Counter = Counter()
     held_out: List[str] = []
     gate_seen = 0
+    index: Dict[str, List[str]] = defaultdict(list)
     for d in [Path(r.rstrip("/")) for r in args.runs]:
         tag = re.sub(r"_2026.*", "", d.name.split("_conc_")[1])
         sides = []
@@ -130,14 +131,26 @@ def main() -> None:
                     om_lines.append(f"- {rep}: omission `{om.get('answer')}` · " + " ".join(f"{q[:2].upper()} `{ans(om, q)}`" for q in OMISSION_QS)
                                     + (f" · trigger: {om.get('trigger')}" if om.get("trigger") else "")
                                     + (f" · stand-in: {om.get('stand_in')}" if om.get("stand_in") else ""))
-                head = f"{tag} — {seat} · turn {t} step {s} · {aud} · {m.get('time', '')}"
+                head = f"ITEM {n_msgs} · {tag} — {seat} · turn {t} step {s} · {aud} · {m.get('time', '')}"
                 if verdicts:
                     head += " · goal: " + "/".join(verdicts)
+                index[tag].append(f"[ITEM {n_msgs} · {seat[0]}, turn {t} step {s}, {aud}, "
+                                  f"{str(m.get('time') or '')[-5:]}]")
                 shapes_txt = ", ".join(f"{k} ×{v}" for k, v in shapes.most_common())
                 blocks.append(f"<details>\n<summary><strong>{head}</strong> · shapes: {shapes_txt}</summary>\n\n{quote}\n\n"
                               + "\n\n".join(prop_block(rep, p) for rep, p in slot["props"])
                               + "\n\n**Message-level omission**\n" + "\n".join(om_lines) + "\n\n</details>")
     kind = "strict fabrications (q4–q7 all yes)" if args.strict else "fabrication propositions (any q4–q7)"
+    # The index: which runs carry a finding, and which message in each. Keyed by the item numbers
+    # above, so a line here points straight at a block — and at the same message on the run's own
+    # index page (seat, turn, step, surface, clock).
+    def _seed(r: str) -> tuple:
+        m = re.match(r"(.+?)_s(\d+)$", r)
+        return (m.group(1), int(m.group(2))) if m else (r, 0)
+    idx_lines = [f"- **{r}** ({', '.join(index[r])})" for r in sorted(index, key=_seed)]
+    idx = (f"## Runs and messages\n\n{len(index)} run(s) carry at least one qualifying message, "
+           f"{n_msgs} message(s) in total. Each entry is seat initial, the turn and step that sent "
+           f"it, its surface and the clock time.\n\n" + "\n".join(idx_lines) + "\n\n---\n\n")
     gate_note = ""
     if args.gate:
         gate_note = (f"Gated on the run-level `pursuing_goal` judge ({args.gate}, "
@@ -153,7 +166,7 @@ def main() -> None:
         + "Shapes over qualifying propositions: "
         + ", ".join(f"`{k}` ×{v}" for k, v in shapes_all.most_common()) + ".\n\n" + gate_note
         + f"Each block (click to expand): the whole message as sent, then every qualifying proposition from every replicate with its full verdict (P, false element, shape, labels, q1–q8, label_why), then the message-level omission answers.\n\n---\n\n"
-        + "\n\n---\n\n".join(blocks) + "\n", encoding="utf-8")
+        + idx + "\n\n---\n\n".join(blocks) + "\n", encoding="utf-8")
     print(f"wrote {args.out}: {n_msgs} messages, {n_props} propositions")
 
 
