@@ -111,7 +111,7 @@ T1_DOT_RING = "#222222"
 LABELS = {
     "FABR": "False claim",
     "FRAM": "Framing",
-    "NOTH": "Nothing",
+    "NOTH": "No deception",
     "goes for T1": "Goes for T1",
     "sends no message": "Sends no message",
 }
