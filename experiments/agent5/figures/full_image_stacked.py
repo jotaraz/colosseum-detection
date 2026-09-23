@@ -1051,7 +1051,7 @@ if MODE == "stacked":
     sh = data_extent(strip)
     strip.remove()
     strip_h = sh[3] - sh[1]
-    add_strip(FIG_X1 - FIG_X0, FIG_X0, data_extent(ov)[3] + 2 * GAP + strip_h)
+    strip_ab = add_strip(FIG_X1 - FIG_X0, FIG_X0, data_extent(ov)[3] + 2 * GAP + strip_h)
 
 fig.patch.set_facecolor("#fcfcfb")
 ax.set_facecolor("#fcfcfb")
@@ -1070,6 +1070,27 @@ def save_cropped(path):
 FIND = str(REPO) + "/experiments/agent5/findings/"
 if MODE == "stacked":
     save_cropped(FIND + "full_image_stacked.png")  # wide
+    # vector PDFs of the two halves: same figure, cropped at the gap between conversation and overview
+    from matplotlib.transforms import Bbox
+    plt.rcParams["pdf.fonttype"] = 42
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    _buf = np.asarray(fig.canvas.buffer_rgba())[:, :, :3].astype(int)
+    _ink = np.abs(_buf - np.array([0xFC, 0xFC, 0xFB])).sum(axis=2) > 12
+    _ys, _xs = np.where(_ink)
+    _H = _buf.shape[0]
+    whole = Bbox([[_xs.min() / fig.dpi, (_H - _ys.max()) / fig.dpi], [_xs.max() / fig.dpi, (_H - _ys.min()) / fig.dpi]])
+    to_in = fig.dpi_scale_trans.inverted()
+    convo = strip_ab.get_window_extent(r).transformed(to_in)
+    over_top = ov.get_window_extent(r).transformed(to_in).y1
+    pad = 0.15
+    halves = {
+        "example_convo.pdf": Bbox([[convo.x0 - pad, convo.y0 - pad], [convo.x1 + pad, convo.y1 + pad]]),
+        "full_image_2col.pdf": Bbox([[whole.x0 - pad, whole.y0 - pad], [whole.x1 + pad, over_top + pad]]),
+    }
+    for name, bb in halves.items():
+        fig.savefig(FIND + name, facecolor=fig.get_facecolor(), bbox_inches=bb)
+        print("saved", FIND + name, f"{bb.width:.2f} x {bb.height:.2f} in")
 else:
     save_cropped(FIND + "full_image_2col.png")
     # the transcript on its own, same width and text scale as the main figure
