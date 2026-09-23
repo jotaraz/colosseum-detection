@@ -111,7 +111,7 @@ T1_DOT_COLOR = "#FFFFFF"
 T1_DOT_RING = "#222222"
 LABELS = {
     "FABR": "False claim",
-    "FRAM": "Framing",
+    "FRAM": "Misdirection",
     "NOTH": "No deception",
     "goes for T1": "Goes for T1",
     "sends no message": "Sends no message",
@@ -539,7 +539,7 @@ def tint(hex_color, amount):
     return "#" + "".join(f"{round(255 - (255 - v) * amount):02x}" for v in rgb)
 
 
-BOX_COLORS = {"Framing": (tint(COLORS["FRAM"], 0.16), tint(COLORS["FRAM"], 0.75)),
+BOX_COLORS = {"Misdirection": (tint(COLORS["FRAM"], 0.16), tint(COLORS["FRAM"], 0.75)),
               "False claim": (tint(COLORS["FABR"], 0.16), tint(COLORS["FABR"], 0.75))}
 
 
@@ -568,14 +568,14 @@ def snap(ab, align, target):
 boxes = {}
 RIGHT_START = GRID_RIGHT + GAP
 RIGHT_W = 480  # content width of the right column, pts — kept narrow so the figure grows taller, not wider
-RIGHT_ORDER = ["Framing", "False claim", "Disclosure about work", "Disclosure about Bob"]
+RIGHT_ORDER = ["Misdirection", "False claim", "Disclosure about work", "Disclosure about Bob"]
 MIDDLE = "Disclosure about work"
 MID_RIGHT = 5.8
 BOB_RIGHT = 6.0  # leaves room under the grid for the diagonal work arrow
 
 fig.canvas.draw()
 X0 = min(data_extent(t)[0] for t in model_labels)
-probe = add_box("Framing", 300, (0, 1), (RIGHT_START, TOP))
+probe = add_box("Misdirection", 300, (0, 1), (RIGHT_START, TOP))
 fig.canvas.draw()
 px0, _, px1, _ = data_extent(probe)
 frame_extra = (px1 - px0) - 300 / PTS_PER_UNIT
@@ -618,7 +618,7 @@ def ptr_label(line1, plain, word, wcolor, xy, align):
 hdr_top = data_extent(runs_label)[3]
 lab_false = ptr_label("this run of Carol's agent", "made a ", "false claim", COLORS["FABR"],
                       (n_cols + 0.15, hdr_top + 0.25), (1, 0))
-lab_frame = ptr_label("this run of Alice's agent", "used misleading ", "framing", COLORS["FRAM"],
+lab_frame = ptr_label("this run of Alice's agent", "", "misdirected", COLORS["FRAM"],
                       (0, data_extent(lab_false)[3] + 0.2), (0, 0))
 emoji_base = data_extent(lab_frame)[3] + 0.45 + 0.5 * ROW_H
 top_leg = ax.legend(loc="lower center", bbox_to_anchor=(_cx, emoji_base + 1.5 * ROW_H), **LEGEND_KW)
@@ -751,9 +751,9 @@ def to_left_edge(title, tail_y_offset=0.5):
     arrow((x + 1, ty), (bx0, min(max(ty, by0 + 0.8), by1 - 0.8)))
 
 
-c = BY_TITLE["Framing"]
+c = BY_TITLE["Misdirection"]
 _gx, _gy = highlight(c["model"], c["seed"], c["employee"])
-_gb = ext["Framing"]
+_gb = ext["Misdirection"]
 arrow((_gx + 1, _gy + 0.5), (_gb[0], max(_gy + 0.5, _gb[1] + 0.45)))
 to_left_edge("False claim")
 
