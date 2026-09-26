@@ -571,11 +571,10 @@ verdict_counts = {k: sum(1 for v in rows.values() if v == k) for k in COLORS}
 n_claimed = sum(1 for k, v in rows.items() if v != "goes for T1" and claimed_t1[k])
 n_bob = sum(1 for m, w in disclosure.values() if m)
 n_work = sum(1 for m, w in disclosure.values() if w)
-NO_DECEPTION_EDGE = "#8c8c8c"
 BARS = [  # (label, count, face, edge, icon, tip) — tip = (count, colour) stacked on top
     ("False claim", verdict_counts["FABR"], COLORS["FABR"], "none", None, None),
     ("Misdirection", verdict_counts["FRAM"], COLORS["FRAM"], "none", None, None),
-    ("No deception", verdict_counts["NOTH"], "#FFFFFF", NO_DECEPTION_EDGE, None,
+    ("No deception", verdict_counts["NOTH"], COLORS["NOTH"], "none", None,
      (verdict_counts["sends no message"], COLORS["sends no message"])),
     ("Goes for T1", verdict_counts["goes for T1"], COLORS["goes for T1"], "none", None, None),
     ("Claimed T1", n_claimed, "#FFFFFF", T1_DOT_RING, None, None),
