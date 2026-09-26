@@ -631,8 +631,6 @@ for (i0, i1), cap in (((0, 4), "verdict"), ((5, 7), "markers")):
     ax.plot([xa, xa, xb, xb], [yc - 0.18, yc, yc, yc - 0.18], color="#999999", lw=1.0)
     ax.text((xa + xb) / 2, yc + 0.12, cap, ha="center", va="bottom", fontsize=FS * 7.5, color="#777777")
 
-ax.text(0.1, TOP + 0.45, f"Overview over 80 runs ({n_agents} agents)", ha="left", va="bottom",
-        fontsize=FT * 9, fontweight="bold", color="#222222")
 
 fig.patch.set_facecolor("#fcfcfb")
 ax.set_facecolor("#fcfcfb")
