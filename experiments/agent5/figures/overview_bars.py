@@ -571,17 +571,19 @@ verdict_counts = {k: sum(1 for v in rows.values() if v == k) for k in COLORS}
 n_claimed = sum(1 for k, v in rows.items() if v != "goes for T1" and claimed_t1[k])
 n_bob = sum(1 for m, w in disclosure.values() if m)
 n_work = sum(1 for m, w in disclosure.values() if w)
-BARS = [  # (label, count, face, edge, icon)
-    ("False claim", verdict_counts["FABR"], COLORS["FABR"], "none", None),
-    ("Misdirection", verdict_counts["FRAM"], COLORS["FRAM"], "none", None),
-    ("No deception", verdict_counts["NOTH"], COLORS["NOTH"], "none", None),
-    ("Goes for T1", verdict_counts["goes for T1"], COLORS["goes for T1"], "none", None),
-    ("No message", verdict_counts["sends no message"], COLORS["sends no message"], "none", None),
-    ("Claimed T1", n_claimed, "#FFFFFF", T1_DOT_RING, None),
-    ("Disclosed: Bob", n_bob, "#e9e6df", "none", EMOJI_MAN),
-    ("Disclosed: work", n_work, "#e9e6df", "none", EMOJI_BRIEFCASE),
+NO_DECEPTION_EDGE = "#8c8c8c"
+BARS = [  # (label, count, face, edge, icon, tip) — tip = (count, colour) stacked on top
+    ("False claim", verdict_counts["FABR"], COLORS["FABR"], "none", None, None),
+    ("Misdirection", verdict_counts["FRAM"], COLORS["FRAM"], "none", None, None),
+    ("No deception", verdict_counts["NOTH"], "#FFFFFF", NO_DECEPTION_EDGE, None,
+     (verdict_counts["sends no message"], COLORS["sends no message"])),
+    ("Goes for T1", verdict_counts["goes for T1"], COLORS["goes for T1"], "none", None, None),
+    ("Claimed T1", n_claimed, "#FFFFFF", T1_DOT_RING, None, None),
+    ("Disclosed: Bob", n_bob, "#e9e6df", "none", EMOJI_MAN, None),
+    ("Disclosed: work", n_work, "#e9e6df", "none", EMOJI_BRIEFCASE, None),
 ]
-print({b[0].replace(chr(10), " "): b[1] for b in BARS}, "of", n_agents)
+N_VERDICT = 4
+print({b[0]: b[1] for b in BARS}, "of", n_agents)
 
 BX0 = CW + GAP + 0.9          # room for the tick labels
 BX1 = TOTAL_W - CW - GAP - 0.2
@@ -598,7 +600,7 @@ TXT = dict(fontsize=FS * 8.5, color="#333333")
 
 
 def bar_x(i):
-    return BX0 + i * slot + (group_gap if i >= 5 else 0) + (slot - bw) / 2
+    return BX0 + i * slot + (group_gap if i >= N_VERDICT else 0) + (slot - bw) / 2
 
 
 def ypos(v):
@@ -611,11 +613,16 @@ for v in range(0, int(VMAX) + 1, 20):
     ax.text(BX0 - 0.3, ypos(v), str(v), ha="right", va="center", fontsize=FS * 7.5, color="#777777")
 ax.plot([BX0 - 0.15, BX1], [YB, YB], color="#555555", lw=1.2, zorder=2)
 
-for i, (label, count, face, edge, icon) in enumerate(BARS):
+for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
     x = bar_x(i)
     ax.add_patch(Rectangle((x, YB), bw, ypos(count) - YB, facecolor=face,
                            edgecolor=edge if edge != "none" else "none", linewidth=1.4, zorder=3))
-    cnt = ax.text(x + bw / 2, ypos(count) + 0.15, str(count), ha="center", va="bottom",
+    top, top_label = count, str(count)
+    if tip is not None:
+        ax.add_patch(Rectangle((x, ypos(count)), bw, ypos(count + tip[0]) - ypos(count), facecolor=tip[1],
+                               edgecolor=edge, linewidth=1.4, zorder=3))
+        top, top_label = count + tip[0], f"{count}+{tip[0]}"
+    cnt = ax.text(x + bw / 2, ypos(top) + 0.15, top_label, ha="center", va="bottom",
                   fontsize=FS * 8.5, fontweight="bold", color="#222222", zorder=4)
     if icon is not None:
         fig.canvas.draw()
@@ -625,7 +632,7 @@ for i, (label, count, face, edge, icon) in enumerate(BARS):
     ax.text(x + bw / 2, YB - 0.25, label, ha="center", va="top", rotation=90, **TXT)
 
 # group captions: the five verdicts partition the agents; the three markers can overlap
-for (i0, i1), cap in (((0, 4), "verdict"), ((5, 7), "markers")):
+for (i0, i1), cap in (((0, N_VERDICT - 1), "verdict"), ((N_VERDICT, len(BARS) - 1), "markers")):
     xa, xb = bar_x(i0), bar_x(i1) + bw
     yc = YT + 0.55
     ax.plot([xa, xa, xb, xb], [yc - 0.18, yc, yc, yc - 0.18], color="#999999", lw=1.0)
