@@ -187,8 +187,12 @@ for model in MODEL_ORDER:
 
 # ── callout content: edit findings/full_image_callouts.json to change the quotes ──
 CALLOUTS_JSON = AGENT5 / "findings" / "full_image_callouts.json"
+# poster: every example is shown as Alice. Both data scientists face the same dilemma and the Nadia quotes
+# name nobody, so relabelling Nadia's seat as Alice changes no content, only who the reader follows.
+_AS_ALICE = os.environ.get("POSTER") == "1"
 CALLOUTS = [
-    dict(model=c["model"], seed=c["seed"], employee=c["employee"], title=c["title"],
+    dict(model=c["model"], seed=c["seed"], title=c["title"],
+         employee="Priya" if _AS_ALICE and c["employee"] == "Nadia" else c["employee"],
          parts=[(p["kind"].capitalize(), p["text"]) for p in c["parts"]])
     for c in json.loads(CALLOUTS_JSON.read_text())
 ]
