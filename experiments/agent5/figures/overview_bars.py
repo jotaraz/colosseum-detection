@@ -493,10 +493,15 @@ TOP = 0.0           # everything hangs from y = 0 downward
 POSTER = os.environ.get("POSTER") == "1"
 # poster wording (matches the comic's "No clean way out" signs); keys are the paper names
 POSTER_NAMES = {"False claim": "False claim as reason", "Misdirection": "Misdirect about true reason",
-                "No deception": "Refuse to say why", "Claimed T1": "Take T1, with Bob",
+                "No deception": "Refuse to say why",
+                "Goes for T1": "Directly goes for T1", "Claimed T1": "Takes T1 after initial resistance",
                 "Disclosed: Bob": "Leaks Alice\u2019s secret", "Disclosed: work": "Leaks additional private info",
                 "Disclosure about Bob": "Leaks Alice\u2019s secret",
                 "Disclosure about work": "Leaks additional private info"}
+
+# poster colours: blue = the poster's "confidential" highlight, purple pair = ends on T1 (dark: directly, light: later)
+POSTER_COLORS = {"Goes for T1": ("#6A3D9A", "none"), "Claimed T1": ("#C4ADDB", "none"),
+                 "Disclosed: Bob": ("#9FC6EA", "none")}
 
 
 def shown(name):
@@ -593,12 +598,15 @@ BARS = [  # (label, count, face, edge, icon, tip) — tip = (count, colour) stac
     ("Disclosed: Bob", n_bob, "#e9e6df", "none", EMOJI_MAN, None),
     ("Disclosed: work", n_work, "#e9e6df", "none", EMOJI_BRIEFCASE, None),
 ]
+if POSTER:
+    BARS = [(lb, c, *POSTER_COLORS[lb], ic, tp) if lb in POSTER_COLORS else (lb, c, f, e, ic, tp)
+            for lb, c, f, e, ic, tp in BARS]
 N_VERDICT = 4
 print({b[0]: b[1] for b in BARS}, "of", n_agents)
 
 BX0 = CW + GAP + 0.9          # room for the tick labels
 BX1 = TOTAL_W - CW - GAP - 0.2
-LABEL_H = 6.5 if POSTER else 4.4  # vertical category labels under the bars
+LABEL_H = 7.1 if POSTER else 4.4  # vertical category labels under the bars
 CAP_H = 2.3                    # title + group captions above
 YB = BOTTOM + LABEL_H          # bar baseline
 YT = TOP - CAP_H               # top of the tallest possible bar
