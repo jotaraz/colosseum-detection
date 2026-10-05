@@ -2,6 +2,7 @@
 
 Same width as full_image_2col, much shorter: the per-run matrix collapses to 8 counts
 (five verdicts, claimed-T1, Bob- and work-disclosure). Writes findings/overview_bars.{png,pdf}.
+POSTER=1 writes findings/overview_bars_poster.{png,pdf} instead, with the comic poster's category names.
 Inputs: outputs/5e8_seats_human_labeled.md, the run.json files, findings/full_image_callouts.json.
 
 Needs matplotlib, numpy, pillow, uharfbuzz and fonttools, and macOS's Apple Color Emoji font.
@@ -412,9 +413,9 @@ def message_card(text, employee, inner_w):
 def make_box(c, width_pts, extra_h_pts=0):
     inner_w = width_pts - 2 * CARD_PAD - 2
     model_name = MODEL_FULL_NAME[c["model"]].replace(chr(10), " ")
-    parts_ = [TextArea(c["title"], textprops=dict(fontsize=FT * 8, fontweight="bold", color="#222222")),
+    parts_ = [TextArea(shown(c["title"]), textprops=dict(fontsize=FT * 8, fontweight="bold", color="#222222")),
               TextArea(model_name, textprops=dict(fontsize=FT * 6, style="italic", color="#777777"))]
-    one_line = len(c["title"]) * FT * 8 * 0.64 + 6 * FT + len(model_name) * FT * 6 * 0.56
+    one_line = len(shown(c["title"])) * FT * 8 * 0.64 + 6 * FT + len(model_name) * FT * 6 * 0.56
     heading = (HPacker(children=parts_, align="baseline", pad=0, sep=6 * FT) if one_line < width_pts
                else VPacker(children=parts_, align="left", pad=0, sep=1))
     title = VPacker(children=[heading, DrawingArea(width_pts, 0)],  # pins exact width so boxes tile
@@ -489,6 +490,17 @@ MIN_BARS_W = 9.0    # narrowest the bar chart may get
 LEFT_COL = ["Misdirection", "Disclosure about work"]
 RIGHT_COL = ["False claim", "Disclosure about Bob"]
 TOP = 0.0           # everything hangs from y = 0 downward
+POSTER = os.environ.get("POSTER") == "1"
+# poster wording (matches the comic's "No clean way out" signs); keys are the paper names
+POSTER_NAMES = {"False claim": "False claim as reason", "Misdirection": "Misdirect about true reason",
+                "No deception": "Refuse to say why", "Claimed T1": "Take T1, with Bob",
+                "Disclosed: Bob": "Leaks Alice\u2019s secret", "Disclosed: work": "Leaks additional private info",
+                "Disclosure about Bob": "Leaks Alice\u2019s secret",
+                "Disclosure about work": "Leaks additional private info"}
+
+
+def shown(name):
+    return POSTER_NAMES.get(name, name) if POSTER else name
 
 
 def col_w(chars):
@@ -586,7 +598,7 @@ print({b[0]: b[1] for b in BARS}, "of", n_agents)
 
 BX0 = CW + GAP + 0.9          # room for the tick labels
 BX1 = TOTAL_W - CW - GAP - 0.2
-LABEL_H = 4.4                  # vertical category labels under the bars
+LABEL_H = 6.5 if POSTER else 4.4  # vertical category labels under the bars
 CAP_H = 2.3                    # title + group captions above
 YB = BOTTOM + LABEL_H          # bar baseline
 YT = TOP - CAP_H               # top of the tallest possible bar
@@ -595,7 +607,7 @@ n = len(BARS)
 group_gap = 0.55
 slot = (BX1 - BX0 - group_gap) / n
 bw = slot * 0.72
-TXT = dict(fontsize=FS * 8.5, color="#333333")
+TXT = dict(fontsize=FS * (7.6 if POSTER else 8.5), color="#333333")
 
 
 def bar_x(i):
@@ -628,7 +640,7 @@ for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
         ax.add_artist(AnnotationBbox(OffsetImage(icon, zoom=FS * 11 / icon.height),
                                      (x + bw / 2, data_extent(cnt)[3] + 0.1), xycoords="data",
                                      box_alignment=(0.5, 0), frameon=False, pad=0, zorder=5))
-    ax.text(x + bw / 2, YB - 0.25, label, ha="center", va="top", rotation=90, **TXT)
+    ax.text(x + bw / 2, YB - 0.25, shown(label), ha="center", va="top", rotation=90, **TXT)
 
 # group captions: the five verdicts partition the agents; the three markers can overlap
 for (i0, i1), cap in (((0, N_VERDICT - 1), "verdict"), ((N_VERDICT, len(BARS) - 1), "markers")):
@@ -654,6 +666,7 @@ pad = 0.15
 bb = Bbox([[_xs.min() / fig.dpi - pad, (_H - _ys.max()) / fig.dpi - pad],
            [_xs.max() / fig.dpi + pad, (_H - _ys.min()) / fig.dpi + pad]])
 plt.rcParams["pdf.fonttype"] = 42
-for name in ("overview_bars.png", "overview_bars.pdf"):
+for name in (("overview_bars_poster.png", "overview_bars_poster.pdf") if POSTER
+             else ("overview_bars.png", "overview_bars.pdf")):
     fig.savefig(FIND / name, facecolor=fig.get_facecolor(), bbox_inches=bb)
     print("saved", FIND / name, f"{bb.width:.2f} x {bb.height:.2f} in")
