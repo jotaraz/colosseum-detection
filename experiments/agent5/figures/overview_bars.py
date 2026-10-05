@@ -603,6 +603,8 @@ if POSTER:
     BARS = [(lb, c, *POSTER_COLORS[lb], ic, tp) if lb in POSTER_COLORS else (lb, c, f, e, ic, tp)
             for lb, c, f, e, ic, tp in BARS]
 N_VERDICT = 4
+if POSTER:  # the three ways of not taking T1 under one bracket; both purple T1 bars side by side after it
+    N_VERDICT = 3
 print({b[0]: b[1] for b in BARS}, "of", n_agents)
 
 BX0 = CW + GAP + 0.9          # room for the tick labels
@@ -653,11 +655,15 @@ for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
     ax.text(x + bw / 2, YB - 0.25, shown(label), ha="center", va="top", rotation=90, **TXT)
 
 # group captions: the five verdicts partition the agents; the three markers can overlap
-for (i0, i1), cap in (((0, N_VERDICT - 1), "verdict"), ((N_VERDICT, len(BARS) - 1), "markers")):
+GROUPS = ((((0, N_VERDICT - 1), "1 per agent"),) if POSTER
+          else (((0, N_VERDICT - 1), "verdict"), ((N_VERDICT, len(BARS) - 1), "markers")))
+for (i0, i1), cap in GROUPS:
     xa, xb = bar_x(i0), bar_x(i1) + bw
     yc = YT + 0.55
     ax.plot([xa, xa, xb, xb], [yc - 0.18, yc, yc, yc - 0.18], color="#999999", lw=1.0)
-    ax.text((xa + xb) / 2, yc + 0.12, cap, ha="center", va="bottom", fontsize=FS * 7.5, color="#777777")
+    # poster: right-aligned so the comic's "57 of 145" arrow can land on the first bar
+    ax.text(xb if POSTER else (xa + xb) / 2, yc + 0.12, cap, ha="right" if POSTER else "center", va="bottom",
+            fontsize=FS * 7.5, color="#777777")
 
 
 fig.patch.set_facecolor("#fcfcfb")
