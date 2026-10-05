@@ -499,8 +499,9 @@ POSTER_NAMES = {"False claim": "False claim as reason", "Misdirection": "Misdire
                 "Disclosure about Bob": "Leaks Alice\u2019s secret",
                 "Disclosure about work": "Leaks additional private info"}
 
-# poster colours: blue = the poster's "confidential" highlight, purple pair = ends on T1 (dark: directly, light: later)
-POSTER_COLORS = {"Goes for T1": ("#6A3D9A", "none"), "Claimed T1": ("#C4ADDB", "none"),
+# poster colours: blue = the poster's "confidential" highlight, purple = ends on T1
+# (solid: directly; pale + dark-purple hatching: later — a flat light purple reads as the false-claim pink)
+POSTER_COLORS = {"Goes for T1": ("#6A3D9A", "none"), "Claimed T1": ("#F1ECF7", "#6A3D9A"),
                  "Disclosed: Bob": ("#9FC6EA", "none")}
 
 
@@ -635,7 +636,8 @@ ax.plot([BX0 - 0.15, BX1], [YB, YB], color="#555555", lw=1.2, zorder=2)
 for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
     x = bar_x(i)
     ax.add_patch(Rectangle((x, YB), bw, ypos(count) - YB, facecolor=face,
-                           edgecolor=edge if edge != "none" else "none", linewidth=1.4, zorder=3))
+                           edgecolor=edge if edge != "none" else "none", linewidth=1.4, zorder=3,
+                           hatch="///" if POSTER and label == "Claimed T1" else None))
     top, top_label = count, str(count)
     if tip is not None:
         ax.add_patch(Rectangle((x, ypos(count)), bw, ypos(count + tip[0]) - ypos(count), facecolor=tip[1],
