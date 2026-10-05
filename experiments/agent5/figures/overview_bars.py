@@ -609,7 +609,9 @@ print({b[0]: b[1] for b in BARS}, "of", n_agents)
 
 BX0 = CW + GAP + 0.9          # room for the tick labels
 BX1 = TOTAL_W - CW - GAP - 0.2
-LABEL_H = 7.1 if POSTER else 4.4  # vertical category labels under the bars
+BFS = float(os.environ.get("BFS", 1.4)) if POSTER else 1.0  # bar-chart text scale (poster is read from afar)
+BFS_TIGHT = 1 + (BFS - 1) / 2  # counts and group chips: less room, so grow half as much
+LABEL_H = 7.1 * BFS if POSTER else 4.4  # vertical category labels under the bars
 CAP_H = 2.3                    # title + group captions above
 YB = BOTTOM + LABEL_H          # bar baseline
 YT = TOP - CAP_H               # top of the tallest possible bar
@@ -619,7 +621,7 @@ group_gap = 0.9 if POSTER else 0.55
 GROUP_STARTS = (3, 5) if POSTER else (N_VERDICT,)  # a gap opens before each of these bars
 slot = (BX1 - BX0 - group_gap * len(GROUP_STARTS)) / n
 bw = slot * 0.72
-TXT = dict(fontsize=FS * (7.6 if POSTER else 8.5), color="#333333")
+TXT = dict(fontsize=FS * BFS * (7.6 if POSTER else 8.5), color="#333333")
 
 
 def bar_x(i):
@@ -633,7 +635,7 @@ def ypos(v):
 # light gridlines + y axis
 for v in range(0, int(VMAX) + 1, 20):
     ax.plot([BX0 - 0.15, BX1], [ypos(v), ypos(v)], color="#e2e2e2", lw=1.0, zorder=1)
-    ax.text(BX0 - 0.3, ypos(v), str(v), ha="right", va="center", fontsize=FS * 7.5, color="#777777")
+    ax.text(BX0 - 0.3, ypos(v), str(v), ha="right", va="center", fontsize=FS * BFS * 7.5, color="#777777")
 ax.plot([BX0 - 0.15, BX1], [YB, YB], color="#555555", lw=1.2, zorder=2)
 
 for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
@@ -645,12 +647,12 @@ for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
     if tip is not None:
         ax.add_patch(Rectangle((x, ypos(count)), bw, ypos(count + tip[0]) - ypos(count), facecolor=tip[1],
                                edgecolor=edge, linewidth=1.4, zorder=3))
-        top, top_label = count + tip[0], f"{count}+{tip[0]}"
+        top, top_label = count + tip[0], (f"{count}\n+{tip[0]}" if POSTER else f"{count}+{tip[0]}")  # stacked: bigger poster text would overrun the neighbour
     cnt = ax.text(x + bw / 2, ypos(top) + 0.15, top_label, ha="center", va="bottom",
-                  fontsize=FS * 8.5, fontweight="bold", color="#222222", zorder=4)
+                  fontsize=FS * BFS_TIGHT * 8.5, fontweight="bold", color="#222222", zorder=4, linespacing=0.95)
     if icon is not None:
         fig.canvas.draw()
-        ax.add_artist(AnnotationBbox(OffsetImage(icon, zoom=FS * 11 / icon.height),
+        ax.add_artist(AnnotationBbox(OffsetImage(icon, zoom=FS * BFS_TIGHT * 11 / icon.height),
                                      (x + bw / 2, data_extent(cnt)[3] + 0.1), xycoords="data",
                                      box_alignment=(0.5, 0), frameon=False, pad=0, zorder=5))
     ax.text(x + bw / 2, YB - 0.25, shown(label), ha="center", va="top", rotation=90, **TXT)
@@ -668,7 +670,7 @@ for (i0, i1), cap, chip in GROUPS:
     ax.plot([xa, xa, xb, xb], [yc - 0.18, yc, yc, yc - 0.18], color="#999999", lw=1.0)
     if chip:
         ax.text((xa + xb) / 2, yc + 0.22, cap, ha="center", va="bottom", multialignment="center",
-                fontsize=FS * 6.6, color="#1d1b1d", fontweight="bold", linespacing=1.05,
+                fontsize=FS * BFS_TIGHT * 6.6, color="#1d1b1d", fontweight="bold", linespacing=1.05,
                 bbox=dict(boxstyle="round,pad=0.22,rounding_size=0.3", facecolor=chip, edgecolor="none"))
     else:
         ax.text((xa + xb) / 2, yc + 0.12, cap, ha="center", va="bottom", fontsize=FS * 7.5, color="#777777")
