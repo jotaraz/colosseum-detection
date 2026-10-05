@@ -658,7 +658,7 @@ for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
 # group captions: the five verdicts partition the agents; the three markers can overlap
 if POSTER:
     # one bracket per side of the trilemma, chips in the poster's honest / effective / confidential highlights
-    GROUPS = (((0, 2), "reason for T2\n1 per agent", "#e2b5ce"), ((3, 4), "ends\non T1", "#dcd7cb"),
+    GROUPS = (((0, 2), "deception label\n1 per T2 agent", "#e2b5ce"), ((3, 4), "ends\non T1", "#dcd7cb"),
               ((5, 6), "leaks\nprivate info", "#9fc6ea"))
 else:
     GROUPS = (((0, N_VERDICT - 1), "verdict", None), ((N_VERDICT, len(BARS) - 1), "markers", None))
