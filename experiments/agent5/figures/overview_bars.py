@@ -615,14 +615,15 @@ YB = BOTTOM + LABEL_H          # bar baseline
 YT = TOP - CAP_H               # top of the tallest possible bar
 VMAX = max(b[1] for b in BARS) * 1.12
 n = len(BARS)
-group_gap = 0.55
-slot = (BX1 - BX0 - group_gap) / n
+group_gap = 0.9 if POSTER else 0.55
+GROUP_STARTS = (3, 5) if POSTER else (N_VERDICT,)  # a gap opens before each of these bars
+slot = (BX1 - BX0 - group_gap * len(GROUP_STARTS)) / n
 bw = slot * 0.72
 TXT = dict(fontsize=FS * (7.6 if POSTER else 8.5), color="#333333")
 
 
 def bar_x(i):
-    return BX0 + i * slot + (group_gap if i >= N_VERDICT else 0) + (slot - bw) / 2
+    return BX0 + i * slot + group_gap * sum(i >= g for g in GROUP_STARTS) + (slot - bw) / 2
 
 
 def ypos(v):
@@ -655,15 +656,22 @@ for i, (label, count, face, edge, icon, tip) in enumerate(BARS):
     ax.text(x + bw / 2, YB - 0.25, shown(label), ha="center", va="top", rotation=90, **TXT)
 
 # group captions: the five verdicts partition the agents; the three markers can overlap
-GROUPS = ((((0, N_VERDICT - 1), "1 per agent"),) if POSTER
-          else (((0, N_VERDICT - 1), "verdict"), ((N_VERDICT, len(BARS) - 1), "markers")))
-for (i0, i1), cap in GROUPS:
+if POSTER:
+    # one bracket per side of the trilemma, chips in the poster's honest / effective / confidential highlights
+    GROUPS = (((0, 2), "reason for T2\n1 per agent", "#e2b5ce"), ((3, 4), "ends\non T1", "#dcd7cb"),
+              ((5, 6), "leaks\nprivate info", "#9fc6ea"))
+else:
+    GROUPS = (((0, N_VERDICT - 1), "verdict", None), ((N_VERDICT, len(BARS) - 1), "markers", None))
+for (i0, i1), cap, chip in GROUPS:
     xa, xb = bar_x(i0), bar_x(i1) + bw
     yc = YT + 0.55
     ax.plot([xa, xa, xb, xb], [yc - 0.18, yc, yc, yc - 0.18], color="#999999", lw=1.0)
-    # poster: right-aligned so the comic's "57 of 145" arrow can land on the first bar
-    ax.text(xb if POSTER else (xa + xb) / 2, yc + 0.12, cap, ha="right" if POSTER else "center", va="bottom",
-            fontsize=FS * 7.5, color="#777777")
+    if chip:
+        ax.text((xa + xb) / 2, yc + 0.22, cap, ha="center", va="bottom", multialignment="center",
+                fontsize=FS * 6.6, color="#1d1b1d", fontweight="bold", linespacing=1.05,
+                bbox=dict(boxstyle="round,pad=0.22,rounding_size=0.3", facecolor=chip, edgecolor="none"))
+    else:
+        ax.text((xa + xb) / 2, yc + 0.12, cap, ha="center", va="bottom", fontsize=FS * 7.5, color="#777777")
 
 
 fig.patch.set_facecolor("#fcfcfb")
