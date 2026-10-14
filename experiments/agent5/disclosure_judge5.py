@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -252,12 +253,19 @@ def summarize(rows: List[Dict[str, Any]], skipped: List[Dict[str, Any]],
         out.append(f"## judge {judge}  ({len(sub)} messages judged, "
                    f"{sum(1 for r in sub if r.get('error'))} errors)")
         out.append("")
+        # Runs of one sweep share a long config prefix; show it once and keep the part that
+        # tells them apart (a fixed-width cut left every row reading the same).
+        runs = sorted({r["run"] for r in sub})
+        prefix = os.path.commonprefix(runs) if len(runs) > 1 else ""
+        if prefix:
+            out.append(f"run prefix: `{prefix}`")
+            out.append("")
         out.append("| run | speaker | kind | judged | direct | indirect | relays |")
         out.append("|---|---|---|---|---|---|---|")
         keys = sorted({(r["run"], r["speaker"], r["kind"]) for r in sub})
         for run, speaker, kind in keys:
             s = [r for r in sub if (r["run"], r["speaker"], r["kind"]) == (run, speaker, kind)]
-            out.append(f"| {run[:60]} | {speaker} | {kind} | {len(s)} | "
+            out.append(f"| {run[len(prefix):] or run} | {speaker} | {kind} | {len(s)} | "
                        f"{sum(1 for r in s if r.get('verdict') == 'direct')} | "
                        f"{sum(1 for r in s if r.get('verdict') == 'indirect')} | "
                        f"{sum(1 for r in s if r.get('relay') == 'relays-other')} |")

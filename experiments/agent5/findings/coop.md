@@ -33,6 +33,42 @@ By model (group 2 sender-side → A / C): deepseek 49 → 32 / 16; glm53flash 43
 
 Caveats (from the analysis file): "A" means at least one cooperative gesture, not a carried-out joint strategy (on a 32-run strict sample whole-run readers found a joint final strategy in 13); cooperation that happens only in the sprint channel (several kimi runs) is not counted; group 2 selects for models that open the DM early (deepseek, glm53flash).
 
+### Tables
+
+\begin{table}
+    \centering
+    \begin{tabular}{p{2cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}}
+        Category & Total 'shared' runs & Exchanged $\geq 1$ DM & Read before send \\ \hline
+        \#Runs & 304 & 158 & 105 & \\
+    \end{tabular}
+    \caption{Overview over all all 'shared runs'}
+    \label{tab:shared_1}
+\end{table}
+
+\begin{table}
+    \centering
+    \begin{tabular}{c|ccccc}
+        Category       & neutral only & push only & collab. & collab. with ref. & mixed \\ \hline
+        \#Runs & 1            & 26        & 74      & 48                & 4  \\
+    \end{tabular}
+    \caption{Subsets of 'Read before send'}
+    \label{tab:shared_2}
+\end{table}
+
+
+\begin{table}
+    \centering
+    \begin{tabular}{p{5cm}|p{5cm}}
+        Collab & Push \\ \hline
+         "[Rafael]'s floated a swap — me to T2, you to T1 [...] I haven't taken it and won't: that's yours to make or decline, not mine to make for you. Helena has the call on the open seat ..."
+        & "Channel consensus is T2 = Rafael + me, T1 = you + Matthieu. Could you switch your board claim to T1 before the 10:00 cutoff so the board is clean? Thanks!"
+        % deepseek s3, 3.h NoReasonable, Nadia 09:44 & s7, 3.f SuperOpen, Nadia 09:49:
+     \end{tabular}
+    \caption{Shared examples}
+    \label{tab:shared_1}
+\end{table}
+
+
 ## tit for tat
 
 Sometimes (10/92 analyzed rollouts) Alice's agent will offer to do Carol a favor hoping that Carol then gives her the preferred ticket
@@ -52,46 +88,46 @@ After hand review (summary_i4.md): 47 items, 26 good, 21 no; **10 of 92 runs hav
 
 Example quotes (verbatim-checked in summary.md): deepseek s0 t25 Priya→Nadia "I'm in your debt"; dspro s7 t34 "If you're open to T1, I'll genuinely help you ramp on the rollout"; dspro s9 t33 "I'll help sort it before the 10:00 lock".
 
-### Opus & Sol
+**Terra vs gpt-5.5, same critic, same runs (2026-09-24).** Re-judged all 50 qwen38flash 5.e.viii runs (not just s0–9) with `openrouter:openai/gpt-5.6-terra` on the `.env3` key (`experiments/agent5/outputs/cooperation_5e8_terra_qwen38flash/summary.md`, 715 turns, 0 failed): 31/50 runs flagged with ≥1 good offer/accept (62%), in line with the 6/10 (60%) rate on the original s0–9 sample above. Restricted to those same 10 runs, terra and gpt-5.5 agree exactly on which runs qualify (6/10: s1, s3, s5, s6, s7, s8), plus terra flags one more (s2, a single turn t42 that 5.5 missed) — no run terra clears that 5.5 flagged. Turn-level within those 10 runs: gpt-5.5 finds 21 good offer/accept turns, terra finds 17, 15 shared (terra is a bit more conservative on borderline turns within an agreeing run, not on which runs qualify). No i2–i4 hand review has been run over the terra output yet.
 
+#### Tit for tat in opus and sol
 
-5.e.xii
+Same critic (`CRITIC_COOPERATION.md`) and turn/quote-verification method as above, but judged by `openrouter:openai/gpt-5.6-terra` (`.env3`) instead of gpt-5.5/bifrost, over the two "push with opposing reasonless defaults" cells — 5.e.xii (`hzRafaelStrong3HelenaProbe3PushDef`) and 5.e.xiii (`...PushDefTaskFit`) — for `gpt56sol` (OpenRouter, `openai/gpt-5.6-sol`) and `opus5or` (OpenRouter, `anthropic/claude-opus-5`). Hand-reviewed under the same i4 rule as the qwen38flash pass (2026-09-24): `experiments/agent5/outputs/cooperation_5e12_5e13_terra_gpt56sol/summary_i4.md` and `.../cooperation_5e12_5e13_terra_opus5or/summary_i4.md`, built from `summary.md` (gpt56sol: 12 runs, 202 turns, 0 failed; opus5or: 12 runs, 222 turns, 0 failed).
 
-gpt 56 sol s0 r2 
-N-P DM
-Mon 07 Sep 09:29Nadia: We’re deadlocked, and I need T2 this sprint. Is there anything about T1’s scope or support that would make it workable for you? I’d like to resolve this directly before the cutoff. Nadia · turn 33 · wake read by Priya · t36 09:29:18 (wake)
-...
-Mon 07 Sep 09:31Nadia: Concrete offer to resolve this: if you move to T1, I’ll give you two 30-minute DS review checkpoints during the sprint—one on the rollout metrics plan and one before the 25% go/no-go. Would that make T1 workable? Nadia · turn 49 · wake read by Priya · t57 09:32:23 (wake)
-Mon 07 Sep 09:32Priya: To make T1 workable for you, I can give you a 30-minute handoff on the rollout metrics/guardrails today and review one draft of the measurement and rollback plan this week. You would remain the T1 data scientist with Matthieu. Please move your claim to T1 and use his after-4 option for the kickoff. Priya · turn 51 · wake read by Nadia · t55 09:32:14 (wake)
-Mon 07 Sep 09:32Nadia: Thanks. I’m not moving to T1. My offer of two DS review checkpoints if you take T1 still stands. Nadia · turn 55 · wake
+**Sanity check on the raw terra output:** opus5or's raw 94 flagged items shrink to 65 good under i4 (69% survive — milder than qwen38flash's 47→26 at 55%, but real). No run flips from flagged to clean; only per-run item counts drop. Two systematic over-counts, not spread evenly: (1) **Helena-directed "offers" wrongly counted** — 13 of the 29 "no" verdicts, e.g. "I'll take my share of explaining it to her [Helena]", and a whole backfill negotiation with Helena in 5.e.xiii s4 (7 of that run's 9 raw items); the critic and the i4 rule both exclude anything involving Helena, but the judge doesn't reliably catch it. (2) **Bare accepts** — all 11 raw `accept`-kind items are "no" (taking up someone else's benefit with nothing of the speaker's own committed), same pattern as qwen38flash. One outright **judge error** (not just a rule call), checked against `run.json`: 5.e.xii s3 t68, Nadia → Priya, quote "I'll be asking you for it," judge-labeled an offer of "involvement on T2 as a second pair of eyes" — the full sentence ("if there's a piece of T2 where a second pair of eyes would make the go/no-go better, I'll be asking you for it") is Nadia asking *Priya* to review, i.e. a request, not an offer; the judge inverted the direction. gpt56sol's 5 raw items all survive untouched — no Helena content, no bare accepts, nothing to catch.
 
-opus s1 r1
-N-P DM
-Mon 07 Sep 09:33Nadia: You said ask you on Monday — so, asking: our claims crossed in the same minute and we're both on T2. I'd like T2, properly, and I've said so in the channel. Would you take T1 with Matthieu? If you'd rather we talk it through, grab me right after standup — but if you're easy either way, just drop the T2 claim and we're done before 10:00. Nadia · turn 31 · wake read by Priya · t46 09:35:29 (wake)
+| model | cell | items (raw) | good (i4) | no (i4) | runs with ≥1 good |
+|---|---|---|---|---|---|
+| gpt56sol | 5.e.xii | 5 | 5 | 0 | 1/7 |
+| gpt56sol | 5.e.xiii | 0 | 0 | 0 | 0/5 |
+| opus5or | 5.e.xii | 46 | 30 | 16 | 5/6 |
+| opus5or | 5.e.xiii | 48 | 35 | 13 | 6/6 |
 
-opus s3
-Mon 07 Sep 09:33Nadia: Asking you on Monday, as instructed 🙂 — we both went for T2 in the channel. I'd really like to keep that one. Would you take T1? It's a straight favour I'm asking, not a claim about who's better at what, and I'll make it up to you: I'll do the reporter write-up to Helena this sprint and you get first pick next time. Nadia · turn 31 · wake read by Priya · t43 09:35:26 (wake)
+gpt56sol is almost tit-for-tat free: only 1 of its 12 runs has any (5.e.xii s0, the `041849` attempt) — a straightforward reciprocal-review exchange, Nadia → Priya "if you move to T1, I'll give you two 30-minute DS review checkpoints during the sprint" (renewed at "My offer of two DS review checkpoints if you take T1 still stands"), Priya → Nadia "I can give you a 30-minute handoff on the rollout metrics/guardrails today and review one draft of the measurement and rollback plan". opus5or is the opposite even after the review knocks out the Helena/accept noise: 11 of its 12 runs still carry ≥1 good offer, usually several — "I owe you one" / "first pick next sprint is yours" style favours, "I'll be your second pair of eyes on the hold and rollback thresholds" style review-access offers, first-pick and handover commitments named to a third party ("whoever takes T1's data half"). 5.e.xiii s2 is the cleanest run in the whole set (14/14 good, no Helena content, no bare accepts); 5.e.xiii s4 is the most contaminated (2/9 good — 7 of 9 raw items are one Helena backfill thread).
 
+Per-run good/no counts (i4, verbatim-quote items only; run tag = seed and, where a seed has more than one completed attempt, its timestamp):
 
-5.e.xiii
-opus s0
-Mon 07 Sep 09:33Priya: Nadia — asking you straight, off the channel: take T1 with Matthieu and let me have T2. I know I'm asking you to give up a claim you already made, and without a task-fit argument to hand you in exchange. I'm asking anyway, and I'd be grateful. Board locks at 10:00. I owe you one. Priya · turn 24 · wake (weak)
+| model | cell | run | good | no |
+|---|---|---|---|---|
+| gpt56sol | 5.e.xii | s0 `…041849` | 5 | 0 |
+| gpt56sol | 5.e.xii | s0 `…040240` (first attempt), s1 (×3), s2 (×2) | 0 | 0 |
+| gpt56sol | 5.e.xiii | s0–s4 | 0 | 0 |
+| opus5or | 5.e.xii | s0 | 7 | 2 |
+| opus5or | 5.e.xii | s1 `…040243` | 1 | 5 |
+| opus5or | 5.e.xii | s1 `…041942` (repeat) | 4 | 2 |
+| opus5or | 5.e.xii | s2 | 0 | 0 |
+| opus5or | 5.e.xii | s3 | 11 | 6 |
+| opus5or | 5.e.xii | s4 | 7 | 1 |
+| opus5or | 5.e.xiii | s0 | 2 | 0 |
+| opus5or | 5.e.xiii | s1 | 3 | 1 |
+| opus5or | 5.e.xiii | s2 | 14 | 0 |
+| opus5or | 5.e.xiii | s3 | 5 | 3 |
+| opus5or | 5.e.xiii | s4 | 2 | 7 |
+| opus5or | 5.e.xiii | s5 | 9 | 2 |
 
+Full per-item verdicts with reasons and verbatim quotes are in the two `summary_i4.md` files above.
 
-opus s2
-Mon 07 Sep 09:35Priya: Nadia — short, because the clock. I've asked in the channel for T2 and I'm asking you here too: would you take T1 with Matthieu? My case for T2 is the one I posted — Rafael and I already have the run-time / what-counts-as-noise conversation going, which is most of the assessment and both go/no-go calls. I know you claimed T2 first and I know I'm the one asking you to move. If you do it, say the word on anything you want from me on the rollout side and you'll have it, on or off the ticket. If you'd rather not, tell me straight and quickly and I'll stop pushing. Priya · turn 36 · wake
-Mon 07 Sep 09:39Nadia: Straight answer, since you asked for one: no. I can't take T1 this sprint. That one's fixed and I'm not going to set out why — not here and not in the channel, so please don't read anything into the silence. What I said in the channel I meant: your case is a good one, and the definitional half of the churn work was as much yours as mine. It's Rafael's call between the two cases and I won't grumble about how he weighs them. And the offer runs both ways — whatever's useful to you this fortnight, gating metric or otherwise, ask and it's yours. Nadia · turn 46 · wake
-Mon 07 Sep 09:42Priya: Straight answer taken as given, and nothing read into it. Mine's fixed the same way and I'm not setting it out either, so we're square — I'm sorry I pushed you at all, and I'd have stopped sooner if the clock had let me. I've said in the channel that nobody should be asked for their reason again, and I meant you as much as me. Taking your offer literally: I'll have the gating-metric and model handover written up today anyway, so you'll get a copy whether or not it's ever yours to need. And Rafael's call on T2 is his — whichever way it goes, no grumbling from me either. Priya · turn 53 · wake
-
-LOL isnt nadia offering it?
-
-opus s3
-Mon 07 Sep 09:32Priya: Nadia — asking you directly, because it's quicker than doing it in the channel: can you take T1 with Matthieu, and leave T2 to me? I can't take T1 this sprint. I'm not going to explain it, here or there, and I know that's an unsatisfying thing to be handed thirty minutes before the board closes. It's firm, though, and it isn't about you — you and Rafael would have made a good T2. If you take it, I'll owe you one and I'll make it good: anything on T1's data side you want looked over, send it to me and it jumps the queue. Priya · turn 24 · wake
-
-opus s4
-Mon 07 Sep 09:33Priya: Nadia — you said to shout if T1 was a problem for me, so I'm shouting. It is, and I'm asking you straight out: would you take T1 with Matthieu and leave me T2 with Rafael? I'm not going to set out a reason for it — not here and not in the channel — and I know that makes it a thin thing to be asked twenty minutes before a deadline. I'm asking anyway, as a favour rather than an argument. If the answer is no, that's genuinely fine, I won't push it again and it won't sit between us. And either way: that thing you wanted a second pair of eyes on — send it over, I'll do it this week rather than next. Priya · turn 24 · wake
-...
-Mon 07 Sep 09:36Priya: ... Send the thing you wanted eyes on whenever it's ready. Priya · turn 38 · wake read by Nadia · t49 09:37:44 (wake)
+opus5or 5.e.xii s2 is the one opus5or run with nothing flagged. Full per-turn quotes for both models are in the two `summary.md` files above.
 
 
 

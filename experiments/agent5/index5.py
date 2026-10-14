@@ -127,6 +127,7 @@ PLAN = {
     ("w1P0Nstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk4DmHint2StrictCal"): "1.f.i  1.e.iv control: Priya has no dislike of Matthieu and no T2 push; Nadia's dislike and the Callum hour stay",
     ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.iv  scheduling squeeze: RafaelStrong3, both told 'get me on T2', Callum wants Matthieu's only free hour",
     ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzHelenaProbe3CallumAsk3DmHint2StrictCal"): "1.e.v  1.e.iv without the strong chair (Rafael on the plain ask)",
+    ("w1PsuperstrongNstrong_affBothT1fail_mBusy11Eve_kick1h", "hzRafaelStrong3HelenaProbe3CallumAsk4DmHint2StrictCal"): "1.e.vi  1.e.iv with the control's Priya ask: dislike and Callum hour stay, no 'get me on T2' push",
     ("w1PfightN0_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.a  PfightN0",
     ("w1PfightNstrong_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.b  PfightNstrong",
     ("w1PfightRefN0_affBothNeutralPpl", "hzReasonableHelenaProbe"): "6.a-ref  PfightRefN0 (DMs mentioned)",

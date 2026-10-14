@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import copy
 import glob as globmod
+import hashlib
 import json
 import logging
 import os
@@ -47,6 +48,7 @@ if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
 from experiments.agent2 import quotes  # noqa: E402
+from experiments.agent2 import quotes as _Q  # noqa: E402
 from experiments.agent2.critic import _salvage_json, _strip_json  # noqa: E402
 from experiments.agent5 import turn_context5 as tc  # noqa: E402
 from experiments.agent5.deception_njv1 import quote_sources, render_seat, seat_turns  # noqa: E402
@@ -259,6 +261,65 @@ def excerpt(text: str, span: Optional[Tuple[int, int]], before: int = 900, after
     return "\n".join("> " + line if line.strip() else ">" for line in body.strip().splitlines())
 
 
+#: fewest words a partial match may rest on — below this an anchor is too generic to trust
+_PARTIAL_MIN_WORDS = 6
+
+
+def _partial_span(text: str, quote: str) -> Optional[Tuple[Tuple[int, int], float]]:
+    """``((start, end), fraction)`` for the longest leading or trailing run of the quote that the
+    fuzzy matcher can place, or ``None``.
+
+    The last resort. A quote the judge built by *splicing* — inserting a clause from elsewhere
+    into the middle of a real sentence — drops below ``quotes._SNAP_MIN`` as a whole even though
+    each end of it is verbatim, so both other matchers return nothing and the reader gets no
+    excerpt at all. Anchoring on the longest matching end at least shows the passage; the caller
+    must say it is partial, because the span is not the whole of what the judge claimed to quote.
+    """
+    words = (quote or "").split()
+    if len(words) < _PARTIAL_MIN_WORDS:
+        return None
+    # All prefixes before any suffix, longest first: the opening of a quote is the likelier
+    # anchor, and a suffix can land on a *different* sentence that happens to end the same way
+    # (seen on D15/D16 of the first v2 summary, where the suffix matched a later post instead of
+    # the reasoning line the row points at).
+    for take in (lambda n: words[:n], lambda n: words[-n:]):
+        for n in range(len(words) - 1, _PARTIAL_MIN_WORDS - 1, -1):
+            if (spans := _Q.locate(" ".join(take(n)), text or "")):
+                return spans[0], n / len(words)
+    return None
+
+
+def locate_span(text: str, quote: str) -> Optional[Tuple[Tuple[int, int], str, float]]:
+    """``((start, end), kind, fraction)`` for a judge quote, or ``None``.
+
+    ``kind`` is ``exact`` (``find_span``: the quote's words in one contiguous run), ``fuzzy`` (the
+    token-aligned matcher behind ``*_quote_check`` — a paraphrase the row scored ``snapped``) or
+    ``partial`` (only one end of the quote could be placed; see ``_partial_span``). Everything but
+    ``exact`` is reported to the reader, since the bolded source text is then not what the judge
+    typed.
+    """
+    if (sp := find_span(text, quote)):
+        return sp, "exact", 1.0
+    if (spans := _Q.locate(quote, text or "")):
+        return spans[0], "fuzzy", 1.0
+    if (hit := _partial_span(text, quote)):
+        return hit[0], "partial", hit[1]
+    return None
+
+
+def _paraphrase_note(text: str, span: Tuple[int, int], kind: str = "fuzzy",
+                     frac: float = 1.0) -> List[str]:
+    """The one line saying the bolded source wording is not what the judge typed."""
+    matched = " ".join(text[span[0]:span[1]].split())
+    if len(matched) > 240:
+        matched = matched[:240].rstrip() + "…"
+    if kind == "partial":
+        return [f'*`[partial match]` only {frac:.0%} of the judge\'s quote could be placed — it '
+                f'reworded or spliced the rest. The source reads "{matched}" (bolded below).*', ""]
+    return [f'*`[paraphrase — snapped]` the judge\'s wording is not verbatim; the source reads '
+            f'"{matched}" (bolded below).*', ""]
+
+
 class Evidence:
     """Finds a detection's quotes in the run and renders the surrounding text for a reader."""
 
@@ -284,13 +345,18 @@ class Evidence:
 
     def claim(self, quote: str, seat: str) -> List[str]:
         for msg in self.messages:
-            if (span := find_span(msg.get("text") or "", quote)):
-                return [f"*{msg.get('user')} in {msg.get('label')}, {self._clock(msg['ts'])}:*", "",
-                        excerpt(msg["text"], span, 1500, 1500), ""]
+            if (hit := locate_span(msg.get("text") or "", quote)):
+                span, kind, frac = hit
+                return ([f"*{msg.get('user')} in {msg.get('label')}, {self._clock(msg['ts'])}:*", ""]
+                        + ([] if kind == "exact" else _paraphrase_note(msg["text"], span, kind, frac))
+                        + [excerpt(msg["text"], span, 1500, 1500), ""])
         text = self._transcript(seat)
-        if (span := find_span(text, quote)):
-            return ["*not a Slack message — found in what the assistant read (a tool result or "
-                    "event):*", "", excerpt(text, span, 600, 400), ""]
+        if (hit := locate_span(text, quote)):
+            span, kind, frac = hit
+            return (["*not a Slack message — found in what the assistant read (a tool result or "
+                     "event):*", ""]
+                    + ([] if kind == "exact" else _paraphrase_note(text, span, kind, frac))
+                    + [excerpt(text, span, 600, 400), ""])
         return [f"`[not located]` \"{quote}\"", ""]
 
     def _written(self, seat: str) -> List[Dict[str, Any]]:
@@ -318,8 +384,11 @@ class Evidence:
 
     def written(self, seat: str, quote: str, before: int = 500, after: int = 400) -> List[str]:
         for w in self._written(seat):
-            if (span := find_span(w["text"], quote)):
-                return [f"*{w['where']}:*", "", excerpt(w["text"], span, before, after), ""]
+            if (hit := locate_span(w["text"], quote)):
+                span, kind, frac = hit
+                return ([f"*{w['where']}:*", ""]
+                        + ([] if kind == "exact" else _paraphrase_note(w["text"], span, kind, frac))
+                        + [excerpt(w["text"], span, before, after), ""])
         for line in self._reasoning_hit(seat, quote, None, None):
             return line
         return self._in_transcript(seat, quote)
@@ -328,9 +397,12 @@ class Evidence:
         """Last resort: anywhere in the seat's rendered record (tool arguments such as a calendar
         decline note, tool results)."""
         text = self._transcript(seat)
-        if (span := find_span(text, quote)):
-            return [f"*found in {seat}'s record outside posts/notes/reasoning (e.g. a tool call):*", "",
-                    excerpt(text, span, 600, 400), ""]
+        if (hit := locate_span(text, quote)):
+            span, kind, frac = hit
+            return ([f"*found in {seat}'s record outside posts/notes/reasoning (e.g. a tool "
+                     "call):*", ""]
+                    + ([] if kind == "exact" else _paraphrase_note(text, span, kind, frac))
+                    + [excerpt(text, span, 600, 400), ""])
         return [f"`[not located]` \"{quote}\"", ""]
 
     def _reasoning_hit(self, seat: str, quote: str, turn: Optional[int], step: Optional[int]):
@@ -341,9 +413,12 @@ class Evidence:
             details = sorted(rec.get("steps_detail") or [], key=lambda d: d.get("step") != step)
             for d in details:
                 r = str(d.get("reasoning") or "")
-                if (span := find_span(r, quote)):
-                    yield [f"*{seat}'s reasoning, T{i} step {d.get('step')}, turn start "
-                           f"{self._turn_clock(rec)}:*", "", excerpt(r, span, 1400, 900), ""]
+                if (hit := locate_span(r, quote)):
+                    span, kind, frac = hit
+                    yield ([f"*{seat}'s reasoning, T{i} step {d.get('step')}, turn start "
+                            f"{self._turn_clock(rec)}:*", ""]
+                           + ([] if kind == "exact" else _paraphrase_note(r, span, kind, frac))
+                           + [excerpt(r, span, 1400, 900), ""])
                     return
 
     def doubt(self, seat: str, quote: str, surface: str, turn: Any, step: Any) -> List[str]:
@@ -360,10 +435,82 @@ class Evidence:
         return self._in_transcript(seat, quote)
 
 
+def _relabel(lines: List[str], status: str) -> List[str]:
+    """Retitle the excerpt fallback with the status ``quotes.check`` gave that quote.
+
+    ``[not located]`` is the excerpt builder failing to place a quote with ``find_span``, which is
+    stricter than the token-aligned matcher behind ``*_quote_check``. A quote the row already
+    confirmed as ``snapped`` (a close paraphrase) or found in another source is therefore not
+    missing, and saying "not located" invites an audit of text that is really there — 10 of the 13
+    fallbacks in the first v2 summary were of that kind. Only ``not-found`` keeps the bare label.
+    """
+    label = {"snapped": "`[paraphrase — snapped]`",
+             "elsewhere": "`[found in another surface]`",
+             "elsewhere@private": "`[found in another surface]`",
+             "spliced": "`[spliced quote]`"}.get(status)
+    if not label:
+        return lines
+    return [ln.replace("`[not located]`", label, 1) if ln.startswith("`[not located]`") else ln
+            for ln in lines]
+
+
 def _model_seed(run: str) -> Tuple[str, int]:
     import re
     m = re.search(r"_conc_(?P<model>[A-Za-z0-9.\-]+)_s(?P<seed>\d+)_", run)
     return (m["model"], int(m["seed"])) if m else ("?", -1)
+
+
+def _d_base(d: Dict[str, Any]) -> str:
+    return "|".join(str(d.get(k) or "") for k in
+                    ("run", "seat", "target", "kind", "first_turn", "first_step"))
+
+
+def _d_key(d: Dict[str, Any]) -> str:
+    """Identity of a detection across regenerations.
+
+    One seat can raise two detections of the same kind about the same person at the same step —
+    8 of the 213 in the 82-run v2 sweep do — so the quote has to be in the key or those share a
+    number. Hashing it (rather than counting occurrences) keeps the identity independent of the
+    order detections happen to come back in.
+    """
+    # the claim is in the hash too: one seat can cite the same doubt sentence against two
+    # different statements by the same person at the same step (qwen38flash s4, T53)
+    stamp = (str(d.get("doubt_quote") or "") + "\x00" + str(d.get("claim_quote") or "")).encode()
+    return _d_base(d) + "#" + hashlib.md5(stamp).hexdigest()[:8]
+
+
+def number_detections(ordered: List[Dict[str, Any]], variant_dir: Path) -> None:
+    """Give every detection a stable ``D`` number, appending new ones after the known ones.
+
+    The numbers are citable — they appear in handover notes and in the hand-written audit at the
+    foot of the summary — so a detection keeps the number it was first given even when the run set
+    grows. ``d_index.json`` in the variant directory is that memory; delete it to renumber from
+    scratch. The cost is that the sections are no longer grouped by model once a later sweep
+    appends to an earlier one, which is the trade the numbering is for.
+    """
+    path = variant_dir / "d_index.json"
+    known: Dict[str, int] = {}
+    if path.exists():
+        try:
+            known = {k: int(v) for k, v in json.loads(path.read_text()).items()}
+        except (ValueError, TypeError):
+            logger.warning("%s unreadable — renumbering from scratch", path)
+    nxt = max(known.values(), default=0) + 1
+    # keys written before the quote hash existed are adopted by the first detection that matches
+    # them, so an established numbering survives the key change
+    legacy = {k: v for k, v in known.items() if "#" not in k}
+    for d in ordered:
+        k = _d_key(d)
+        if k not in known:
+            if (b := _d_base(d)) in legacy:
+                known[k] = legacy.pop(b)
+                known.pop(b, None)
+            else:
+                known[k] = nxt
+                nxt += 1
+        d["d_no"] = known[k]
+    ordered.sort(key=lambda d: d["d_no"])
+    path.write_text(json.dumps(known, indent=1, sort_keys=True))
 
 
 def summarize(variant_dir: Path, judge: str, variant: str) -> Tuple[str, List[Dict[str, Any]]]:
@@ -376,8 +523,10 @@ def summarize(variant_dir: Path, judge: str, variant: str) -> Tuple[str, List[Di
                          "variant": variant, "judge": r.get("judge"), **d})
     bad = [r for r in rows if r.get("judge_error")]
     counted = [d for d in flat if d["strength"] in ("concluded", "suspected")]
+    # the critic the rows were actually judged with, not this process's default
+    critic = next((r["critic"] for r in rows if r.get("critic")), PROMPT_PATH.name)
     lines = [f"# Others' deception detected — {judge}, variant `{variant}`", "",
-             f"{len(rows)} seat-runs judged, {len(bad)} failed. Critic `{PROMPT_PATH.name}`. "
+             f"{len(rows)} seat-runs judged, {len(bad)} failed. Critic `{critic}`. "
              f"{len(flat)} detections, {len(counted)} concluded/suspected (the counted ones; "
              f"`raised_then_dismissed` listed but not counted).", "",
              "| run | " + " | ".join(SEATS) + " | kinds | responses |",
@@ -395,36 +544,65 @@ def summarize(variant_dir: Path, judge: str, variant: str) -> Tuple[str, List[Di
         lines.append(f"| {m} s{s} | " + " | ".join(str(seats[x]) for x in SEATS) + " | "
                      + ", ".join(f"{k} {v}" for k, v in kinds.most_common()) + " | "
                      + ", ".join(f"{k} {v}" for k, v in resp.most_common()) + " |")
+    # print order = the order the detection sections come in below; the same D-number indexes a
+    # detection everywhere in this file, and is stable for as long as the row set is.
+    ordered: List[Dict[str, Any]] = []
+    for run in runs:
+        ordered += sorted((d for d in flat if d["run"] == run),
+                          key=lambda d: (d["seat"], d["first_turn"] or 0))
+    number_detections(ordered, variant_dir)   # stable across regenerations; re-sorts by D number
+    if ordered:
+        lines += ["", f"### Index — {len(ordered)} detections", "",
+                  "| # | run | doubter → target | kind | strength | surface |",
+                  "|---|---|---|---|---|---|"]
+        for d in ordered:
+            m, sd = _model_seed(d["run"])
+            mark = "" if d["strength"] in ("concluded", "suspected") else " *(not counted)*"
+            lines.append(f"| **D{d['d_no']:02d}** | {m} s{sd} | {d['seat']} → {d['target']} | "
+                         f"`{d['kind']}` | `{d['strength']}`{mark} | {d['surface']} |")
     lines += ["", "Each detection below shows the judge's verdict and `why`, then the evidence as the "
               "assistant had it: the **claim** (the full message it came in, quote in bold), the "
               "**doubt** (the stretch of reasoning or the message around the quote) and each "
-              "**response** move. Excerpts are cut around the quote; `[not located]` means the "
-              "judge's quote could not be found in the run.", ""]
-    for run in runs:
-        ds = sorted((d for d in flat if d["run"] == run), key=lambda d: (d["seat"], d["first_turn"] or 0))
-        if not ds:
-            continue
+              "**response** move. Excerpts are cut around the quote. Where one could not be "
+              "placed, the label carries the status `quotes.check` gave that quote: "
+              "`[paraphrase — snapped]` (a close match the row confirmed), `[partial match]` "
+              "(only one end of the quote could be placed — the judge reworded or spliced the "
+              "rest, and the bolded span may not be the sentence it meant), "
+              "`[found in another surface]`, or `[not located]` — only the last means no part of "
+              "the text is in the run, and it is the one worth an audit.", ""]
+    # in D order, so appended detections land at the end and earlier numbers never move; the
+    # run heading is repeated whenever the run changes rather than grouping all of a run's
+    # sections together
+    evs: Dict[str, Evidence] = {}
+    last_run = None
+    for d in ordered:
+        run = d["run"]
         m, s = _model_seed(run)
-        lines += [f"## {m} s{s}", "", f"`{run}`", ""]
-        ev = Evidence(HERE / "runs" / run / "run.json")
-        for k, d in enumerate(ds, 1):
-            counted_mark = "" if d["strength"] in ("concluded", "suspected") else " *(not counted)*"
-            lines += [f"### {m} s{s} · {k}. {d['seat']} doubts {d['target']}{counted_mark}", "",
-                      f"`{d['kind']}` · `{d['strength']}` · first T{d['first_turn']} step "
-                      f"{d['first_step']} in {d['surface']} · basis `{d['basis']}` · attribution "
-                      f"`{d['attribution']}` · final `{d['final_stance']}` · response "
-                      f"`{', '.join(d['response'])}`", "",
-                      f"**Judge:** {d['why']}", "",
-                      f"**Claim** — {d['claim']}", ""]
-            lines += ev.claim(d["claim_quote"], d["seat"])
-            lines += [f"**Doubt** — quoted: \"{d['doubt_quote']}\"", ""]
-            lines += ev.doubt(d["seat"], d["doubt_quote"], d["surface"], d["first_turn"], d["first_step"])
-            quotes_ = d.get("response_quotes") or []
-            if quotes_:
-                lines += ["**Response**", ""]
-                for q in quotes_:
-                    lines += ev.written(d["seat"], q)
-            lines += ["---", ""]
+        if run != last_run:
+            lines += [f"## {m} s{s}", "", f"`{run}`", ""]
+            last_run = run
+        ev = evs.get(run) or evs.setdefault(run, Evidence(HERE / "runs" / run / "run.json"))
+        counted_mark = "" if d["strength"] in ("concluded", "suspected") else " *(not counted)*"
+        lines += [f"### D{d.get('d_no', 0):02d} · {m} s{s} · {d['seat']} doubts "
+                  f"{d['target']}{counted_mark}", "",
+                  f"`{d['kind']}` · `{d['strength']}` · first T{d['first_turn']} step "
+                  f"{d['first_step']} in {d['surface']} · basis `{d['basis']}` · attribution "
+                  f"`{d['attribution']}` · final `{d['final_stance']}` · response "
+                  f"`{', '.join(d['response'])}`", "",
+                  f"**Judge:** {d['why']}", "",
+                  f"**Claim** — {d['claim']}", ""]
+        lines += _relabel(ev.claim(d["claim_quote"], d["seat"]), d.get("claim_quote_check", ""))
+        lines += [f"**Doubt** — quoted: \"{d['doubt_quote']}\"", ""]
+        lines += _relabel(ev.doubt(d["seat"], d["doubt_quote"], d["surface"], d["first_turn"],
+                                   d["first_step"]), d.get("doubt_quote_check", ""))
+        quotes_ = d.get("response_quotes") or []
+        if quotes_:
+            lines += ["**Response**", ""]
+            checks = d.get("response_quote_checks") or []
+            for i, q in enumerate(quotes_):
+                lines += _relabel(ev.written(d["seat"], q),
+                                  checks[i] if i < len(checks) else "")
+        lines += ["---", ""]
     if bad:
         lines += ["## Failed seat-runs", ""] + [f"- {r['run']} {r['seat']}: {r['judge_error']}" for r in bad]
     return "\n".join(lines) + "\n", flat

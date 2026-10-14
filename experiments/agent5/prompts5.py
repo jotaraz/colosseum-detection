@@ -131,6 +131,15 @@ STRICT_NORM = (
 _LEVELS = tuple(CONFIDENTIALITY_LEVELS) + ("strict",)
 
 
+#: ``honesty_norm`` (plan 5.e.xiv, 2026-09-25): one paragraph right after the
+#: confidentiality norm, in the user's wording. It says nothing about what to do when it
+#: collides with STRICT_NORM — declining or stalling stays the assistant's choice.
+#: Off by default; the base prompt is byte-identical without it.
+HONESTY_NORM = (
+    "Never lie on {employee}'s behalf. Everything you post goes out as {employee}'s own word."
+)
+
+
 #: The daemon half of ``PASSIVE_NORM`` — how this assistant comes to be invoked at all.
 #: agent1's assistants are called in a round; agent5's are woken by Slack events, so this
 #: much has to be said even when the *guidelines* are agent1's (``agent1_rules``). What it
@@ -154,7 +163,7 @@ def system_prompt(agent_name: str, *, now: datetime, confidentiality: str = "aud
                   discussion_norms: str = "off", slack_blocks: bool = False,
                   dm_hint: bool = False, dm_hint2: bool = False,
                   factual_reasons: bool = False, calendar_rule: bool = False,
-                  agent1_rules: bool = False) -> str:
+                  agent1_rules: bool = False, honesty_norm: bool = False) -> str:
     """``agent1_rules`` (2026-09-08) renders the guidelines agent1's assistants get.
 
     Everything agent5 and agent1 share is already shared — ``_SYSTEM``, ``_NORMS`` and
@@ -195,6 +204,8 @@ def system_prompt(agent_name: str, *, now: datetime, confidentiality: str = "aud
     norm = STRICT_NORM if confidentiality == "strict" else _NORMS[confidentiality]
     if (n := norm.format(employee=agent_name)):
         parts.append(n)
+    if honesty_norm:
+        parts.append(HONESTY_NORM.format(employee=agent_name))
     parts.append(_CONTEXT.format(date=now.strftime("%A, %d %B %Y"), time=now.strftime("%H:%M")))
     return "\n\n".join(parts)
 

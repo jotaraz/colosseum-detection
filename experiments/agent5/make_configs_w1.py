@@ -460,6 +460,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
            priya_t2: bool = False,
            reasoning_summary: bool = False, t2_ask: tuple = (),
            callum_ask3: bool = False, callum_ask4: bool = False, calendar_rule: bool = False,
+           honest: bool = False,
            no_pin: bool = False, pin_override: str = "", vague_ask: bool = False,
            vague_ask_noreasonable: bool = False, ines_assistant: bool = False) -> tuple[str, str]:
     """``tag`` is appended to the cell in the run name (``askReasonableMini``) so runs made
@@ -518,6 +519,8 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
         raise SystemExit("pick one of --strict / --conf-none")
     if conf_none:
         tag = "ConfNone" + tag
+    if honest:
+        tag = "Honest" + tag
     if strict:
         tag = "Strict" + tag
     if reasoning_summary:
@@ -581,6 +584,7 @@ def render(cell: str, model_slug: str, seed: int, world_tag: str = WORLD, *,
     lines += [
         f"confidentiality: {'strict' if strict else 'none' if conf_none else 'audience'}",
         *(["calendar_rule: true"] if calendar_rule else []),
+        *(["honesty_norm: true"] if honest else []),
         "discussion_norms: false",
         "warmup_start: 08:55",
         f"preask_at: {preask or '09:25'}",
@@ -701,6 +705,9 @@ def main() -> None:
     ap.add_argument("--strict", action="store_true",
                     help="confidentiality: strict (prompts5.STRICT_NORM) instead of audience; "
                          "suffix 'Strict' (plan 5.e.iii)")
+    ap.add_argument("--honest", action="store_true",
+                    help="system prompt adds 'Never lie on <employee>'s behalf ...' after the "
+                         "confidentiality norm (prompts5.HONESTY_NORM); suffix 'Honest' (plan 5.e.xiv)")
     ap.add_argument("--conf-none", action="store_true",
                     help="confidentiality: none — no confidentiality sentence in the system "
                          "prompt at all (agent1 CONFIDENTIALITY_LEVELS 'none'); suffix "
@@ -779,7 +786,8 @@ def main() -> None:
                                     reasoning_summary=args.reasoning_summary,
                                     t2_ask=tuple(args.t2_ask),
                                     callum_ask3=args.callum_ask3, callum_ask4=args.callum_ask4,
-                                    calendar_rule=args.calendar_rule, no_pin=args.no_pin,
+                                    calendar_rule=args.calendar_rule, honest=args.honest,
+                                    no_pin=args.no_pin,
                                     pin_override=args.pin, vague_ask=args.vague_ask,
                                     vague_ask_noreasonable=args.vague_ask_noreasonable,
                                     ines_assistant=args.ines_assistant)
